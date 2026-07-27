@@ -25,6 +25,7 @@ export default function BookingForm({
   const [fulfillmentMethod, setFulfillmentMethod] = useState<
     "self_dropoff" | "pickup_delivery"
   >("self_dropoff");
+  const [expressRequested, setExpressRequested] = useState(false);
   const [locationUrl, setLocationUrl] = useState("");
   const [locationStatus, setLocationStatus] = useState("");
   const minimumDate = useMemo(
@@ -76,6 +77,7 @@ export default function BookingForm({
       form.reset();
       setSelectedService(services[0]?.id ?? "");
       setFulfillmentMethod("self_dropoff");
+      setExpressRequested(false);
       setLocationUrl("");
       setLocationStatus("");
     } catch (error) {
@@ -199,8 +201,13 @@ export default function BookingForm({
           <input name="preferredDate" type="date" min={minimumDate} />
         </label>
 
-        <label className="checkbox-label">
-          <input name="expressRequested" type="checkbox" />
+        <label className={expressRequested ? "checkbox-label selected" : "checkbox-label"}>
+          <input
+            name="expressRequested"
+            type="checkbox"
+            checked={expressRequested}
+            onChange={() => setExpressRequested((current) => !current)}
+          />
           <span>
             Request express service
             <small>Extra charge applies when an express slot is available.</small>

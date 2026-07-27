@@ -37,7 +37,10 @@ const worker = {
         if (assetUrl.origin !== url.origin) {
           return new Response("External images are not allowed.", { status: 400 });
         }
-        return env.ASSETS.fetch(new Request(assetUrl, request));
+        if (env.ASSETS) {
+          return env.ASSETS.fetch(new Request(assetUrl, request));
+        }
+        return fetch(new Request(assetUrl, request));
       }
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
       return handleImageOptimization(request, {
