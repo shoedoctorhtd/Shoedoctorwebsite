@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "shoe-doctor",
+  "name": "shoedoctorwebsite",
   "main": "worker/index.ts",
   "assets": {
     "directory": "./dist/client"
