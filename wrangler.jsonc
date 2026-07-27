@@ -8,7 +8,7 @@
     {
       "binding": "DB",
       "database_name": "shoe-doctor-db",
-      "database_id": "00000000-0000-4000-8000-000000000000",
+      "database_id": "281afa27-77c6-4e02-9c20-4a9493021d77",
       "migrations_dir": "migrations"
     }
   ],
