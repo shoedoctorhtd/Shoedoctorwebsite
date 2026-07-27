@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "shoe-doctor",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-07-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "shoe-doctor-db",
+      "database_id": "00000000-0000-4000-8000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    "ADMIN_EMAIL": "shoedoctorhtd@gmail.com"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

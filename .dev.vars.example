@@ -1,0 +1,3 @@
+ADMIN_EMAIL=shoedoctorhtd@gmail.com
+ADMIN_PASSWORD=replace-with-a-strong-local-password
+SESSION_SECRET=replace-with-a-random-value-at-least-32-characters
