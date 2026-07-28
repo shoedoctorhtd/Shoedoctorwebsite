@@ -15,28 +15,38 @@ export default function BlogPage() {
       <SiteHeader />
 
       <section className="sd-page-hero blog-hero">
-        <p className="sd-kicker">Your shoes speak before you do.</p>
+        <p className="sd-kicker">The Shoe Doctor journal</p>
         <h1>
           CARE FOR WHAT
           <br />
           <span>CARRIES YOU.</span>
         </h1>
-        <div className="sd-page-hero-bottom">
-          <p>
-            Simple care habits, smarter protection and the right products can
-            keep every pair cleaner, safer and wearable for longer.
-            <br />
-            <br />
-            Shoes protect movement, support posture and change how you feel
-            when you enter a room. Work, celebrations, travel, first meetings
-            and ordinary errands all leave memories in the pairs that carried
-            you there.
-            <br />
-            <br />
-            Caring for them is not only about appearance. It is about comfort,
-            confidence and respecting an item you use more heavily than almost
-            anything else you own.
-          </p>
+        <div className="blog-hero-topics">
+          <article className="blog-hero-topic blog-hero-topic-care">
+            <p className="blog-hero-topic-label">01 &middot; The care promise</p>
+            <p>
+              Simple care habits, smarter protection and the right products can
+              keep every pair cleaner, safer and wearable for longer.
+            </p>
+          </article>
+
+          <article className="blog-hero-topic blog-hero-topic-voice">
+            <p className="blog-hero-topic-label">02 &middot; Why it matters</p>
+            <h2>YOUR SHOES SPEAK<br /><span>BEFORE YOU DO.</span></h2>
+            <div className="blog-hero-story-copy">
+              <p>
+                Shoes protect movement, support posture and change how you feel
+                when you enter a room. Work, celebrations, travel, first
+                meetings and ordinary errands all leave memories in the pairs
+                that carried you there.
+              </p>
+              <p>
+                Caring for them is not only about appearance. It is about
+                comfort, confidence and respecting an item you use more heavily
+                than almost anything else you own.
+              </p>
+            </div>
+          </article>
         </div>
       </section>
 

@@ -4059,6 +4059,83 @@ body {
   -webkit-text-stroke-color: var(--coral);
 }
 
+.blog-hero > .sd-kicker {
+  position: relative;
+  z-index: 2;
+}
+
+.blog-hero-topics {
+  align-items: end;
+  display: grid;
+  gap: clamp(32px, 6vw, 120px);
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+  margin-top: clamp(52px, 6vw, 95px);
+  position: relative;
+  z-index: 2;
+}
+
+.blog-hero-topic {
+  border-top: 1px solid rgba(7, 26, 58, 0.38);
+  padding-top: 19px;
+}
+
+.blog-hero-topic-care {
+  align-self: end;
+  max-width: 36ch;
+}
+
+.blog-hero-topic-voice {
+  border-left: 1px solid rgba(7, 26, 58, 0.38);
+  border-top: 0;
+  justify-self: end;
+  max-width: 700px;
+  padding-left: clamp(24px, 3.5vw, 58px);
+  padding-top: 0;
+}
+
+.blog-hero-topic-label {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  margin: 0 0 20px;
+  text-transform: uppercase;
+}
+
+.blog-hero-topic > p:not(.blog-hero-topic-label) {
+  font-size: 14px;
+  line-height: 1.75;
+  margin: 0;
+}
+
+.blog-hero-topic-voice h2 {
+  font-size: clamp(2.55rem, 3.65vw, 4.45rem);
+  font-weight: 950;
+  letter-spacing: -0.08em;
+  line-height: 0.85;
+  margin: 0 0 28px;
+}
+
+.blog-hero-topic-voice h2 span {
+  color: transparent;
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 500;
+  -webkit-text-stroke: 1.4px var(--coral);
+}
+
+.blog-hero-story-copy {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.blog-hero-story-copy p {
+  font-size: 13px;
+  line-height: 1.72;
+  margin: 0;
+}
+
 .contact-hero {
   background:
     radial-gradient(circle at 82% 30%, rgba(255, 255, 255, 0.66), transparent 23%),
@@ -4971,6 +5048,24 @@ body.shoe-cursor-active label {
     position: static;
   }
 
+  .blog-hero-topics {
+    align-items: start;
+    gap: 42px;
+    grid-template-columns: 1fr;
+  }
+
+  .blog-hero-topic-care {
+    max-width: 48ch;
+  }
+
+  .blog-hero-topic-voice {
+    border-left: 0;
+    border-top: 1px solid rgba(7, 26, 58, 0.38);
+    justify-self: stretch;
+    max-width: none;
+    padding: 30px 0 0;
+  }
+
   .sd-blog-card {
     min-height: 560px;
   }
@@ -5107,6 +5202,11 @@ body.shoe-cursor-active label {
   .sd-page-hero-bottom {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .blog-hero-story-copy {
+    gap: 18px;
+    grid-template-columns: 1fr;
   }
 
   .sd-story-mark {
