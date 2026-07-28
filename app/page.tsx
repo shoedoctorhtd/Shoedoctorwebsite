@@ -99,6 +99,7 @@ export default async function Home({
             width={1536}
             height={1024}
             priority
+            unoptimized
             sizes="(max-width: 880px) 100vw, 55vw"
           />
           <div className="sd-hero-stat">
@@ -217,6 +218,7 @@ export default async function Home({
             alt=""
             width={1536}
             height={1024}
+            unoptimized
             sizes="(max-width: 760px) 92vw, 52vw"
           />
           <div className="wash-brush" aria-hidden="true">

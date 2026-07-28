@@ -33,6 +33,7 @@ export default function AboutPage() {
               alt="Shoe Doctor logo"
               width={180}
               height={180}
+              unoptimized
             />
           </div>
         </div>

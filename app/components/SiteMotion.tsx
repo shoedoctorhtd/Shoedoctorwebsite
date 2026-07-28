@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 export default function SiteMotion({
-  showLoader = false,
+  showLoader = true,
 }: {
   showLoader?: boolean;
 }) {
