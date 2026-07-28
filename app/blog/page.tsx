@@ -102,11 +102,11 @@ export default function BlogPage() {
         <p className="sd-kicker">Save this checklist</p>
         <h2>FIVE HABITS.<br />BETTER SHOES.</h2>
         <ol>
-          <li><span>01</span>Brush dirt before it settles.</li>
-          <li><span>02</span>Dry naturally and away from heat.</li>
-          <li><span>03</span>Use the right product for the material.</li>
-          <li><span>04</span>Rotate pairs and support their shape.</li>
-          <li><span>05</span>Get damage diagnosed while it is small.</li>
+          <li><span>01</span>Wipe fresh dirt before it settles.</li>
+          <li><span>02</span>Clean smarter with the right tools.</li>
+          <li><span>03</span>Treat suede with extra care.</li>
+          <li><span>04</span>Protect clean sneakers before the rain.</li>
+          <li><span>05</span>Store dry sneakers in a shoe bag.</li>
         </ol>
       </section>
 
