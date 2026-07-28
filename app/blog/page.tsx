@@ -15,7 +15,7 @@ export default function BlogPage() {
       <SiteHeader />
 
       <section className="sd-page-hero blog-hero">
-        <p className="sd-kicker">The Shoe Doctor journal</p>
+        <p className="sd-kicker">Your shoes speak before you do.</p>
         <h1>
           CARE FOR WHAT
           <br />
@@ -23,8 +23,19 @@ export default function BlogPage() {
         </h1>
         <div className="sd-page-hero-bottom">
           <p>
-            Practical care advice, smarter repair decisions and a closer look
-            at why the right pair matters more than people think.
+            Simple care habits, smarter protection and the right products can
+            keep every pair cleaner, safer and wearable for longer.
+            <br />
+            <br />
+            Shoes protect movement, support posture and change how you feel
+            when you enter a room. Work, celebrations, travel, first meetings
+            and ordinary errands all leave memories in the pairs that carried
+            you there.
+            <br />
+            <br />
+            Caring for them is not only about appearance. It is about comfort,
+            confidence and respecting an item you use more heavily than almost
+            anything else you own.
           </p>
         </div>
       </section>
@@ -32,87 +43,153 @@ export default function BlogPage() {
       <section className="sd-blog-index sd-section">
         <article className="sd-feature-article" data-reveal>
           <div className="sd-article-meta">
-            <span>01 · Shoe care guide</span>
-            <em>5 minute read</em>
+            <span>01 &middot; Everyday care</span>
+            <em>3 minute read</em>
           </div>
-          <h2>HOW TO MAKE EVERY PAIR LAST LONGER.</h2>
+          <h2>DON&apos;T LET DIRT<br />SETTLE IN.</h2>
           <div className="sd-article-body">
             <p>
-              Good shoe care starts before a pair looks dirty. Surface dust,
-              trapped moisture, heat and repeated daily wear slowly weaken
-              material, stitching, colour and shape.
+              Dust looks harmless, but repeated wear pushes it deeper into
+              fabric, stitching and colour. Brush away loose dirt regularly
+              and use a shoe wipe when a fresh mark appears.
             </p>
             <p>
-              Brush away loose dirt after every few wears. Let damp footwear
-              dry naturally in shade instead of using intense heat. Loosen the
-              laces before removing a shoe so the heel and upper are not forced
-              out of shape.
+              When your pair needs more than a quick wipe, reach for a proper
+              sneaker-cleaning kit. Cleaning foam, two brushes and a microfiber
+              towel give you the right tools for the upper, sole and finishing
+              wipe&mdash;without soaking the shoe.
             </p>
             <ul>
-              <li>Use cleaning products made for the exact material.</li>
-              <li>Rotate pairs instead of wearing the same shoe every day.</li>
-              <li>Store shoes only when completely dry.</li>
-              <li>Use paper or a shoe tree to support shape.</li>
-              <li>Treat loose stitches and lifting soles early.</li>
+              <li>Clean fresh marks immediately.</li>
+              <li>Use separate brushes for uppers and soles.</li>
+              <li>Test products on a hidden area first.</li>
+              <li>Let every pair dry naturally in shade.</li>
             </ul>
+            <p>Small cleanups keep big stains away.</p>
           </div>
         </article>
 
         <div className="sd-blog-cards">
           <article className="sd-blog-card navy" data-reveal>
             <div className="sd-article-meta">
-              <span>02 · Why shoes matter</span>
-              <em>4 minute read</em>
+              <span>02 &middot; Travel and storage</span>
+              <em>3 minute read</em>
             </div>
-            <h2>YOUR SHOES SPEAK BEFORE YOU DO.</h2>
+            <h2>WHEREVER YOU GO,<br />PROTECT THE PAIR.</h2>
             <p>
-              Shoes protect movement, support posture and change how you feel
-              when you enter a room. Work, celebrations, travel, first
-              meetings and ordinary errands all leave memories in the pairs
-              that carried you there.
+              Rain does not send a warning. Neither do muddy roads, dusty
+              luggage or crowded shoe racks.
             </p>
             <p>
-              Caring for them is not only about appearance. It is about
-              comfort, confidence and respecting an item you use more heavily
-              than almost anything else you own.
+              Keep foldable shoe covers nearby during rainy days and outdoor
+              travel. When the journey ends, place clean and completely dry
+              sneakers inside a shoe bag to protect their shape and separate
+              them from clothes.
+            </p>
+            <p>
+              A little preparation can save your favourite pair from
+              unnecessary cleaning and damage.
             </p>
           </article>
 
           <article className="sd-blog-card coral" data-reveal>
             <div className="sd-article-meta">
-              <span>03 · Doctor’s note</span>
-              <em>3 minute read</em>
+              <span>03 &middot; Doctor&apos;s note</span>
+              <em>2 minute read</em>
             </div>
-            <h2>REPAIR EARLY. REPLACE LESS.</h2>
+            <h2>SUEDE HAS<br />DIFFERENT RULES.</h2>
             <p>
-              A loose stitch, lifting sole or fading colour is normally easier
-              and more affordable to correct when treated early. Waiting lets
-              movement, dust and water turn a small weakness into wider
-              structural damage.
+              Suede should not be treated like an ordinary sneaker. Water and
+              aggressive scrubbing can leave marks, flatten its texture and
+              affect its colour.
             </p>
             <p>
-              Timely restoration saves favourite pairs, protects the original
-              construction and reduces unnecessary waste.
+              For small, dry stains, gently use a suede eraser instead of
+              washing the entire shoe. If the stain is deep, oily or spreading,
+              stop experimenting and let a professional examine it.
+            </p>
+            <p>
+              The right treatment protects the material. The wrong one may make
+              the damage permanent.
             </p>
           </article>
         </div>
+
+        <article className="sd-feature-article" data-reveal>
+          <div className="sd-article-meta">
+            <span>04 &middot; At-home routine</span>
+            <em>5 minute read</em>
+          </div>
+          <h2>
+            BUILD A SIMPLE
+            <br />
+            AT-HOME SNEAKER-
+            <br />
+            CLEANING ROUTINE.
+          </h2>
+          <div className="sd-article-body">
+            <p>
+              You do not need a shelf full of random cleaning products. A
+              practical sneaker-cleaning kit containing cleaning foam, two
+              suitable brushes and a microfiber towel is enough for most
+              regular cleaning.
+            </p>
+            <p>Follow these steps:</p>
+            <ul>
+              <li>01. Remove the shoelaces and insoles, if removable.</li>
+              <li>02. Use a dry brush to remove loose dust and mud.</li>
+              <li>03. Test the cleaning foam on a small, less-visible area.</li>
+              <li>
+                04. Apply a small amount of foam to the brush instead of
+                pouring cleaner directly onto the shoe.
+              </li>
+              <li>05. Use the softer brush on the upper material.</li>
+              <li>
+                06. Use the second brush for the midsole and other stronger
+                surfaces.
+              </li>
+              <li>
+                07. Wipe away loosened dirt and excess foam with a clean
+                microfiber towel.
+              </li>
+              <li>
+                08. Leave the sneakers to dry naturally in a shaded,
+                ventilated area.
+              </li>
+            </ul>
+            <p>
+              A complete sneaker-cleaning kit makes this process easier because
+              each tool has a purpose. The brushes loosen dirt, the foam cleans
+              without requiring the shoe to be soaked, and the microfiber towel
+              lifts away moisture without scratching the surface.
+            </p>
+            <p>
+              <strong>Important:</strong> Avoid using the same brush on the
+              dirty outsole and the upper part of the sneaker.
+            </p>
+          </div>
+        </article>
       </section>
 
       <section className="sd-care-checklist" data-reveal>
         <p className="sd-kicker">Save this checklist</p>
-        <h2>FIVE HABITS.<br />BETTER SHOES.</h2>
+        <h2>SMALL HABITS.<br />LONGER LIFE.</h2>
         <ol>
-          <li><span>01</span>Wipe fresh dirt before it settles.</li>
-          <li><span>02</span>Clean smarter with the right tools.</li>
-          <li><span>03</span>Treat suede with extra care.</li>
-          <li><span>04</span>Protect clean sneakers before the rain.</li>
-          <li><span>05</span>Store dry sneakers in a shoe bag.</li>
+          <li><span>01</span>Wipe dirt while it is still fresh.</li>
+          <li><span>02</span>Match every product to the material.</li>
+          <li><span>03</span>Keep suede away from unnecessary water.</li>
+          <li><span>04</span>Carry shoe covers and travel with shoe bags.</li>
+          <li><span>05</span>Ask for professional care before damage spreads.</li>
         </ol>
       </section>
 
       <section className="sd-page-cta">
-        <p>Professional care when home care is not enough.</p>
-        <h2>LET’S KEEP YOUR<br />BEST PAIRS MOVING.</h2>
+        <p>
+          Everything your sneakers need between professional visits&mdash;shoe
+          wipes, suede erasers, protective shoe covers, shoe bags and complete
+          cleaning kits.
+        </p>
+        <h2>CLEAN WITH CARE.<br />WEAR WITH CONFIDENCE.</h2>
         <a className="sd-primary-button" href="/#book">
           Book your pair <ArrowUpRight />
         </a>
