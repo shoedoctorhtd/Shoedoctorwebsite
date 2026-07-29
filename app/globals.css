@@ -5926,17 +5926,28 @@ body.shoe-cursor-active label {
   animation: sd-sole-loader-exit 2.25s ease forwards;
 }
 
+.loader-branding {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(5px, 1vw, 12px);
+  justify-content: center;
+  position: relative;
+  transform: translateY(-1vh);
+  z-index: 1;
+}
+
 .loader-diagnosis-art {
   animation: none;
   background: none;
   filter: none;
-  height: min(48vw, 470px);
-  left: 50%;
+  height: min(39vw, 350px);
+  left: auto;
   overflow: visible;
-  position: absolute;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: min(62vw, 620px);
+  position: relative;
+  top: auto;
+  transform: none;
+  width: min(52vw, 460px);
 }
 
 .loader-diagnosis-art::after {
@@ -5973,6 +5984,33 @@ body.shoe-cursor-active label {
   z-index: 2;
 }
 
+.loader-branding-copy {
+  align-items: center;
+  animation: sd-loader-brand-reveal 0.55s 0.34s ease-out both;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  text-align: center;
+}
+
+.loader-branding-copy strong {
+  font-size: clamp(2rem, 5.2vw, 4.6rem);
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  line-height: 0.95;
+  padding-left: 0.08em;
+}
+
+.loader-branding-copy span {
+  color: var(--blue);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: clamp(0.52rem, 1vw, 0.7rem);
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  padding-left: 0.22em;
+}
+
 @keyframes sd-sole-first-build {
   0% {
     clip-path: inset(100% 0 0 0);
@@ -6006,6 +6044,17 @@ body.shoe-cursor-active label {
   }
 }
 
+@keyframes sd-loader-brand-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes sd-sole-loader-exit {
   0%,
   78% {
@@ -6020,8 +6069,12 @@ body.shoe-cursor-active label {
 
 @media (max-width: 640px) {
   .loader-diagnosis-art {
-    height: 66vw;
-    width: 88vw;
+    height: min(62vw, 290px);
+    width: min(84vw, 390px);
+  }
+
+  .loader-branding-copy strong {
+    font-size: clamp(1.8rem, 9vw, 2.7rem);
   }
 }
 
@@ -6031,7 +6084,8 @@ body.shoe-cursor-active label {
   }
 
   .loader-diagnosis-art::after,
-  .loader-diagnosis-art i {
+  .loader-diagnosis-art i,
+  .loader-branding-copy {
     animation-duration: 0.35s;
   }
 }

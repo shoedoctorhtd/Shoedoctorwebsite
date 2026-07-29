@@ -73,8 +73,14 @@ export default function SiteMotion({
     <>
       {showLoader && (
         <div className="site-loader" aria-hidden="true">
-          <div className="loader-diagnosis-art">
-            <i />
+          <div className="loader-branding">
+            <div className="loader-diagnosis-art">
+              <i />
+            </div>
+            <div className="loader-branding-copy">
+              <strong>SHOE DOCTOR</strong>
+              <span>EVERY STEP, REVIVED.</span>
+            </div>
           </div>
         </div>
       )}
