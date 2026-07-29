@@ -7531,6 +7531,7 @@ body.shoe-cursor-active label {
 }
 
 .sd-hero-dirt-overlay,
+.sd-hero-foam-lather,
 .sd-hero-clean-shine {
   -webkit-mask-image: url("/loader-basketball-sneaker.png");
   -webkit-mask-position: center;
@@ -7553,6 +7554,18 @@ body.shoe-cursor-active label {
     linear-gradient(145deg, rgba(94, 53, 42, 0.32), transparent 56%);
   mix-blend-mode: multiply;
   z-index: 2;
+}
+
+.sd-hero-foam-lather {
+  animation: hero-foam-lather-cycle var(--hero-clean-loop) var(--hero-clean-delay) ease-out infinite both;
+  background:
+    radial-gradient(ellipse at 38% 62%, rgba(255, 255, 255, 0.88) 0 7%, transparent 19%),
+    radial-gradient(ellipse at 53% 49%, rgba(230, 247, 255, 0.92) 0 8%, transparent 22%),
+    radial-gradient(ellipse at 63% 58%, rgba(255, 255, 255, 0.84) 0 6%, transparent 18%);
+  filter: blur(0.6px);
+  mix-blend-mode: screen;
+  opacity: 0;
+  z-index: 3;
 }
 
 .sd-hero-clean-shine {
@@ -8025,6 +8038,27 @@ body.shoe-cursor-active label {
   }
 }
 
+@keyframes hero-foam-lather-cycle {
+  0%,
+  22% {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+  33% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  54% {
+    opacity: 0.64;
+    transform: scale(1.04);
+  }
+  67%,
+  100% {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+}
+
 @keyframes hero-clean-sparkle-cycle {
   0%,
   63% {
@@ -8075,10 +8109,12 @@ body.shoe-cursor-active label {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .sd-hero-foam-lather,
   .hero-clean-sparkles span {
     animation: none;
   }
 
+  .sd-hero-foam-lather,
   .hero-clean-sparkles {
     display: none;
   }

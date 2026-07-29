@@ -104,6 +104,7 @@ export default async function Home({
               sizes="(max-width: 880px) 100vw, 55vw"
             />
             <span className="sd-hero-dirt-overlay" aria-hidden="true" />
+            <span className="sd-hero-foam-lather" aria-hidden="true" />
             <span className="sd-hero-clean-shine" aria-hidden="true" />
           </div>
           <div className="hero-cleaning-foam" aria-hidden="true">
