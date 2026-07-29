@@ -7502,3 +7502,285 @@ body.shoe-cursor-active label {
     transition: none;
   }
 }
+
+/* Hero cleaning sequence: a single brush pass reveals the restored sneaker. */
+
+.sd-hero-shoe-wrap {
+  left: -14%;
+  position: absolute;
+  top: 10%;
+  transform:
+    rotateX(var(--tilt-y))
+    rotateY(var(--tilt-x))
+    rotate(-8deg);
+  transition: transform 180ms ease-out;
+  width: 122%;
+  z-index: 3;
+}
+
+.sd-hero-shoe-wrap .sd-hero-shoe {
+  display: block;
+  filter: drop-shadow(0 34px 26px rgba(7, 26, 58, 0.27));
+  height: auto;
+  left: auto;
+  position: relative;
+  top: auto;
+  transform: none;
+  transition: none;
+  width: 100%;
+}
+
+.sd-hero-dirt-overlay,
+.sd-hero-clean-shine {
+  -webkit-mask-image: url("/loader-basketball-sneaker.png");
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  inset: 0;
+  mask-image: url("/loader-basketball-sneaker.png");
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  pointer-events: none;
+  position: absolute;
+}
+
+.sd-hero-dirt-overlay {
+  animation: hero-dirt-clean-off 2.45s 3.45s cubic-bezier(0.45, 0, 0.25, 1) both;
+  background:
+    radial-gradient(ellipse at 32% 67%, rgba(88, 48, 39, 0.78) 0 7%, transparent 25%),
+    radial-gradient(ellipse at 54% 53%, rgba(84, 47, 34, 0.58) 0 9%, transparent 28%),
+    linear-gradient(145deg, rgba(94, 53, 42, 0.32), transparent 56%);
+  mix-blend-mode: multiply;
+  z-index: 2;
+}
+
+.sd-hero-clean-shine {
+  animation: hero-clean-shine 2.45s 3.45s cubic-bezier(0.45, 0, 0.25, 1) both;
+  background: linear-gradient(
+    106deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.82) 46%,
+    rgba(202, 232, 255, 0.78) 51%,
+    transparent 66%
+  );
+  opacity: 0;
+  transform: translateX(-115%);
+  z-index: 3;
+}
+
+.sd-hero-visual .hero-cleaning-brush {
+  --hero-brush-scale: 1;
+  animation: hero-brush-clean 2.45s 3.45s cubic-bezier(0.45, 0, 0.55, 1) both;
+  pointer-events: none;
+  right: 9%;
+  top: 19%;
+  z-index: 7;
+}
+
+.hero-cleaning-foam {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 6;
+}
+
+.hero-cleaning-foam span {
+  animation: hero-foam-pop 1.1s 3.7s ease-out both;
+  background: rgba(255, 255, 255, 0.93);
+  border: 2px solid #a9c5ff;
+  border-radius: 50%;
+  height: 19px;
+  opacity: 0;
+  position: absolute;
+  width: 19px;
+}
+
+.hero-cleaning-foam span:nth-child(1) {
+  animation-delay: 3.67s;
+  left: 37%;
+  top: 43%;
+}
+
+.hero-cleaning-foam span:nth-child(2) {
+  animation-delay: 3.88s;
+  height: 13px;
+  left: 48%;
+  top: 50%;
+  width: 13px;
+}
+
+.hero-cleaning-foam span:nth-child(3) {
+  animation-delay: 4.1s;
+  height: 24px;
+  left: 58%;
+  top: 38%;
+  width: 24px;
+}
+
+.hero-cleaning-foam span:nth-child(4) {
+  animation-delay: 4.3s;
+  height: 12px;
+  left: 67%;
+  top: 46%;
+  width: 12px;
+}
+
+.hero-cleaning-foam span:nth-child(5) {
+  animation-delay: 4.46s;
+  height: 17px;
+  left: 54%;
+  top: 58%;
+  width: 17px;
+}
+
+.hero-cleaning-caption {
+  animation: hero-clean-caption 2.45s 3.45s ease-out both;
+  background: var(--white);
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 7px;
+  font-weight: 850;
+  left: 5%;
+  letter-spacing: 0.08em;
+  padding: 8px 10px;
+  pointer-events: none;
+  position: absolute;
+  text-transform: uppercase;
+  top: 61%;
+  transform: rotate(-6deg);
+  z-index: 6;
+}
+
+@keyframes hero-dirt-clean-off {
+  0%,
+  23% {
+    opacity: 0.82;
+  }
+  70% {
+    opacity: 0.17;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes hero-clean-shine {
+  0%,
+  20% {
+    opacity: 0;
+    transform: translateX(-115%);
+  }
+  52% {
+    opacity: 0.92;
+  }
+  78% {
+    opacity: 0.35;
+    transform: translateX(105%);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(130%);
+  }
+}
+
+@keyframes hero-brush-clean {
+  0% {
+    opacity: 0;
+    transform: translate(148px, -82px) rotate(30deg) scale(var(--hero-brush-scale));
+  }
+  12% {
+    opacity: 1;
+  }
+  30% {
+    transform: translate(42px, -15px) rotate(19deg) scale(var(--hero-brush-scale));
+  }
+  48% {
+    transform: translate(-72px, 46px) rotate(12deg) scale(var(--hero-brush-scale));
+  }
+  65% {
+    transform: translate(21px, 5px) rotate(22deg) scale(var(--hero-brush-scale));
+  }
+  81% {
+    opacity: 1;
+    transform: translate(-44px, 27px) rotate(15deg) scale(var(--hero-brush-scale));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(155px, -96px) rotate(32deg) scale(var(--hero-brush-scale));
+  }
+}
+
+@keyframes hero-foam-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.35);
+  }
+  24% {
+    opacity: 0.94;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.72);
+  }
+}
+
+@keyframes hero-clean-caption {
+  0%,
+  10% {
+    opacity: 0;
+    transform: translateY(8px) rotate(-6deg);
+  }
+  24%,
+  72% {
+    opacity: 1;
+    transform: translateY(0) rotate(-6deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px) rotate(-6deg);
+  }
+}
+
+@media (max-width: 640px) {
+  .sd-hero-shoe-wrap {
+    left: -15%;
+    top: 10%;
+    width: 135%;
+  }
+
+  .sd-hero-visual .hero-cleaning-brush {
+    --hero-brush-scale: 0.58;
+    right: -14%;
+    top: 13%;
+  }
+
+  .hero-cleaning-caption {
+    display: none;
+  }
+
+  .hero-cleaning-foam span:nth-child(4),
+  .hero-cleaning-foam span:nth-child(5) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sd-hero-dirt-overlay,
+  .sd-hero-clean-shine,
+  .sd-hero-visual .hero-cleaning-brush,
+  .hero-cleaning-foam span,
+  .hero-cleaning-caption {
+    animation: none;
+  }
+
+  .sd-hero-dirt-overlay,
+  .sd-hero-clean-shine,
+  .hero-cleaning-foam,
+  .sd-hero-visual .hero-cleaning-brush,
+  .hero-cleaning-caption {
+    display: none;
+  }
+}

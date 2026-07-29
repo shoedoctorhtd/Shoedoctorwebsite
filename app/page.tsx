@@ -90,18 +90,42 @@ export default async function Home({
           <div className="sd-hero-glow" />
           <div className="sd-orbit sd-orbit-one" />
           <div className="sd-orbit sd-orbit-two" />
-          <span className="sd-floating-tag tag-clean">DEEP CLEAN</span>
+          <span className="sd-floating-tag tag-clean">BRUSH CLEAN</span>
           <span className="sd-floating-tag tag-restore">RESTORE</span>
-          <Image
-            className="sd-hero-shoe"
-            src="/loader-basketball-sneaker.png"
-            alt="A clean, restored high-top basketball sneaker"
-            width={1536}
-            height={1024}
-            priority
-            unoptimized
-            sizes="(max-width: 880px) 100vw, 55vw"
-          />
+          <div className="sd-hero-shoe-wrap">
+            <Image
+              className="sd-hero-shoe"
+              src="/loader-basketball-sneaker.png"
+              alt="A clean, restored high-top basketball sneaker"
+              width={1536}
+              height={1024}
+              priority
+              unoptimized
+              sizes="(max-width: 880px) 100vw, 55vw"
+            />
+            <span className="sd-hero-dirt-overlay" aria-hidden="true" />
+            <span className="sd-hero-clean-shine" aria-hidden="true" />
+          </div>
+          <div className="hero-cleaning-foam" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+          </div>
+          <div className="wash-brush hero-cleaning-brush" aria-hidden="true">
+            <span className="brush-handle" />
+            <span className="brush-head">
+              <i />
+              <i />
+              <i />
+              <i />
+              <i />
+            </span>
+          </div>
+          <span className="hero-cleaning-caption" aria-hidden="true">
+            MATERIAL-SAFE SCRUB
+          </span>
           <div className="sd-hero-stat">
             <strong>2–3 hrs</strong>
             <span>Express wash & dry</span>
