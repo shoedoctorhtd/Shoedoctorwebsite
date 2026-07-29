@@ -5995,11 +5995,30 @@ body.shoe-cursor-active label {
 }
 
 .loader-branding-copy strong {
+  align-items: center;
+  display: flex;
   font-size: clamp(2rem, 5.2vw, 4.6rem);
   font-weight: 950;
+  gap: 0.07em;
   letter-spacing: 0.08em;
   line-height: 0.95;
   padding-left: 0.08em;
+  white-space: nowrap;
+}
+
+.loader-brand-plus {
+  align-items: center;
+  background: currentColor;
+  border-radius: 50%;
+  color: var(--white);
+  display: inline-flex;
+  font-family: var(--font-geist-sans), Arial, sans-serif;
+  font-size: 0.54em;
+  height: 1.06em;
+  justify-content: center;
+  letter-spacing: 0;
+  line-height: 1;
+  width: 1.06em;
 }
 
 .loader-branding-copy span {

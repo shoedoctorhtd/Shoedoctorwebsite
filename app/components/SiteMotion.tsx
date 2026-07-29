@@ -78,8 +78,12 @@ export default function SiteMotion({
               <i />
             </div>
             <div className="loader-branding-copy">
-              <strong>SHOE DOCTOR</strong>
-              <span>EVERY STEP, REVIVED.</span>
+              <strong>
+                <span>SH</span>
+                <span className="loader-brand-plus">+</span>
+                <span>E DOCTOR</span>
+              </strong>
+              <span>WE DIAGNOSE · WE CLEAN · WE RESTORE</span>
             </div>
           </div>
         </div>
