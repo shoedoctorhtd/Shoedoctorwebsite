@@ -69,7 +69,7 @@ export default function SneakerCleaningAnimation() {
       <div
         className={styles.stage}
         role="img"
-        aria-label="An original unbranded basketball sneaker is cleaned in four steps: foam, brush, wipe, and restore."
+        aria-label="A blue basketball sneaker is cleaned in four steps: foam, brush, wipe, and restore."
       >
         <div className={`${styles.route} ${styles.animatable}`} aria-hidden="true" />
         <div className={styles.phaseBadge} aria-hidden="true">
@@ -87,21 +87,21 @@ export default function SneakerCleaningAnimation() {
         <div className={styles.scene}>
           <Image
             className={`${styles.sneaker} ${styles.cleanSneaker} ${styles.animatable}`}
-            src="/sneaker-cleaning-clean.webp"
-            alt="A restored unbranded basketball sneaker"
-            width={1280}
-            height={853}
+            src="/loader-basketball-sneaker.png"
+            alt="A restored blue basketball sneaker"
+            width={1536}
+            height={1024}
             loading="lazy"
             unoptimized
             sizes="(max-width: 760px) 94vw, (max-width: 1120px) 70vw, 620px"
           />
           <Image
             className={`${styles.sneaker} ${styles.dirtySneaker} ${styles.animatable}`}
-            src="/sneaker-cleaning-dirty.webp"
+            src="/loader-basketball-sneaker.png"
             alt=""
             aria-hidden="true"
-            width={1280}
-            height={853}
+            width={1536}
+            height={1024}
             loading="lazy"
             unoptimized
             sizes="(max-width: 760px) 94vw, (max-width: 1120px) 70vw, 620px"
