@@ -4,36 +4,87 @@ import { useMemo, useState, type FormEvent } from "react";
 
 type DonationMethod = "dropoff" | "pickup";
 
-/**
- * Client-side donation request form. Submission is intentionally local for now
- * so it can later be connected to an email service, spreadsheet, database, or
- * dashboard without changing the page experience.
- */
 export default function DonationForm() {
   const [donationMethod, setDonationMethod] =
     useState<DonationMethod>("dropoff");
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [reference, setReference] = useState<string | null>(null);
   const minimumPickupDate = useMemo(
     () => new Date().toISOString().slice(0, 10),
     [],
   );
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const form = event.currentTarget;
-    form.reset();
-    setDonationMethod("dropoff");
-    setSubmitted(true);
+    const values = new FormData(form);
+    setIsSubmitting(true);
+    setSubmitted(false);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch("/api/donations", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          fullName: values.get("fullName"),
+          phone: values.get("phone"),
+          email: values.get("email"),
+          pairCount: values.get("pairCount"),
+          shoeType: values.get("shoeType"),
+          shoeCondition: values.get("shoeCondition"),
+          donationMethod: values.get("donationMethod"),
+          pickupLocation: values.get("pickupLocation"),
+          preferredPickupDate: values.get("preferredPickupDate"),
+          message: values.get("message"),
+          website: values.get("website"),
+          safeForDonation: values.get("safeForDonation") === "on",
+        }),
+      });
+      const result = (await response.json()) as {
+        reference?: string;
+        message?: string;
+      };
+      if (!response.ok) {
+        throw new Error(result.message || "We could not send your request.");
+      }
+
+      form.reset();
+      setDonationMethod("dropoff");
+      setReference(result.reference ?? null);
+      setSubmitted(true);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "We could not send your request. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function chooseDonationMethod(method: DonationMethod) {
     setDonationMethod(method);
     setSubmitted(false);
+    setErrorMessage(null);
   }
 
   return (
     <form className="donation-form" onSubmit={handleSubmit}>
+      <div className="donation-form__honeypot" aria-hidden="true">
+        <label htmlFor="donation-website">Website</label>
+        <input
+          id="donation-website"
+          name="website"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+        />
+      </div>
       <div className="donation-form__intro">
         <span className="donation-form__eyebrow">DONATION REQUEST</span>
         <h3>Donate a pair. Make a difference.</h3>
@@ -274,18 +325,31 @@ export default function DonationForm() {
       {submitted && (
         <div className="donation-form__success" role="status" aria-live="polite">
           <strong>Thank you for giving your shoes a second journey.</strong>
-          <span>Shoe Doctor will contact you soon.</span>
+          <span>
+            Shoe Doctor will contact you soon.
+            {reference ? ` Your request ID is ${reference}.` : ""}
+          </span>
         </div>
       )}
 
-      <button className="donation-form__submit" type="submit">
-        Submit Donation Request
+      {errorMessage && (
+        <div className="donation-form__error" role="alert">
+          {errorMessage}
+        </div>
+      )}
+
+      <button
+        className="donation-form__submit"
+        type="submit"
+        disabled={isSubmitting}
+      >
+        {isSubmitting ? "Sending request…" : "Submit Donation Request"}
         <span aria-hidden="true">→</span>
       </button>
 
       <p className="donation-form__privacy-note">
-        Your request stays with Shoe Doctor until a future donation system is
-        connected.
+        Your request is shared only with Shoe Doctor so we can arrange the
+        donation safely.
       </p>
     </form>
   );

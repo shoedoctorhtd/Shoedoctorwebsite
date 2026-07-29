@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import DonationForm from "../components/DonationForm";
 import DonationImpactStats from "../components/DonationImpactStats";
+import DonationProgramUpdates from "../components/DonationProgramUpdates";
 import SiteMotion from "../components/SiteMotion";
+import { getPublicDonationPageData } from "@/lib/csr-data";
 import {
   ArrowUpRight,
   SiteFooter,
@@ -14,6 +16,8 @@ export const metadata: Metadata = {
   description:
     "Donate wearable shoes through Shoe Doctor. We clean, restore and help pass footwear forward in Hetauda, Nepal.",
 };
+
+export const dynamic = "force-dynamic";
 
 const journeySteps = [
   {
@@ -63,7 +67,21 @@ function ShoeIcon({ className = "" }: { className?: string }) {
   );
 }
 
-export default function ShoeDonationPage() {
+export default async function ShoeDonationPage() {
+  let donationData: Awaited<ReturnType<typeof getPublicDonationPageData>> | null = null;
+  let donationDataError = false;
+  try {
+    donationData = await getPublicDonationPageData();
+  } catch {
+    donationDataError = true;
+    // The donation page remains useful before a D1 binding or migration is
+    // available; dynamic programme sections simply use their empty states.
+  }
+  const savedImpactStats =
+    donationData && donationData.impactStats.updatedAt !== new Date(0).toISOString()
+      ? donationData.impactStats
+      : null;
+
   return (
     <main className="public-site inner-site donation-site">
       <SiteMotion showLoader={false} />
@@ -188,6 +206,14 @@ export default function ShoeDonationPage() {
         </div>
       </section>
 
+      <DonationProgramUpdates
+        latestDrive={donationData?.latestDrive ?? null}
+        donationDrives={donationData?.donationDrives ?? []}
+        restorationStories={donationData?.restorationStories ?? []}
+        communityUpdates={donationData?.communityUpdates ?? []}
+        loadError={donationDataError}
+      />
+
       <section className="donation-impact donation-section" aria-labelledby="impact-title">
         <div className="donation-impact__copy" data-reveal>
           <p className="donation-kicker">Impact section</p>
@@ -199,10 +225,12 @@ export default function ShoeDonationPage() {
             rebuilding after hardship.
           </p>
           <span className="donation-impact__promise">
-            We&apos;ll share genuine figures after our first donation drive.
+            {savedImpactStats
+              ? "Verified programme totals, updated by the Shoe Doctor team."
+              : "Verified figures will appear here after they are published."}
           </span>
         </div>
-        <DonationImpactStats />
+        <DonationImpactStats stats={savedImpactStats} loadError={donationDataError} />
       </section>
 
       <section className="donation-form-section donation-section" id="donation-form" aria-labelledby="donation-form-title">

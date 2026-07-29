@@ -18,6 +18,39 @@ const statusOptions: Array<{ value: BookingStatus; label: string }> = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
+function CsrDonationsIcon() {
+  return (
+    <svg
+      className="admin-csr-nav-link__icon"
+      viewBox="0 0 32 32"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M16 17.4 8.6 10.6a5.3 5.3 0 0 1 7.4-7.6L16 3l.1-.1a5.3 5.3 0 0 1 7.3 7.7L16 17.4Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d="m4.5 20 4.2-3.5 4.4 3.2 2.2-1.8a2.7 2.7 0 0 1 3.5 0l4.4 3.6"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d="m7.2 23.5 2.4 2.1a2.5 2.5 0 0 0 3.4 0l1.2-1 1.2 1a2.5 2.5 0 0 0 3.4 0l2.3-2"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
 const emptyService: ServiceInput = {
   name: "",
   category: "Cleaning",
@@ -347,7 +380,20 @@ export default function AdminDashboard({
         >
           Bookings {newBookings > 0 && <span>{newBookings}</span>}
         </button>
-        <Link href="/" target="_blank" rel="noreferrer">
+        <Link
+          className="admin-csr-nav-link"
+          href="/admin/csr-donations"
+          aria-label="Open CSR and Donations"
+        >
+          <CsrDonationsIcon />
+          <span>CSR &amp; Donations</span>
+        </Link>
+        <Link
+          className="admin-view-site-link"
+          href="/"
+          target="_blank"
+          rel="noreferrer"
+        >
           View website ↗
         </Link>
       </div>
