@@ -16,8 +16,19 @@
     }
   ],
   "vars": {
-    "ADMIN_EMAIL": "shoedoctorhtd@gmail.com"
+    "ADMIN_EMAIL": "shoedoctorhtd@gmail.com",
+    "BOOKING_NOTIFICATION_FROM": "bookings@YOUR-DOMAIN",
+    "WHATSAPP_BOOKING_RECIPIENT": "9779761716743",
+    "WHATSAPP_TEMPLATE_NAME": "new_booking_alert",
+    "WHATSAPP_TEMPLATE_LANGUAGE": "en_US",
+    "WHATSAPP_API_VERSION": "v25.0"
   },
+  "send_email": [
+    {
+      "name": "BOOKING_EMAIL",
+      "destination_address": "shoedoctorhtd@gmail.com"
+    }
+  ],
   "observability": {
     "enabled": true
   }

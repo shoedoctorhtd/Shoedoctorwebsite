@@ -105,7 +105,64 @@ then available at:
 https://YOUR-WORKER.workers.dev/admin
 ```
 
-## 5. Connect your domain
+## 5. Receive each booking by email
+
+The Worker is configured to send every new booking to
+`shoedoctorhtd@gmail.com` through Cloudflare Email Service. This does not
+require your Gmail password or an access token.
+
+Before deployment, set it up in Cloudflare:
+
+1. Go to **Compute â†’ Email Service â†’ Email Routing â†’ Destination
+   Addresses**.
+2. Add `shoedoctorhtd@gmail.com`, then open the verification email in Gmail and
+   verify it.
+3. Onboard the domain that will send booking emails in **Compute â†’ Email
+   Service**, and let Cloudflare add the required DNS records.
+4. In `wrangler.jsonc`, replace `bookings@YOUR-DOMAIN` with an address on that
+   onboarded domain, such as `bookings@shoedoctor.com`.
+
+The email binding is restricted to the verified Gmail recipient, so booking
+details cannot be sent to another address by this Worker.
+
+## 6. Send each booking to WhatsApp
+
+Every booking is always saved to the admin dashboard first. To receive the
+same booking details on WhatsApp, connect a WhatsApp Business Platform (Cloud
+API) sender in Meta Business Suite, then create and get approval for a utility
+template named `new_booking_alert` with this body:
+
+```text
+New Shoe Doctor booking
+Reference: {{1}}
+Customer: {{2}}
+Phone: {{3}}
+Service: {{4}}
+Footwear: {{5}}
+Brand: {{6}}
+Preferred date: {{7}}
+Collection: {{8}}
+Address: {{9}}
+Map: {{10}}
+Express: {{11}}
+Notes: {{12}}
+```
+
+In the Workerâ€™s **Settings â†’ Variables and Secrets**, add these values:
+
+| Name | Type | Value |
+|---|---|---|
+| `WHATSAPP_ACCESS_TOKEN` | Secret | A permanent Meta system-user access token with WhatsApp messaging permission |
+| `WHATSAPP_PHONE_NUMBER_ID` | Variable | The Phone Number ID of the WhatsApp Business sender |
+
+The included configuration sends alerts to `+977 9761716743`, uses the
+`new_booking_alert` template, and uses `en_US`. Change the non-secret
+`WHATSAPP_BOOKING_RECIPIENT`, `WHATSAPP_TEMPLATE_NAME`,
+`WHATSAPP_TEMPLATE_LANGUAGE`, or `WHATSAPP_API_VERSION` variables in
+Cloudflare if your approved template or language differs. Never put the access
+token in GitHub.
+
+## 7. Connect your domain
 
 The domain must be active in the same Cloudflare account.
 

@@ -1,5 +1,7 @@
 import { createBooking } from "@/lib/data";
 import { parsePublicBooking } from "@/lib/validation";
+import { sendBookingEmailNotification } from "@/lib/booking-email";
+import { sendBookingWhatsAppNotification } from "@/lib/whatsapp";
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +9,21 @@ export async function POST(request: Request) {
   try {
     const booking = parsePublicBooking(await request.json());
     const created = await createBooking(booking);
+    const [emailNotification, whatsappNotification] = await Promise.all([
+      sendBookingEmailNotification(created),
+      sendBookingWhatsAppNotification(created),
+    ]);
+
+    if (emailNotification.status === "not_configured") {
+      console.warn(
+        `Booking ${created.reference} was saved, but email is not configured.`,
+      );
+    }
+    if (whatsappNotification.status === "not_configured") {
+      console.warn(
+        `Booking ${created.reference} was saved, but WhatsApp is not configured.`,
+      );
+    }
 
     return Response.json(
       {
