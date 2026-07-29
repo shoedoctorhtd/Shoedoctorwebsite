@@ -206,7 +206,6 @@ export default async function Home({
         </div>
       </section>
 
-
       <section className="sd-home-services sd-section" data-reveal>
         <div className="sd-section-heading">
           <p className="sd-kicker">What we treat</p>
