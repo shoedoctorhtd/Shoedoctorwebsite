@@ -146,11 +146,42 @@ async function getRuntimeEnvironment(): Promise<AuthEnvironment> {
     // Local tooling can use environment variables instead.
   }
 
-  return {
+  const runtimeEnv = {
     ADMIN_EMAIL: process.env.ADMIN_EMAIL,
     ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
     SESSION_SECRET: process.env.SESSION_SECRET,
   };
+
+  if (runtimeEnv.ADMIN_PASSWORD || runtimeEnv.SESSION_SECRET) {
+    return runtimeEnv;
+  }
+
+  return {
+    ...runtimeEnv,
+    ...(await loadLocalDevEnvironment()),
+  };
+}
+
+async function loadLocalDevEnvironment(): Promise<AuthEnvironment> {
+  try {
+    const { readFile } = await import("node:fs/promises");
+    const file = new URL("../.dev.vars", import.meta.url);
+    const contents = await readFile(file, "utf8");
+    return parseLocalVars(contents);
+  } catch {
+    return {};
+  }
+}
+
+function parseLocalVars(contents: string): AuthEnvironment {
+  return contents.split(/\r?\n/u).reduce((env, line) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) return env;
+    const [key, ...rest] = trimmed.split("=");
+    if (!key) return env;
+    env[key] = rest.join("=");
+    return env;
+  }, {} as AuthEnvironment);
 }
 
 async function verifySessionToken(token: string, secret: string) {
