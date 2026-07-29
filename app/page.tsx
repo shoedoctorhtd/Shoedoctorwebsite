@@ -105,7 +105,7 @@ export default async function Home({
             />
             <Image
               className="sd-hero-dirty-shoe"
-              src="/hero-cleaning-sneaker.png"
+              src="/hero-cleaning-sneaker-dirty.png"
               alt=""
               aria-hidden="true"
               width={1536}
