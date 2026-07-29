@@ -7533,12 +7533,12 @@ body.shoe-cursor-active label {
 .sd-hero-dirt-overlay,
 .sd-hero-foam-lather,
 .sd-hero-clean-shine {
-  -webkit-mask-image: url("/loader-basketball-sneaker.png");
+  -webkit-mask-image: url("/hero-cleaning-sneaker.png");
   -webkit-mask-position: center;
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-size: contain;
   inset: 0;
-  mask-image: url("/loader-basketball-sneaker.png");
+  mask-image: url("/hero-cleaning-sneaker.png");
   mask-position: center;
   mask-repeat: no-repeat;
   mask-size: contain;

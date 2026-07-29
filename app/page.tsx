@@ -95,8 +95,8 @@ export default async function Home({
           <div className="sd-hero-shoe-wrap">
             <Image
               className="sd-hero-shoe"
-              src="/loader-basketball-sneaker.png"
-              alt="A clean, restored high-top basketball sneaker"
+              src="/hero-cleaning-sneaker.png"
+              alt="A clean, restored white and navy high-top sneaker"
               width={1536}
               height={1024}
               priority
@@ -105,7 +105,7 @@ export default async function Home({
             />
             <Image
               className="sd-hero-dirty-shoe"
-              src="/loader-basketball-sneaker.png"
+              src="/hero-cleaning-sneaker.png"
               alt=""
               aria-hidden="true"
               width={1536}
