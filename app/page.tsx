@@ -103,11 +103,26 @@ export default async function Home({
               unoptimized
               sizes="(max-width: 880px) 100vw, 55vw"
             />
+            <Image
+              className="sd-hero-dirty-shoe"
+              src="/loader-basketball-sneaker.png"
+              alt=""
+              aria-hidden="true"
+              width={1536}
+              height={1024}
+              unoptimized
+              sizes="(max-width: 880px) 100vw, 55vw"
+            />
             <span className="sd-hero-dirt-overlay" aria-hidden="true" />
             <span className="sd-hero-foam-lather" aria-hidden="true" />
             <span className="sd-hero-clean-shine" aria-hidden="true" />
           </div>
           <div className="hero-cleaning-foam" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
             <span />
             <span />
             <span />
