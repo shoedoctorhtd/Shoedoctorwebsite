@@ -104,6 +104,72 @@ export default async function Home({
               unoptimized
               sizes="(max-width: 880px) 100vw, 55vw"
             />
+            <Image
+              className="sd-hero-dirty-shoe"
+              src="/hero-cleaning-sneaker-dirty.png"
+              alt=""
+              aria-hidden="true"
+              width={1536}
+              height={1024}
+              priority
+              unoptimized
+              sizes="(max-width: 880px) 100vw, 55vw"
+            />
+            <span className="sd-hero-dirt-overlay" aria-hidden="true" />
+            <span className="sd-hero-foam-lather" aria-hidden="true" />
+            <span className="sd-hero-clean-shine" aria-hidden="true" />
+          </div>
+          <div className="hero-cleaning-foam" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+          </div>
+          <div className="hero-clean-sparkles" aria-hidden="true">
+            <span>✦</span>
+            <span>✦</span>
+            <span>✦</span>
+          </div>
+          <div className="hero-cleaning-brush" aria-hidden="true">
+            <span className="hero-brush-wood">
+              <i />
+              <i />
+              <i />
+              <i />
+              <i />
+              <i />
+              <i />
+              <i />
+              <i />
+              <i />
+            </span>
+          </div>
+          <span className="hero-cleaning-caption" aria-hidden="true">
+            MATERIAL-SAFE SCRUB
+          </span>
+          <div className="hero-foam-bottle" aria-hidden="true">
+            <span className="hero-foam-bottle__pump" />
+            <span className="hero-foam-bottle__neck" />
+            <span className="hero-foam-bottle__body">
+              <i>SD</i>
+              <b>FOAM</b>
+            </span>
+          </div>
+          <div className="hero-foam-spray" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+            <i />
+            <i />
+          </div>
+          <div className="hero-microfibre-towel" aria-hidden="true">
+            <span />
           </div>
           <div className="sd-hero-stat">
             <strong>2–3 hrs</strong>
