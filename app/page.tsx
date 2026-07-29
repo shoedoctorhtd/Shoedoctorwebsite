@@ -2,6 +2,7 @@
 import BookingForm from "./components/BookingForm";
 import Image from "next/image";
 import SiteMotion from "./components/SiteMotion";
+import SneakerCleaningAnimation from "./components/SneakerCleaningAnimation";
 import {
   ArrowUpRight,
   SiteFooter,
@@ -187,6 +188,8 @@ export default async function Home({
           <i>✦</i>
         </div>
       </section>
+
+      <SneakerCleaningAnimation />
 
       <section className="sd-home-services sd-section" data-reveal>
         <div className="sd-section-heading">
