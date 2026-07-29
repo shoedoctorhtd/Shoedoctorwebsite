@@ -80,10 +80,14 @@ export default function SiteMotion({
             <div className="loader-branding-copy">
               <strong>
                 <span>SH</span>
-                <span className="loader-brand-plus">+</span>
+                <span className="loader-brand-plus">
+                  <span>+</span>
+                </span>
                 <span>E DOCTOR</span>
               </strong>
-              <span>WE DIAGNOSE · WE CLEAN · WE RESTORE</span>
+              <span className="loader-branding-tagline">
+                WE DIAGNOSE · WE CLEAN · WE RESTORE
+              </span>
             </div>
           </div>
         </div>

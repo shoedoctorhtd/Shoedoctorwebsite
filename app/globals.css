@@ -5923,17 +5923,17 @@ body.shoe-cursor-active label {
 /* Standard pointer and sole-first opening reveal */
 
 .site-loader {
-  animation: sd-sole-loader-exit 2.25s ease forwards;
+  animation: sd-sole-loader-exit 3.35s ease forwards;
 }
 
 .loader-branding {
   align-items: center;
   display: flex;
   flex-direction: column;
-  gap: clamp(5px, 1vw, 12px);
+  gap: clamp(8px, 1.2vw, 14px);
   justify-content: center;
   position: relative;
-  transform: translateY(-1vh);
+  transform: translateY(-0.5vh);
   z-index: 1;
 }
 
@@ -5986,45 +5986,52 @@ body.shoe-cursor-active label {
 
 .loader-branding-copy {
   align-items: center;
-  animation: sd-loader-brand-reveal 0.55s 0.34s ease-out both;
+  animation: sd-loader-brand-reveal 0.52s 1.58s ease-out both;
   color: var(--ink);
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: clamp(9px, 1.1vw, 13px);
   text-align: center;
 }
 
 .loader-branding-copy strong {
   align-items: center;
   display: flex;
-  font-size: clamp(2rem, 5.2vw, 4.6rem);
+  font-size: clamp(2.35rem, 6.4vw, 5.6rem);
   font-weight: 950;
-  gap: 0.07em;
-  letter-spacing: 0.08em;
+  gap: 0.075em;
+  letter-spacing: 0.1em;
   line-height: 0.95;
-  padding-left: 0.08em;
+  padding-left: 0.1em;
   white-space: nowrap;
 }
 
 .loader-brand-plus {
   align-items: center;
-  background: currentColor;
+  background: var(--blue);
   border-radius: 50%;
   color: var(--white);
   display: inline-flex;
-  font-family: var(--font-geist-sans), Arial, sans-serif;
-  font-size: 0.54em;
-  height: 1.06em;
+  flex: 0 0 auto;
+  height: 0.72em;
   justify-content: center;
   letter-spacing: 0;
   line-height: 1;
-  width: 1.06em;
+  width: 0.72em;
 }
 
-.loader-branding-copy span {
+.loader-brand-plus span {
+  color: currentColor;
+  font-family: inherit;
+  font-size: 0.56em;
+  line-height: 1;
+  padding: 0;
+}
+
+.loader-branding-tagline {
   color: var(--blue);
   font-family: var(--font-geist-mono), monospace;
-  font-size: clamp(0.52rem, 1vw, 0.7rem);
+  font-size: clamp(0.6rem, 1.1vw, 0.8rem);
   font-weight: 800;
   letter-spacing: 0.22em;
   padding-left: 0.22em;
@@ -6076,7 +6083,7 @@ body.shoe-cursor-active label {
 
 @keyframes sd-sole-loader-exit {
   0%,
-  78% {
+  84% {
     opacity: 1;
     visibility: visible;
   }
@@ -6093,19 +6100,23 @@ body.shoe-cursor-active label {
   }
 
   .loader-branding-copy strong {
-    font-size: clamp(1.8rem, 9vw, 2.7rem);
+    font-size: clamp(2rem, 8.5vw, 3rem);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .site-loader {
-    animation-duration: 0.45s;
+    animation-duration: 1.25s;
   }
 
   .loader-diagnosis-art::after,
   .loader-diagnosis-art i,
   .loader-branding-copy {
-    animation-duration: 0.35s;
+    animation-duration: 0.25s;
+  }
+
+  .loader-branding-copy {
+    animation-delay: 0.35s;
   }
 }
 
