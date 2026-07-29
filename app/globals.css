@@ -7784,3 +7784,302 @@ body.shoe-cursor-active label {
     display: none;
   }
 }
+
+/* Repeating hero restoration cycle with a wooden-bristle shoe brush. */
+
+.sd-hero-visual {
+  --hero-clean-delay: 3.45s;
+  --hero-clean-loop: 7.6s;
+}
+
+.sd-hero-dirt-overlay {
+  animation: hero-dirt-clean-cycle var(--hero-clean-loop) var(--hero-clean-delay) cubic-bezier(0.45, 0, 0.25, 1) infinite both;
+}
+
+.sd-hero-clean-shine {
+  animation: hero-clean-shine-cycle var(--hero-clean-loop) var(--hero-clean-delay) cubic-bezier(0.45, 0, 0.25, 1) infinite both;
+}
+
+.sd-hero-visual .hero-cleaning-brush {
+  --hero-brush-scale: 1;
+  animation: hero-brush-clean-cycle var(--hero-clean-loop) var(--hero-clean-delay) cubic-bezier(0.45, 0, 0.55, 1) infinite both;
+  height: 122px;
+  pointer-events: none;
+  position: absolute;
+  right: 8%;
+  top: 21%;
+  transform-origin: center;
+  width: 186px;
+  z-index: 7;
+}
+
+.hero-brush-wood {
+  background:
+    linear-gradient(90deg, #b8783f, #e4b679 24%, #f0cf96 52%, #c58a4d 100%);
+  border: 2px solid #704426;
+  border-radius: 7px;
+  box-shadow:
+    inset 0 4px 0 rgba(255, 246, 212, 0.5),
+    inset 0 -7px 0 rgba(105, 61, 31, 0.17),
+    0 11px 16px rgba(7, 26, 58, 0.22);
+  display: flex;
+  gap: 5px;
+  height: 52px;
+  justify-content: center;
+  left: 10px;
+  padding: 0 10px;
+  position: absolute;
+  top: 18px;
+  width: 168px;
+}
+
+.hero-brush-wood::before,
+.hero-brush-wood::after {
+  background: rgba(112, 68, 38, 0.22);
+  border-radius: 999px;
+  content: "";
+  height: 2px;
+  left: 13px;
+  position: absolute;
+  right: 13px;
+}
+
+.hero-brush-wood::before {
+  top: 13px;
+}
+
+.hero-brush-wood::after {
+  bottom: 12px;
+}
+
+.hero-brush-wood i {
+  background: linear-gradient(90deg, #c4a664, #f5e6a6 52%, #b8964e);
+  border-radius: 0 0 3px 3px;
+  box-shadow: 1px 0 0 rgba(92, 64, 28, 0.24);
+  height: 37px;
+  margin-top: 50px;
+  transform: skewX(-5deg);
+  width: 10px;
+}
+
+.hero-brush-wood i:nth-child(2n) {
+  height: 33px;
+  transform: skewX(4deg);
+}
+
+.hero-brush-wood i:nth-child(3n) {
+  background: linear-gradient(90deg, #a88749, #e8d384 50%, #9f7f3d);
+}
+
+.hero-cleaning-foam span {
+  animation-duration: var(--hero-clean-loop);
+  animation-fill-mode: both;
+  animation-iteration-count: infinite;
+  animation-name: hero-foam-cycle;
+  animation-timing-function: ease-out;
+}
+
+.hero-cleaning-foam span:nth-child(1) {
+  animation-delay: calc(var(--hero-clean-delay) + 0.2s);
+}
+
+.hero-cleaning-foam span:nth-child(2) {
+  animation-delay: calc(var(--hero-clean-delay) + 0.42s);
+}
+
+.hero-cleaning-foam span:nth-child(3) {
+  animation-delay: calc(var(--hero-clean-delay) + 0.64s);
+}
+
+.hero-cleaning-foam span:nth-child(4) {
+  animation-delay: calc(var(--hero-clean-delay) + 0.86s);
+}
+
+.hero-cleaning-foam span:nth-child(5) {
+  animation-delay: calc(var(--hero-clean-delay) + 1.02s);
+}
+
+.hero-clean-sparkles {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 6;
+}
+
+.hero-clean-sparkles span {
+  animation: hero-clean-sparkle-cycle var(--hero-clean-loop) var(--hero-clean-delay) ease-out infinite both;
+  color: var(--white);
+  font-size: 31px;
+  line-height: 1;
+  position: absolute;
+  text-shadow: 0 0 14px rgba(255, 255, 255, 0.86);
+}
+
+.hero-clean-sparkles span:nth-child(1) {
+  left: 41%;
+  top: 30%;
+}
+
+.hero-clean-sparkles span:nth-child(2) {
+  animation-delay: calc(var(--hero-clean-delay) + 0.18s);
+  font-size: 20px;
+  left: 67%;
+  top: 40%;
+}
+
+.hero-clean-sparkles span:nth-child(3) {
+  animation-delay: calc(var(--hero-clean-delay) + 0.34s);
+  font-size: 17px;
+  left: 54%;
+  top: 62%;
+}
+
+.hero-cleaning-caption {
+  animation: hero-clean-caption-cycle var(--hero-clean-loop) var(--hero-clean-delay) ease-out infinite both;
+}
+
+@keyframes hero-dirt-clean-cycle {
+  0%,
+  17% {
+    opacity: 0.82;
+  }
+  53% {
+    opacity: 0.28;
+  }
+  66%,
+  86% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0.82;
+  }
+}
+
+@keyframes hero-clean-shine-cycle {
+  0%,
+  51% {
+    opacity: 0;
+    transform: translateX(-115%);
+  }
+  63% {
+    opacity: 0.94;
+  }
+  75% {
+    opacity: 0.32;
+    transform: translateX(105%);
+  }
+  84%,
+  100% {
+    opacity: 0;
+    transform: translateX(130%);
+  }
+}
+
+@keyframes hero-brush-clean-cycle {
+  0%,
+  13% {
+    opacity: 0;
+    transform: translate(150px, -78px) rotate(27deg) scale(var(--hero-brush-scale));
+  }
+  17% {
+    opacity: 1;
+  }
+  30% {
+    transform: translate(48px, -14px) rotate(16deg) scale(var(--hero-brush-scale));
+  }
+  43% {
+    transform: translate(-70px, 41px) rotate(10deg) scale(var(--hero-brush-scale));
+  }
+  56% {
+    transform: translate(17px, 3px) rotate(20deg) scale(var(--hero-brush-scale));
+  }
+  67% {
+    opacity: 1;
+    transform: translate(-48px, 27px) rotate(13deg) scale(var(--hero-brush-scale));
+  }
+  76%,
+  100% {
+    opacity: 0;
+    transform: translate(160px, -90px) rotate(30deg) scale(var(--hero-brush-scale));
+  }
+}
+
+@keyframes hero-foam-cycle {
+  0%,
+  17% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  27% {
+    opacity: 0.96;
+    transform: scale(1);
+  }
+  48% {
+    opacity: 0.7;
+    transform: translateY(-13px) scale(0.9);
+  }
+  64%,
+  100% {
+    opacity: 0;
+    transform: translateY(-33px) scale(0.68);
+  }
+}
+
+@keyframes hero-clean-sparkle-cycle {
+  0%,
+  63% {
+    opacity: 0;
+    transform: scale(0.35) rotate(-20deg);
+  }
+  71%,
+  82% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+  93%,
+  100% {
+    opacity: 0;
+    transform: scale(0.5) rotate(20deg);
+  }
+}
+
+@keyframes hero-clean-caption-cycle {
+  0%,
+  13% {
+    opacity: 0;
+    transform: translateY(8px) rotate(-6deg);
+  }
+  20%,
+  62% {
+    opacity: 1;
+    transform: translateY(0) rotate(-6deg);
+  }
+  72%,
+  100% {
+    opacity: 0;
+    transform: translateY(-8px) rotate(-6deg);
+  }
+}
+
+@media (max-width: 640px) {
+  .sd-hero-visual .hero-cleaning-brush {
+    --hero-brush-scale: 0.58;
+    right: -14%;
+    top: 13%;
+  }
+
+  .hero-clean-sparkles span:nth-child(2),
+  .hero-clean-sparkles span:nth-child(3) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-clean-sparkles span {
+    animation: none;
+  }
+
+  .hero-clean-sparkles {
+    display: none;
+  }
+}

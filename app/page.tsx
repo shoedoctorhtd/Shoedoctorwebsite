@@ -113,9 +113,18 @@ export default async function Home({
             <span />
             <span />
           </div>
-          <div className="wash-brush hero-cleaning-brush" aria-hidden="true">
-            <span className="brush-handle" />
-            <span className="brush-head">
+          <div className="hero-clean-sparkles" aria-hidden="true">
+            <span>✦</span>
+            <span>✦</span>
+            <span>✦</span>
+          </div>
+          <div className="hero-cleaning-brush" aria-hidden="true">
+            <span className="hero-brush-wood">
+              <i />
+              <i />
+              <i />
+              <i />
+              <i />
               <i />
               <i />
               <i />
