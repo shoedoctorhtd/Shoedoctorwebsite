@@ -6008,7 +6008,7 @@ body.shoe-cursor-active label {
 
 .loader-brand-plus {
   align-items: center;
-  background: var(--blue);
+  background: var(--ink);
   border-radius: 50%;
   color: var(--white);
   display: inline-flex;
