@@ -110,6 +110,7 @@ export default async function Home({
               aria-hidden="true"
               width={1536}
               height={1024}
+              priority
               unoptimized
               sizes="(max-width: 880px) 100vw, 55vw"
             />

@@ -7801,8 +7801,8 @@ body.shoe-cursor-active label {
 /* Repeating hero restoration cycle with a wooden-bristle shoe brush. */
 
 .sd-hero-visual {
-  --hero-clean-delay: 3.45s;
-  --hero-clean-loop: 7.6s;
+  --hero-clean-delay: 4.15s;
+  --hero-clean-loop: 8.4s;
 }
 
 .sd-hero-dirt-overlay {
@@ -7953,14 +7953,14 @@ body.shoe-cursor-active label {
 
 @keyframes hero-dirt-clean-cycle {
   0%,
-  17% {
+  34% {
     opacity: 0.82;
   }
-  53% {
+  61% {
     opacity: 0.28;
   }
-  66%,
-  86% {
+  69%,
+  88% {
     opacity: 0;
   }
   100% {
@@ -8245,13 +8245,13 @@ body.shoe-cursor-active label {
 
 @keyframes hero-dirty-sneaker-cycle {
   0%,
-  18% {
+  34% {
     opacity: 1;
   }
-  51% {
+  58% {
     opacity: 0.52;
   }
-  66%,
+  70%,
   89% {
     opacity: 0;
   }
