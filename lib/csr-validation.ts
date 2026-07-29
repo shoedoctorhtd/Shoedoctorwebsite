@@ -2,6 +2,7 @@ import {
   DONATION_DRIVE_STATUSES,
   DONATION_REQUEST_STATUSES,
   RESTORATION_STORY_CATEGORIES,
+  isSafeDonationImageUrl,
   type CommunityUpdateInput,
   type DonationDriveInput,
   type DonationImpactStatsInput,
@@ -67,12 +68,14 @@ function booleanValue(value: unknown) {
   return value === true || value === "true" || value === 1 || value === "1";
 }
 
-function optionalMediaId(value: unknown) {
-  const id = optionalText(value, 100);
-  if (id && !/^[a-zA-Z0-9_-]+$/u.test(id)) {
-    throw new Error("Choose a valid uploaded image.");
+function optionalImageUrl(value: unknown, label: string) {
+  const url = optionalText(value, 2_000);
+  if (url && !isSafeDonationImageUrl(url)) {
+    throw new Error(
+      `${label} must be an HTTPS image URL or a website image path starting with / (not // or /public/).`,
+    );
   }
-  return id;
+  return url;
 }
 
 function optionalSlug(value: unknown) {
@@ -236,7 +239,7 @@ export function parseDonationDriveInput(value: unknown): DonationDriveInput {
     title: requiredText(input.title, "Drive title", 140),
     shortDescription: requiredText(input.shortDescription, "Short description", 300),
     fullStory: requiredText(input.fullStory, "Full story", 12_000),
-    coverImageId: optionalMediaId(input.coverImageId),
+    coverImageUrl: optionalImageUrl(input.coverImageUrl, "Cover image"),
     driveDate: requiredDate(input.driveDate, "Drive date"),
     location: requiredText(input.location, "Location", 180),
     partnerOrganization: optionalText(input.partnerOrganization, 180),
@@ -261,17 +264,14 @@ export function parseRestorationStoryInput(value: unknown): RestorationStoryInpu
     throw new Error("Choose a valid restoration story category.");
   }
   const isPublished = booleanValue(input.isPublished);
-  const beforeImageId = optionalMediaId(input.beforeImageId);
-  const afterImageId = optionalMediaId(input.afterImageId);
-  if (isPublished && (!beforeImageId || !afterImageId)) {
-    throw new Error("Published restoration stories need both before and after images.");
-  }
+  const beforeImageUrl = optionalImageUrl(input.beforeImageUrl, "Before image");
+  const afterImageUrl = optionalImageUrl(input.afterImageUrl, "After image");
   return {
     slug: optionalSlug(input.slug),
     title: requiredText(input.title, "Story title", 140),
     category,
-    beforeImageId,
-    afterImageId,
+    beforeImageUrl,
+    afterImageUrl,
     description: requiredText(input.description, "Description", 2_000),
     restorationWork: requiredText(
       input.restorationWork,
@@ -285,18 +285,18 @@ export function parseRestorationStoryInput(value: unknown): RestorationStoryInpu
 
 export function parseCommunityUpdateInput(value: unknown): CommunityUpdateInput {
   const input = inputRecord(value);
-  const rawGallery = Array.isArray(input.galleryImageIds)
-    ? input.galleryImageIds
+  const rawGallery = Array.isArray(input.galleryImageUrls)
+    ? input.galleryImageUrls
     : [];
-  const galleryImageIds = rawGallery
-    .map(optionalMediaId)
-    .filter((id): id is string => Boolean(id))
-    .slice(0, 16);
+  const galleryImageUrls = rawGallery
+    .slice(0, 16)
+    .map((value) => optionalImageUrl(value, "Gallery image"))
+    .filter((url): url is string => Boolean(url));
   return {
     slug: optionalSlug(input.slug),
     title: requiredText(input.title, "Update title", 140),
-    coverImageId: optionalMediaId(input.coverImageId),
-    galleryImageIds,
+    coverImageUrl: optionalImageUrl(input.coverImageUrl, "Cover image"),
+    galleryImageUrls,
     updateDate: requiredDate(input.updateDate, "Date"),
     location: requiredText(input.location, "Location", 180),
     recipientOrganization: requiredText(

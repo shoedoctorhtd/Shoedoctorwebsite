@@ -14,10 +14,6 @@ type PageProps = { params: Promise<{ slug: string }> };
 
 export const dynamic = "force-dynamic";
 
-function publicMediaUrl(id: string | null) {
-  return id ? `/api/csr-media/${encodeURIComponent(id)}` : null;
-}
-
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-NP", { dateStyle: "long" }).format(new Date(value));
 }
@@ -50,7 +46,7 @@ export default async function DonationUpdateDetailPage({ params }: PageProps) {
 
   if (update.kind === "drive") {
     const drive = update.item;
-    const image = publicMediaUrl(drive.coverImageId);
+    const image = drive.coverImageUrl;
     return (
       <main className="public-site inner-site donation-site donation-detail-site">
         <SiteMotion showLoader={false} />
@@ -86,9 +82,7 @@ export default async function DonationUpdateDetailPage({ params }: PageProps) {
   }
 
   const community = update.item;
-  const gallery = [community.coverImageId, ...community.galleryImageIds]
-    .filter((id): id is string => Boolean(id))
-    .map(publicMediaUrl)
+  const gallery = [community.coverImageUrl, ...community.galleryImageUrls]
     .filter((url): url is string => Boolean(url));
   return (
     <main className="public-site inner-site donation-site donation-detail-site">

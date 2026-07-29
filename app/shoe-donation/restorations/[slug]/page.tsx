@@ -10,10 +10,6 @@ type PageProps = { params: Promise<{ slug: string }> };
 
 export const dynamic = "force-dynamic";
 
-function publicMediaUrl(id: string | null) {
-  return id ? `/api/csr-media/${encodeURIComponent(id)}` : null;
-}
-
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-NP", { dateStyle: "long" }).format(new Date(value));
 }
@@ -31,8 +27,8 @@ export default async function RestorationDetailPage({ params }: PageProps) {
   const story = await getPublicRestorationStoryBySlug(slug).catch(() => null);
   if (!story) notFound();
 
-  const beforeSrc = publicMediaUrl(story.beforeImageId);
-  const afterSrc = publicMediaUrl(story.afterImageId);
+  const beforeSrc = story.beforeImageUrl;
+  const afterSrc = story.afterImageUrl;
 
   return (
     <main className="public-site inner-site donation-site donation-detail-site">

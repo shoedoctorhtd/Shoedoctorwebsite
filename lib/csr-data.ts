@@ -40,15 +40,6 @@ export type DonationDriveStatus = (typeof DONATION_DRIVE_STATUSES)[number];
 export type RestorationStoryCategory =
   (typeof RESTORATION_STORY_CATEGORIES)[number];
 
-export type DonationMedia = {
-  id: string;
-  objectKey: string;
-  contentType: string;
-  sizeBytes: number;
-  originalFilename: string;
-  createdAt: string;
-};
-
 export type DonationRequest = {
   id: string;
   requestId: string;
@@ -95,7 +86,11 @@ export type DonationDrive = {
   title: string;
   shortDescription: string;
   fullStory: string;
-  coverImageId: string | null;
+  /**
+   * Stored in the existing `cover_image_id` D1 column for migration
+   * compatibility. The value is now a validated image URL/path, not an ID.
+   */
+  coverImageUrl: string | null;
   driveDate: string;
   location: string;
   partnerOrganization: string | null;
@@ -117,7 +112,7 @@ export type DonationDriveInput = {
   title: string;
   shortDescription: string;
   fullStory: string;
-  coverImageId?: string | null;
+  coverImageUrl?: string | null;
   driveDate: string;
   location: string;
   partnerOrganization?: string | null;
@@ -136,8 +131,9 @@ export type RestorationStory = {
   slug: string;
   title: string;
   category: RestorationStoryCategory;
-  beforeImageId: string | null;
-  afterImageId: string | null;
+  /** See `DonationDrive.coverImageUrl` for the legacy D1 column mapping. */
+  beforeImageUrl: string | null;
+  afterImageUrl: string | null;
   description: string;
   restorationWork: string;
   storyDate: string;
@@ -151,8 +147,8 @@ export type RestorationStoryInput = {
   slug?: string | null;
   title: string;
   category: RestorationStoryCategory;
-  beforeImageId?: string | null;
-  afterImageId?: string | null;
+  beforeImageUrl?: string | null;
+  afterImageUrl?: string | null;
   description: string;
   restorationWork: string;
   storyDate: string;
@@ -163,8 +159,9 @@ export type CommunityUpdate = {
   id: string;
   slug: string;
   title: string;
-  coverImageId: string | null;
-  galleryImageIds: string[];
+  /** See `DonationDrive.coverImageUrl` for the legacy D1 column mapping. */
+  coverImageUrl: string | null;
+  galleryImageUrls: string[];
   updateDate: string;
   location: string;
   recipientOrganization: string;
@@ -179,8 +176,8 @@ export type CommunityUpdate = {
 export type CommunityUpdateInput = {
   slug?: string | null;
   title: string;
-  coverImageId?: string | null;
-  galleryImageIds?: string[];
+  coverImageUrl?: string | null;
+  galleryImageUrls?: string[];
   updateDate: string;
   location: string;
   recipientOrganization: string;
@@ -285,15 +282,47 @@ function stringArray(value: unknown) {
   }
 }
 
-function parseDonationMedia(row: RawRow): DonationMedia {
-  return {
-    id: text(row.id),
-    objectKey: text(row.object_key),
-    contentType: text(row.content_type),
-    sizeBytes: number(row.size_bytes),
-    originalFilename: text(row.original_filename),
-    createdAt: text(row.created_at),
-  };
+const MAX_IMAGE_URL_LENGTH = 2_000;
+
+/**
+ * CSR content accepts only website-relative image paths or external HTTPS
+ * URLs. This intentionally keeps image binary data out of D1 and prevents
+ * legacy opaque media identifiers from reaching the frontend as broken URLs.
+ */
+export function isSafeDonationImageUrl(value: string) {
+  if (!value || value.length > MAX_IMAGE_URL_LENGTH) return false;
+  if (/\s|[\u0000-\u001f\u007f]/u.test(value) || value.includes("\\")) {
+    return false;
+  }
+
+  if (value.startsWith("/")) {
+    if (value.startsWith("//")) return false;
+    try {
+      const url = new URL(value, "https://shoe-doctor.invalid");
+      const pathname = decodeURIComponent(url.pathname).toLowerCase();
+      return (
+        !pathname.startsWith("//") &&
+        !pathname.includes("\\") &&
+        pathname !== "/public" &&
+        !pathname.startsWith("/public/")
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
+
+/** Returns null for empty or legacy unsafe values read from existing D1 rows. */
+export function normalizeDonationImageUrl(value: unknown) {
+  const candidate = String(value ?? "").trim();
+  return isSafeDonationImageUrl(candidate) ? candidate : null;
 }
 
 function parseDonationRequest(row: RawRow): DonationRequest {
@@ -329,7 +358,7 @@ function parseDonationDrive(row: RawRow): DonationDrive {
     title: text(row.title),
     shortDescription: text(row.short_description),
     fullStory: text(row.full_story),
-    coverImageId: nullableText(row.cover_image_id),
+    coverImageUrl: normalizeDonationImageUrl(row.cover_image_id),
     driveDate: text(row.drive_date),
     location: text(row.location),
     partnerOrganization: nullableText(row.partner_organization),
@@ -353,8 +382,8 @@ function parseRestorationStory(row: RawRow): RestorationStory {
     slug: text(row.slug),
     title: text(row.title),
     category: text(row.category) as RestorationStoryCategory,
-    beforeImageId: nullableText(row.before_image_id),
-    afterImageId: nullableText(row.after_image_id),
+    beforeImageUrl: normalizeDonationImageUrl(row.before_image_id),
+    afterImageUrl: normalizeDonationImageUrl(row.after_image_id),
     description: text(row.description),
     restorationWork: text(row.restoration_work),
     storyDate: text(row.story_date),
@@ -370,8 +399,10 @@ function parseCommunityUpdate(row: RawRow): CommunityUpdate {
     id: text(row.id),
     slug: text(row.slug),
     title: text(row.title),
-    coverImageId: nullableText(row.cover_image_id),
-    galleryImageIds: stringArray(row.gallery_image_ids),
+    coverImageUrl: normalizeDonationImageUrl(row.cover_image_id),
+    galleryImageUrls: stringArray(row.gallery_image_ids)
+      .map(normalizeDonationImageUrl)
+      .filter((url): url is string => Boolean(url)),
     updateDate: text(row.update_date),
     location: text(row.location),
     recipientOrganization: text(row.recipient_organization),
@@ -457,117 +488,6 @@ async function runList<T>(query: string, values: unknown[], parse: (row: RawRow)
   const db = await getDatabase();
   const result = await db.prepare(query).bind(...values).all<RawRow>();
   return result.results.map(parse);
-}
-
-export async function getDonationMedia(id: string): Promise<DonationMedia | null> {
-  const db = await getDatabase();
-  const row = await db
-    .prepare("SELECT * FROM donation_media WHERE id = ? LIMIT 1")
-    .bind(id)
-    .first<RawRow>();
-  return row ? parseDonationMedia(row) : null;
-}
-
-export async function createDonationMedia(input: Omit<DonationMedia, "createdAt">) {
-  const createdAt = new Date().toISOString();
-  const db = await getDatabase();
-  await db
-    .prepare(
-      `INSERT INTO donation_media (
-        id, object_key, content_type, size_bytes, original_filename, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?)`,
-    )
-    .bind(
-      input.id,
-      input.objectKey,
-      input.contentType,
-      input.sizeBytes,
-      input.originalFilename,
-      createdAt,
-    )
-    .run();
-  return { ...input, createdAt };
-}
-
-export async function deleteDonationMediaRecord(id: string) {
-  const db = await getDatabase();
-  const result = await db
-    .prepare("DELETE FROM donation_media WHERE id = ?")
-    .bind(id)
-    .run();
-  return Boolean(result.meta.changes);
-}
-
-/** Public media may only be read when it is attached to published content. */
-export async function getPublicDonationMedia(id: string) {
-  const db = await getDatabase();
-  const galleryNeedle = `%\"${id}\"%`;
-  const row = await db
-    .prepare(
-      `SELECT media.* FROM donation_media AS media
-       WHERE media.id = ?
-       AND (
-         EXISTS (
-           SELECT 1 FROM donation_drives
-           WHERE is_published = 1 AND cover_image_id = media.id
-         )
-         OR EXISTS (
-           SELECT 1 FROM restoration_stories
-           WHERE is_published = 1
-             AND (before_image_id = media.id OR after_image_id = media.id)
-         )
-         OR EXISTS (
-           SELECT 1 FROM community_updates
-           WHERE is_published = 1
-             AND (cover_image_id = media.id OR gallery_image_ids LIKE ?)
-         )
-       )
-       LIMIT 1`,
-    )
-    .bind(id, galleryNeedle)
-    .first<RawRow>();
-  return row ? parseDonationMedia(row) : null;
-}
-
-/** Do not remove an upload while a drive, story, or update still uses it. */
-export async function isDonationMediaReferenced(id: string) {
-  const db = await getDatabase();
-  const galleryNeedle = `%\"${id}\"%`;
-  const row = await db
-    .prepare(
-      `SELECT 1 AS referenced
-       WHERE EXISTS (SELECT 1 FROM donation_drives WHERE cover_image_id = ?)
-          OR EXISTS (
-            SELECT 1 FROM restoration_stories
-            WHERE before_image_id = ? OR after_image_id = ?
-          )
-          OR EXISTS (
-            SELECT 1 FROM community_updates
-            WHERE cover_image_id = ? OR gallery_image_ids LIKE ?
-          )
-       LIMIT 1`,
-    )
-    .bind(id, id, id, id, galleryNeedle)
-    .first<{ referenced: number }>();
-  return Boolean(row?.referenced);
-}
-
-/** Reject dangling image IDs before any content record can reference them. */
-async function assertDonationMediaIds(
-  ids: Array<string | null | undefined>,
-) {
-  const uniqueIds = [...new Set(ids.filter((id): id is string => Boolean(id)))];
-  if (uniqueIds.length === 0) return;
-
-  const db = await getDatabase();
-  const placeholders = uniqueIds.map(() => "?").join(", ");
-  const result = await db
-    .prepare(`SELECT id FROM donation_media WHERE id IN (${placeholders})`)
-    .bind(...uniqueIds)
-    .all<{ id: string }>();
-  if (result.results.length !== uniqueIds.length) {
-    throw new Error("One or more selected images are unavailable. Upload them again.");
-  }
 }
 
 export async function createDonationRequest(
@@ -801,7 +721,6 @@ export async function getPublicDonationDriveBySlug(slug: string) {
 export async function createDonationDrive(
   input: DonationDriveInput,
 ): Promise<DonationDrive> {
-  await assertDonationMediaIds([input.coverImageId]);
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   const slug = await uniqueSlug("donation_drives", input.slug, input.title);
@@ -822,7 +741,7 @@ export async function createDonationDrive(
       input.title,
       input.shortDescription,
       input.fullStory,
-      input.coverImageId ?? null,
+      input.coverImageUrl ?? null,
       input.driveDate,
       input.location,
       input.partnerOrganization ?? null,
@@ -843,7 +762,7 @@ export async function createDonationDrive(
     id,
     ...input,
     slug,
-    coverImageId: input.coverImageId ?? null,
+    coverImageUrl: input.coverImageUrl ?? null,
     partnerOrganization: input.partnerOrganization ?? null,
     ctaText: input.ctaText ?? null,
     ctaLink: input.ctaLink ?? null,
@@ -859,7 +778,6 @@ export async function updateDonationDrive(
 ): Promise<DonationDrive | null> {
   const current = await getDonationDrive(id);
   if (!current) return null;
-  await assertDonationMediaIds([input.coverImageId]);
   const now = new Date().toISOString();
   const slug = await uniqueSlug(
     "donation_drives",
@@ -884,7 +802,7 @@ export async function updateDonationDrive(
       input.title,
       input.shortDescription,
       input.fullStory,
-      input.coverImageId ?? null,
+      input.coverImageUrl ?? null,
       input.driveDate,
       input.location,
       input.partnerOrganization ?? null,
@@ -905,7 +823,7 @@ export async function updateDonationDrive(
     id,
     ...input,
     slug,
-    coverImageId: input.coverImageId ?? null,
+    coverImageUrl: input.coverImageUrl ?? null,
     partnerOrganization: input.partnerOrganization ?? null,
     ctaText: input.ctaText ?? null,
     ctaLink: input.ctaLink ?? null,
@@ -964,7 +882,6 @@ export async function getPublicRestorationStoryBySlug(slug: string) {
 export async function createRestorationStory(
   input: RestorationStoryInput,
 ): Promise<RestorationStory> {
-  await assertDonationMediaIds([input.beforeImageId, input.afterImageId]);
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   const slug = await uniqueSlug("restoration_stories", input.slug, input.title);
@@ -982,8 +899,8 @@ export async function createRestorationStory(
       slug,
       input.title,
       input.category,
-      input.beforeImageId ?? null,
-      input.afterImageId ?? null,
+      input.beforeImageUrl ?? null,
+      input.afterImageUrl ?? null,
       input.description,
       input.restorationWork,
       input.storyDate,
@@ -997,8 +914,8 @@ export async function createRestorationStory(
     id,
     ...input,
     slug,
-    beforeImageId: input.beforeImageId ?? null,
-    afterImageId: input.afterImageId ?? null,
+    beforeImageUrl: input.beforeImageUrl ?? null,
+    afterImageUrl: input.afterImageUrl ?? null,
     publishedAt,
     createdAt: now,
     updatedAt: now,
@@ -1011,7 +928,6 @@ export async function updateRestorationStory(
 ): Promise<RestorationStory | null> {
   const current = await getRestorationStory(id);
   if (!current) return null;
-  await assertDonationMediaIds([input.beforeImageId, input.afterImageId]);
   const now = new Date().toISOString();
   const slug = await uniqueSlug(
     "restoration_stories",
@@ -1033,8 +949,8 @@ export async function updateRestorationStory(
       slug,
       input.title,
       input.category,
-      input.beforeImageId ?? null,
-      input.afterImageId ?? null,
+      input.beforeImageUrl ?? null,
+      input.afterImageUrl ?? null,
       input.description,
       input.restorationWork,
       input.storyDate,
@@ -1048,8 +964,8 @@ export async function updateRestorationStory(
     id,
     ...input,
     slug,
-    beforeImageId: input.beforeImageId ?? null,
-    afterImageId: input.afterImageId ?? null,
+    beforeImageUrl: input.beforeImageUrl ?? null,
+    afterImageUrl: input.afterImageUrl ?? null,
     publishedAt,
     createdAt: current.createdAt,
     updatedAt: now,
@@ -1105,12 +1021,11 @@ export async function getPublicCommunityUpdateBySlug(slug: string) {
 export async function createCommunityUpdate(
   input: CommunityUpdateInput,
 ): Promise<CommunityUpdate> {
-  await assertDonationMediaIds([input.coverImageId, ...(input.galleryImageIds ?? [])]);
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   const slug = await uniqueSlug("community_updates", input.slug, input.title);
   const publishedAt = input.isPublished ? now : null;
-  const galleryImageIds = input.galleryImageIds ?? [];
+  const galleryImageUrls = input.galleryImageUrls ?? [];
   const db = await getDatabase();
   await db
     .prepare(
@@ -1124,8 +1039,8 @@ export async function createCommunityUpdate(
       id,
       slug,
       input.title,
-      input.coverImageId ?? null,
-      JSON.stringify(galleryImageIds),
+      input.coverImageUrl ?? null,
+      JSON.stringify(galleryImageUrls),
       input.updateDate,
       input.location,
       input.recipientOrganization,
@@ -1141,8 +1056,8 @@ export async function createCommunityUpdate(
     id,
     ...input,
     slug,
-    coverImageId: input.coverImageId ?? null,
-    galleryImageIds,
+    coverImageUrl: input.coverImageUrl ?? null,
+    galleryImageUrls,
     publishedAt,
     createdAt: now,
     updatedAt: now,
@@ -1155,7 +1070,6 @@ export async function updateCommunityUpdate(
 ): Promise<CommunityUpdate | null> {
   const current = await getCommunityUpdate(id);
   if (!current) return null;
-  await assertDonationMediaIds([input.coverImageId, ...(input.galleryImageIds ?? [])]);
   const now = new Date().toISOString();
   const slug = await uniqueSlug(
     "community_updates",
@@ -1164,7 +1078,7 @@ export async function updateCommunityUpdate(
     id,
   );
   const publishedAt = input.isPublished ? current.publishedAt ?? now : null;
-  const galleryImageIds = input.galleryImageIds ?? [];
+  const galleryImageUrls = input.galleryImageUrls ?? [];
   const db = await getDatabase();
   await db
     .prepare(
@@ -1177,8 +1091,8 @@ export async function updateCommunityUpdate(
     .bind(
       slug,
       input.title,
-      input.coverImageId ?? null,
-      JSON.stringify(galleryImageIds),
+      input.coverImageUrl ?? null,
+      JSON.stringify(galleryImageUrls),
       input.updateDate,
       input.location,
       input.recipientOrganization,
@@ -1194,8 +1108,8 @@ export async function updateCommunityUpdate(
     id,
     ...input,
     slug,
-    coverImageId: input.coverImageId ?? null,
-    galleryImageIds,
+    coverImageUrl: input.coverImageUrl ?? null,
+    galleryImageUrls,
     publishedAt,
     createdAt: current.createdAt,
     updatedAt: now,

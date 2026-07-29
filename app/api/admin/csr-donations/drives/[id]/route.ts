@@ -4,7 +4,6 @@ import {
   updateDonationDrive,
 } from "@/lib/csr-data";
 import { csrAdminJson, csrApiError, requireCsrAdminApi } from "@/lib/csr-api";
-import { removeUnreferencedDonationImagesBestEffort } from "@/lib/csr-media";
 import { parseCsrId, parseDonationDriveInput } from "@/lib/csr-validation";
 
 export const dynamic = "force-dynamic";
@@ -31,14 +30,10 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     const { id: rawId } = await context.params;
     const id = parseCsrId(rawId, "drive");
-    const existing = await getDonationDrive(id);
     const drive = await updateDonationDrive(
       id,
       parseDonationDriveInput(await request.json()),
     );
-    if (drive && existing) {
-      await removeUnreferencedDonationImagesBestEffort([existing.coverImageId]);
-    }
     return drive
       ? csrAdminJson({ drive })
       : csrAdminJson({ message: "Donation drive not found." }, { status: 404 });
@@ -61,7 +56,6 @@ export async function DELETE(_request: Request, context: RouteContext) {
     if (!deleted) {
       return csrAdminJson({ message: "Donation drive not found." }, { status: 404 });
     }
-    await removeUnreferencedDonationImagesBestEffort([drive.coverImageId]);
     return csrAdminJson({ ok: true });
   } catch (error) {
     return csrApiError(error, "Unable to delete donation drive.");

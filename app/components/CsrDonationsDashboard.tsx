@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useId, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 
 export const donationRequestStatuses = [
@@ -61,7 +61,7 @@ export type DonationDrive = {
   title: string;
   shortDescription: string;
   fullStory: string;
-  coverImageId: string | null;
+  coverImageUrl: string | null;
   driveDate: string;
   location: string;
   partnerOrganization: string | null;
@@ -83,8 +83,8 @@ export type RestorationStory = {
   slug: string;
   title: string;
   category: RestorationCategory;
-  beforeImageId: string | null;
-  afterImageId: string | null;
+  beforeImageUrl: string | null;
+  afterImageUrl: string | null;
   description: string;
   restorationWork: string;
   storyDate: string;
@@ -98,8 +98,8 @@ export type CommunityUpdate = {
   id: string;
   slug: string;
   title: string;
-  coverImageId: string | null;
-  galleryImageIds: string[];
+  coverImageUrl: string | null;
+  galleryImageUrls: string[];
   updateDate: string;
   location: string;
   recipientOrganization: string;
@@ -149,12 +149,6 @@ type CsrTab =
   | "community"
   | "impact";
 
-type PendingImage = {
-  id: string | null;
-  file: File | null;
-  preview: string | null;
-};
-
 type DeleteTarget =
   | { kind: "request"; item: DonationRequest }
   | { kind: "drive"; item: DonationDrive }
@@ -186,12 +180,6 @@ const categoryLabels: Record<RestorationCategory, string> = {
   community_impact: "Community Impact",
 };
 
-function mediaUrl(id: string | null) {
-  return id
-    ? `/api/admin/csr-donations/media/${encodeURIComponent(id)}`
-    : null;
-}
-
 function formatDate(value: string) {
   if (!value) return "—";
   return new Intl.DateTimeFormat("en-NP", { dateStyle: "medium" }).format(
@@ -209,10 +197,6 @@ function formatDateTime(value: string) {
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("en-NP").format(value);
-}
-
-function emptyImage(id: string | null = null): PendingImage {
-  return { id, file: null, preview: id ? mediaUrl(id) : null };
 }
 
 async function responseJson<T>(response: Response): Promise<T> {
@@ -239,126 +223,20 @@ function CsvDownload({ filters }: { filters: string }) {
   );
 }
 
-function ImagePicker({
-  label,
-  value,
-  onChange,
-  required = false,
-  hint,
-}: {
-  label: string;
-  value: PendingImage;
-  onChange: (value: PendingImage) => void;
-  required?: boolean;
-  hint?: string;
-}) {
-  const inputId = useId();
-
-  function selectImage(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0] ?? null;
-    if (!file) return;
-    onChange({ id: value.id, file, preview: URL.createObjectURL(file) });
-    event.target.value = "";
-  }
-
+function ImageSourceNote({ gallery = false }: { gallery?: boolean }) {
   return (
-    <div className="csr-image-picker">
-      <div className="csr-image-picker__heading">
-        <label htmlFor={inputId}>
-          {label} {required && <b aria-hidden="true">*</b>}
-        </label>
-        {hint && <small>{hint}</small>}
-      </div>
-      {value.preview ? (
-        <div className="csr-image-picker__preview">
-          <img src={value.preview} alt="Selected upload preview" />
-          <button
-            type="button"
-            onClick={() => onChange(emptyImage())}
-            aria-label={`Remove ${label}`}
-          >
-            Remove
-          </button>
-        </div>
-      ) : (
-        <label className="csr-image-picker__dropzone" htmlFor={inputId}>
-          <span aria-hidden="true">↑</span>
-          <strong>Choose image</strong>
-          <small>PNG, JPEG or WebP · up to 8 MB</small>
-        </label>
-      )}
-      <input
-        id={inputId}
-        className="csr-visually-hidden-input"
-        type="file"
-        accept="image/png,image/jpeg,image/webp"
-        onChange={selectImage}
-        required={required && !value.id && !value.file}
-      />
-    </div>
+    <small className="csr-image-source-note">
+      Direct image uploads are temporarily disabled. Use an image URL or a website image path.
+      {gallery ? " Add one URL or path per line." : ""}
+    </small>
   );
 }
 
-function GalleryPicker({
-  values,
-  onChange,
-}: {
-  values: PendingImage[];
-  onChange: (values: PendingImage[]) => void;
-}) {
-  const inputId = useId();
-
-  function selectImages(event: ChangeEvent<HTMLInputElement>) {
-    const picked = Array.from(event.target.files ?? []).slice(0, 8 - values.length);
-    if (!picked.length) return;
-    onChange([
-      ...values,
-      ...picked.map((file) => ({
-        id: null,
-        file,
-        preview: URL.createObjectURL(file),
-      })),
-    ]);
-    event.target.value = "";
-  }
-
-  return (
-    <div className="csr-gallery-picker">
-      <div className="csr-image-picker__heading">
-        <label htmlFor={inputId}>Gallery images</label>
-        <small>Optional · up to 8 images</small>
-      </div>
-      {values.length > 0 && (
-        <div className="csr-gallery-picker__items">
-          {values.map((image, index) => (
-            <div key={`${image.id ?? image.preview ?? "image"}-${index}`}>
-              <img src={image.preview ?? ""} alt={`Gallery image ${index + 1}`} />
-              <button
-                type="button"
-                onClick={() => onChange(values.filter((_, itemIndex) => itemIndex !== index))}
-                aria-label={`Remove gallery image ${index + 1}`}
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-      {values.length < 8 && (
-        <label className="csr-gallery-picker__add" htmlFor={inputId}>
-          + Add images
-        </label>
-      )}
-      <input
-        id={inputId}
-        className="csr-visually-hidden-input"
-        type="file"
-        multiple
-        accept="image/png,image/jpeg,image/webp"
-        onChange={selectImages}
-      />
-    </div>
-  );
+function imageUrlList(value: FormDataEntryValue | null) {
+  return String(value ?? "")
+    .split(/\r?\n/u)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function ConfirmationDialog({
@@ -426,16 +304,11 @@ function DriveEditor({
   drive,
   onClose,
   onSave,
-  uploadImage,
 }: {
   drive: DonationDrive | null;
   onClose: () => void;
   onSave: (input: DonationDriveInput) => Promise<void>;
-  uploadImage: (file: File) => Promise<string>;
 }) {
-  const [coverImage, setCoverImage] = useState<PendingImage>(
-    emptyImage(drive?.coverImageId ?? null),
-  );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -445,14 +318,11 @@ function DriveEditor({
     setError(null);
     setIsSaving(true);
     try {
-      const coverImageId = coverImage.file
-        ? await uploadImage(coverImage.file)
-        : coverImage.id;
       await onSave({
         title: String(form.get("title") ?? ""),
         shortDescription: String(form.get("shortDescription") ?? ""),
         fullStory: String(form.get("fullStory") ?? ""),
-        coverImageId,
+        coverImageUrl: String(form.get("coverImageUrl") ?? "").trim() || null,
         driveDate: String(form.get("driveDate") ?? ""),
         location: String(form.get("location") ?? ""),
         partnerOrganization: String(form.get("partnerOrganization") ?? "") || null,
@@ -513,14 +383,18 @@ function DriveEditor({
               defaultValue={drive?.fullStory ?? ""}
             />
           </label>
-          <div className="full-field">
-            <ImagePicker
-              label="Cover image"
-              value={coverImage}
-              onChange={setCoverImage}
-              hint="Recommended: a clear landscape photo"
+          <label className="full-field">
+            <span>Cover image URL or path</span>
+            <input
+              name="coverImageUrl"
+              type="text"
+              inputMode="url"
+              maxLength={500}
+              defaultValue={drive?.coverImageUrl ?? ""}
+              placeholder="https://example.com/drive.jpg or /images/drive.jpg"
             />
-          </div>
+            <ImageSourceNote />
+          </label>
           <label>
             <span>Drive date *</span>
             <input name="driveDate" type="date" required defaultValue={drive?.driveDate ?? ""} />
@@ -588,19 +462,11 @@ function StoryEditor({
   story,
   onClose,
   onSave,
-  uploadImage,
 }: {
   story: RestorationStory | null;
   onClose: () => void;
   onSave: (input: RestorationStoryInput) => Promise<void>;
-  uploadImage: (file: File) => Promise<string>;
 }) {
-  const [beforeImage, setBeforeImage] = useState<PendingImage>(
-    emptyImage(story?.beforeImageId ?? null),
-  );
-  const [afterImage, setAfterImage] = useState<PendingImage>(
-    emptyImage(story?.afterImageId ?? null),
-  );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -610,15 +476,11 @@ function StoryEditor({
     setError(null);
     setIsSaving(true);
     try {
-      const [beforeImageId, afterImageId] = await Promise.all([
-        beforeImage.file ? uploadImage(beforeImage.file) : beforeImage.id,
-        afterImage.file ? uploadImage(afterImage.file) : afterImage.id,
-      ]);
       await onSave({
         title: String(form.get("title") ?? ""),
         category: String(form.get("category") ?? "sneaker_restoration") as RestorationCategory,
-        beforeImageId,
-        afterImageId,
+        beforeImageUrl: String(form.get("beforeImageUrl") ?? "").trim() || null,
+        afterImageUrl: String(form.get("afterImageUrl") ?? "").trim() || null,
         description: String(form.get("description") ?? ""),
         restorationWork: String(form.get("restorationWork") ?? ""),
         storyDate: String(form.get("storyDate") ?? ""),
@@ -657,12 +519,30 @@ function StoryEditor({
             <span>Date *</span>
             <input name="storyDate" type="date" required defaultValue={story?.storyDate ?? ""} />
           </label>
-          <div>
-            <ImagePicker label="Before image" value={beforeImage} onChange={setBeforeImage} required />
-          </div>
-          <div>
-            <ImagePicker label="After image" value={afterImage} onChange={setAfterImage} required />
-          </div>
+          <label>
+            <span>Before image URL or path</span>
+            <input
+              name="beforeImageUrl"
+              type="text"
+              inputMode="url"
+              maxLength={500}
+              defaultValue={story?.beforeImageUrl ?? ""}
+              placeholder="https://example.com/before.jpg or /images/before.jpg"
+            />
+            <ImageSourceNote />
+          </label>
+          <label>
+            <span>After image URL or path</span>
+            <input
+              name="afterImageUrl"
+              type="text"
+              inputMode="url"
+              maxLength={500}
+              defaultValue={story?.afterImageUrl ?? ""}
+              placeholder="https://example.com/after.jpg or /images/after.jpg"
+            />
+            <ImageSourceNote />
+          </label>
           <label className="full-field">
             <span>Description *</span>
             <textarea name="description" required maxLength={1200} rows={4} defaultValue={story?.description ?? ""} />
@@ -692,19 +572,11 @@ function CommunityUpdateEditor({
   update,
   onClose,
   onSave,
-  uploadImage,
 }: {
   update: CommunityUpdate | null;
   onClose: () => void;
   onSave: (input: CommunityUpdateInput) => Promise<void>;
-  uploadImage: (file: File) => Promise<string>;
 }) {
-  const [coverImage, setCoverImage] = useState<PendingImage>(
-    emptyImage(update?.coverImageId ?? null),
-  );
-  const [galleryImages, setGalleryImages] = useState<PendingImage[]>(
-    (update?.galleryImageIds ?? []).map((id) => emptyImage(id)),
-  );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -714,18 +586,10 @@ function CommunityUpdateEditor({
     setError(null);
     setIsSaving(true);
     try {
-      const coverImageId = coverImage.file
-        ? await uploadImage(coverImage.file)
-        : coverImage.id;
-      const galleryImageIds = await Promise.all(
-        galleryImages.map((image) =>
-          image.file ? uploadImage(image.file) : Promise.resolve(image.id),
-        ),
-      );
       await onSave({
         title: String(form.get("title") ?? ""),
-        coverImageId,
-        galleryImageIds: galleryImageIds.filter((id): id is string => Boolean(id)),
+        coverImageUrl: String(form.get("coverImageUrl") ?? "").trim() || null,
+        galleryImageUrls: imageUrlList(form.get("galleryImageUrls")),
         updateDate: String(form.get("updateDate") ?? ""),
         location: String(form.get("location") ?? ""),
         recipientOrganization: String(form.get("recipientOrganization") ?? ""),
@@ -754,12 +618,29 @@ function CommunityUpdateEditor({
             <span>Update title *</span>
             <input name="title" required maxLength={120} defaultValue={update?.title ?? ""} />
           </label>
-          <div className="full-field">
-            <ImagePicker label="Cover image" value={coverImage} onChange={setCoverImage} />
-          </div>
-          <div className="full-field">
-            <GalleryPicker values={galleryImages} onChange={setGalleryImages} />
-          </div>
+          <label className="full-field">
+            <span>Cover image URL or path</span>
+            <input
+              name="coverImageUrl"
+              type="text"
+              inputMode="url"
+              maxLength={500}
+              defaultValue={update?.coverImageUrl ?? ""}
+              placeholder="https://example.com/community-update.jpg or /images/update.jpg"
+            />
+            <ImageSourceNote />
+          </label>
+          <label className="full-field">
+            <span>Gallery image URLs or paths</span>
+            <textarea
+              name="galleryImageUrls"
+              maxLength={8000}
+              rows={5}
+              defaultValue={(update?.galleryImageUrls ?? []).join("\n")}
+              placeholder={"https://example.com/photo-one.jpg\n/images/photo-two.jpg"}
+            />
+            <ImageSourceNote gallery />
+          </label>
           <label>
             <span>Date *</span>
             <input name="updateDate" type="date" required defaultValue={update?.updateDate ?? ""} />
@@ -877,7 +758,7 @@ function toDriveInput(drive: DonationDrive): DonationDriveInput {
     title: drive.title,
     shortDescription: drive.shortDescription,
     fullStory: drive.fullStory,
-    coverImageId: drive.coverImageId,
+    coverImageUrl: drive.coverImageUrl,
     driveDate: drive.driveDate,
     location: drive.location,
     partnerOrganization: drive.partnerOrganization,
@@ -896,8 +777,8 @@ function toStoryInput(story: RestorationStory): RestorationStoryInput {
   return {
     title: story.title,
     category: story.category,
-    beforeImageId: story.beforeImageId,
-    afterImageId: story.afterImageId,
+    beforeImageUrl: story.beforeImageUrl,
+    afterImageUrl: story.afterImageUrl,
     description: story.description,
     restorationWork: story.restorationWork,
     storyDate: story.storyDate,
@@ -908,8 +789,8 @@ function toStoryInput(story: RestorationStory): RestorationStoryInput {
 function toUpdateInput(update: CommunityUpdate): CommunityUpdateInput {
   return {
     title: update.title,
-    coverImageId: update.coverImageId,
-    galleryImageIds: update.galleryImageIds,
+    coverImageUrl: update.coverImageUrl,
+    galleryImageUrls: update.galleryImageUrls,
     updateDate: update.updateDate,
     location: update.location,
     recipientOrganization: update.recipientOrganization,
@@ -1015,19 +896,6 @@ export default function CsrDonationsDashboard({
       { label: "Published community updates", value: dashboardSummary.publishedCommunityUpdates, tone: "teal" },
     ];
   }, [dashboardSummary]);
-
-  async function uploadImage(file: File) {
-    const form = new FormData();
-    form.append("file", file);
-    const response = await fetch("/api/admin/csr-donations/media", {
-      method: "POST",
-      body: form,
-    });
-    const result = await responseJson<{ media?: { id?: string }; id?: string }>(response);
-    const id = result.media?.id ?? result.id;
-    if (!id) throw new Error("The image upload did not return a media ID.");
-    return id;
-  }
 
   async function saveDrive(input: DonationDriveInput) {
     const editing = driveEditor;
@@ -1545,7 +1413,7 @@ export default function CsrDonationsDashboard({
               {drives.length ? (
                 <div className="csr-admin-card-grid">
                   {drives.map((drive) => {
-                    const image = mediaUrl(drive.coverImageId);
+                    const image = drive.coverImageUrl;
                     return (
                       <article className="csr-admin-content-card" key={drive.id}>
                         <div className="csr-admin-content-card__media">
@@ -1588,8 +1456,8 @@ export default function CsrDonationsDashboard({
                   {stories.map((story) => (
                     <article className="csr-admin-content-card" key={story.id}>
                       <div className="csr-story-admin-images">
-                        {story.beforeImageId ? <img src={mediaUrl(story.beforeImageId) ?? ""} alt="" /> : <span>Before image</span>}
-                        {story.afterImageId ? <img src={mediaUrl(story.afterImageId) ?? ""} alt="" /> : <span>After image</span>}
+                        {story.beforeImageUrl ? <img src={story.beforeImageUrl} alt="" /> : <span>Before image</span>}
+                        {story.afterImageUrl ? <img src={story.afterImageUrl} alt="" /> : <span>After image</span>}
                       </div>
                       <div className="csr-admin-content-card__body">
                         <div className="csr-card-meta"><span>{categoryLabels[story.category]}</span><span>{formatDate(story.storyDate)}</span></div>
@@ -1623,7 +1491,7 @@ export default function CsrDonationsDashboard({
               {updates.length ? (
                 <div className="csr-admin-card-grid">
                   {updates.map((update) => {
-                    const image = mediaUrl(update.coverImageId ?? update.galleryImageIds[0] ?? null);
+                    const image = update.coverImageUrl ?? update.galleryImageUrls[0] ?? null;
                     return (
                       <article className="csr-admin-content-card" key={update.id}>
                         <div className="csr-admin-content-card__media">
@@ -1676,9 +1544,9 @@ export default function CsrDonationsDashboard({
         </div>
       </div>
 
-      {driveEditor !== undefined && <DriveEditor key={driveEditor?.id ?? "new-drive"} drive={driveEditor} onClose={() => setDriveEditor(undefined)} onSave={saveDrive} uploadImage={uploadImage} />}
-      {storyEditor !== undefined && <StoryEditor key={storyEditor?.id ?? "new-story"} story={storyEditor} onClose={() => setStoryEditor(undefined)} onSave={saveStory} uploadImage={uploadImage} />}
-      {updateEditor !== undefined && <CommunityUpdateEditor key={updateEditor?.id ?? "new-update"} update={updateEditor} onClose={() => setUpdateEditor(undefined)} onSave={saveUpdate} uploadImage={uploadImage} />}
+      {driveEditor !== undefined && <DriveEditor key={driveEditor?.id ?? "new-drive"} drive={driveEditor} onClose={() => setDriveEditor(undefined)} onSave={saveDrive} />}
+      {storyEditor !== undefined && <StoryEditor key={storyEditor?.id ?? "new-story"} story={storyEditor} onClose={() => setStoryEditor(undefined)} onSave={saveStory} />}
+      {updateEditor !== undefined && <CommunityUpdateEditor key={updateEditor?.id ?? "new-update"} update={updateEditor} onClose={() => setUpdateEditor(undefined)} onSave={saveUpdate} />}
       {requestEditor && <RequestDetailEditor request={requestEditor} onClose={() => setRequestEditor(null)} onSave={saveRequest} />}
       {deleteTarget && <ConfirmationDialog title={`Delete ${deleteTarget.kind === "story" ? "this restoration story" : deleteTarget.kind === "update" ? "this community update" : deleteTarget.kind === "drive" ? "this donation drive" : "this donation request"}?`} description="This permanently removes the record from the portal. This action cannot be undone." onCancel={() => setDeleteTarget(null)} onConfirm={deleteItem} busy={busy === `delete-${deleteTarget.kind}-${deleteTarget.item.id}`} />}
     </main>

@@ -15,12 +15,6 @@
       "migrations_dir": "migrations"
     }
   ],
-  "r2_buckets": [
-    {
-      "binding": "CSR_MEDIA",
-      "bucket_name": "shoe-doctor-csr-media"
-    }
-  ],
   "vars": {
     "ADMIN_EMAIL": "shoedoctorhtd@gmail.com"
   },

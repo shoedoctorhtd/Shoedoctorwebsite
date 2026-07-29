@@ -16,10 +16,6 @@ type DonationProgramUpdatesProps = {
   loadError?: boolean;
 };
 
-function publicMediaUrl(id: string | null) {
-  return id ? `/api/csr-media/${encodeURIComponent(id)}` : null;
-}
-
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-NP", { dateStyle: "long" }).format(
     new Date(value),
@@ -44,6 +40,7 @@ export default function DonationProgramUpdates({
   const completedDrives = donationDrives.filter(
     (drive) => drive.status === "completed",
   );
+  const latestDriveImage = latestDrive?.coverImageUrl ?? null;
 
   if (loadError) {
     return (
@@ -82,22 +79,20 @@ export default function DonationProgramUpdates({
           </p>
         </div>
         {latestDrive ? (
-          <article className="donation-featured-drive" data-reveal>
-            <div className="donation-featured-drive__media">
-              {publicMediaUrl(latestDrive.coverImageId) ? (
+          <article
+            className={`donation-featured-drive${latestDriveImage ? "" : " donation-featured-drive--text-only"}`}
+            data-reveal
+          >
+            {latestDriveImage && (
+              <div className="donation-featured-drive__media">
                 <img
-                  src={publicMediaUrl(latestDrive.coverImageId) ?? ""}
+                  src={latestDriveImage}
                   alt={`${latestDrive.title} donation drive in ${latestDrive.location}`}
                   loading="lazy"
                   decoding="async"
                 />
-              ) : (
-                <div className="donation-featured-drive__placeholder" aria-hidden="true">
-                  <span>✦</span>
-                  <strong>Shoe Doctor Donation Drive</strong>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
             <div className="donation-featured-drive__copy">
               <div className="donation-update-meta">
                 <span>{formatDate(latestDrive.driveDate)}</span>
@@ -150,16 +145,22 @@ export default function DonationProgramUpdates({
           </div>
           <div className="donation-restoration-grid">
             {restorationStories.map((story) => {
-              const beforeSrc = publicMediaUrl(story.beforeImageId);
-              const afterSrc = publicMediaUrl(story.afterImageId);
-              if (!beforeSrc || !afterSrc) return null;
+              const beforeSrc = story.beforeImageUrl;
+              const afterSrc = story.afterImageUrl;
+              const hasComparison = Boolean(beforeSrc && afterSrc);
               return (
-                <article className="donation-restoration-card" data-reveal key={story.id}>
-                  <BeforeAfterComparison
-                    beforeSrc={beforeSrc}
-                    afterSrc={afterSrc}
-                    title={story.title}
-                  />
+                <article
+                  className={`donation-restoration-card${hasComparison ? "" : " donation-restoration-card--text-only"}`}
+                  data-reveal
+                  key={story.id}
+                >
+                  {hasComparison && beforeSrc && afterSrc && (
+                    <BeforeAfterComparison
+                      beforeSrc={beforeSrc}
+                      afterSrc={afterSrc}
+                      title={story.title}
+                    />
+                  )}
                   <div className="donation-restoration-card__copy">
                     <div className="donation-update-meta">
                       <span>{story.category.replaceAll("_", " ")}</span>
@@ -198,23 +199,19 @@ export default function DonationProgramUpdates({
           </div>
           <div className="donation-community-grid">
             {communityUpdates.map((update) => {
-              const image = publicMediaUrl(
-                update.coverImageId ?? update.galleryImageIds[0] ?? null,
-              );
+              const image = update.coverImageUrl ?? update.galleryImageUrls[0] ?? null;
               return (
                 <article className="donation-community-card" data-reveal key={update.id}>
-                  <div className="donation-community-card__media">
-                    {image ? (
+                  {image && (
+                    <div className="donation-community-card__media">
                       <img
                         src={image}
                         alt={`${update.title} donation update for ${update.recipientOrganization}`}
                         loading="lazy"
                         decoding="async"
                       />
-                    ) : (
-                      <div aria-hidden="true"><span>♡</span></div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                   <div className="donation-community-card__copy">
                     <div className="donation-update-meta">
                       <span>{formatDate(update.updateDate)}</span>
@@ -251,19 +248,23 @@ export default function DonationProgramUpdates({
           </div>
           <div className="donation-drive-gallery__grid">
             {completedDrives.map((drive) => {
-              const image = publicMediaUrl(drive.coverImageId);
+              const image = drive.coverImageUrl;
               return (
-                <article className="donation-drive-gallery__card" data-reveal key={drive.id}>
-                  <div>
-                    {image ? (
+                <article
+                  className={`donation-drive-gallery__card${image ? "" : " donation-drive-gallery__card--text-only"}`}
+                  data-reveal
+                  key={drive.id}
+                >
+                  {image && (
+                    <div>
                       <img
                         src={image}
                         alt={`${drive.title} donation drive in ${drive.location}`}
                         loading="lazy"
                         decoding="async"
                       />
-                    ) : <span aria-hidden="true">✦</span>}
-                  </div>
+                    </div>
+                  )}
                   <p>{formatDate(drive.driveDate)} · {drive.location}</p>
                   <h3>{drive.title}</h3>
                   <dl>

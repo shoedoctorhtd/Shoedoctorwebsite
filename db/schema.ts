@@ -58,15 +58,6 @@ export const bookings = sqliteTable(
   ],
 );
 
-export const donationMedia = sqliteTable("donation_media", {
-  id: text("id").primaryKey(),
-  objectKey: text("object_key").notNull().unique(),
-  contentType: text("content_type").notNull(),
-  sizeBytes: integer("size_bytes").notNull(),
-  originalFilename: text("original_filename").notNull(),
-  createdAt: text("created_at").notNull(),
-});
-
 export const donationRequests = sqliteTable(
   "donation_requests",
   {
@@ -111,7 +102,9 @@ export const donationDrives = sqliteTable(
     title: text("title").notNull(),
     shortDescription: text("short_description").notNull(),
     fullStory: text("full_story").notNull(),
-    coverImageId: text("cover_image_id"),
+    // The column name is retained for deployed-D1 compatibility. It now holds
+    // a validated image URL or public website image path.
+    coverImageUrl: text("cover_image_id"),
     driveDate: text("drive_date").notNull(),
     location: text("location").notNull(),
     partnerOrganization: text("partner_organization"),
@@ -145,8 +138,9 @@ export const restorationStories = sqliteTable(
     slug: text("slug").notNull().unique(),
     title: text("title").notNull(),
     category: text("category").notNull(),
-    beforeImageId: text("before_image_id"),
-    afterImageId: text("after_image_id"),
+    // Existing column names are retained; values are URL/path strings.
+    beforeImageUrl: text("before_image_id"),
+    afterImageUrl: text("after_image_id"),
     description: text("description").notNull(),
     restorationWork: text("restoration_work").notNull(),
     storyDate: text("story_date").notNull(),
@@ -175,8 +169,9 @@ export const communityUpdates = sqliteTable(
     id: text("id").primaryKey(),
     slug: text("slug").notNull().unique(),
     title: text("title").notNull(),
-    coverImageId: text("cover_image_id"),
-    galleryImageIds: text("gallery_image_ids").notNull().default("[]"),
+    // Existing column names are retained; values are URL/path strings.
+    coverImageUrl: text("cover_image_id"),
+    galleryImageUrls: text("gallery_image_ids").notNull().default("[]"),
     updateDate: text("update_date").notNull(),
     location: text("location").notNull(),
     recipientOrganization: text("recipient_organization").notNull(),

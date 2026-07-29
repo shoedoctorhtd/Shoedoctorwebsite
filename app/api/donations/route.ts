@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   let input: ReturnType<typeof parsePublicDonationRequest>;
   try {
     // Validation runs independently from persistence so its intentionally
-    // user-facing feedback can be kept while D1/R2/internal failures remain
+    // user-facing feedback can be kept while persistence/internal failures remain
     // private below.
     input = parsePublicDonationRequest(requestBody);
   } catch (error) {

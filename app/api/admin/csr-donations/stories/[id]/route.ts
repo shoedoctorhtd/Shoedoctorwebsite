@@ -4,7 +4,6 @@ import {
   updateRestorationStory,
 } from "@/lib/csr-data";
 import { csrAdminJson, csrApiError, requireCsrAdminApi } from "@/lib/csr-api";
-import { removeUnreferencedDonationImagesBestEffort } from "@/lib/csr-media";
 import { parseCsrId, parseRestorationStoryInput } from "@/lib/csr-validation";
 
 export const dynamic = "force-dynamic";
@@ -31,17 +30,10 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     const { id: rawId } = await context.params;
     const id = parseCsrId(rawId, "story");
-    const existing = await getRestorationStory(id);
     const story = await updateRestorationStory(
       id,
       parseRestorationStoryInput(await request.json()),
     );
-    if (story && existing) {
-      await removeUnreferencedDonationImagesBestEffort([
-        existing.beforeImageId,
-        existing.afterImageId,
-      ]);
-    }
     return story
       ? csrAdminJson({ story })
       : csrAdminJson({ message: "Restoration story not found." }, { status: 404 });
@@ -64,10 +56,6 @@ export async function DELETE(_request: Request, context: RouteContext) {
     if (!deleted) {
       return csrAdminJson({ message: "Restoration story not found." }, { status: 404 });
     }
-    await removeUnreferencedDonationImagesBestEffort([
-      story.beforeImageId,
-      story.afterImageId,
-    ]);
     return csrAdminJson({ ok: true });
   } catch (error) {
     return csrApiError(error, "Unable to delete restoration story.");
