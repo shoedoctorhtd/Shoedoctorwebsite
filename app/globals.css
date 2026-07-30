@@ -3535,11 +3535,13 @@ body {
   border: 1px solid rgba(7, 26, 58, 0.22);
   border-radius: 50%;
   height: 69%;
+  pointer-events: none;
   position: absolute;
   right: -3%;
   top: 0;
   transform: rotate(-12deg);
   width: 88%;
+  z-index: 4;
 }
 
 .sd-orbit-two {
@@ -3584,22 +3586,22 @@ body {
 }
 
 .orbit-label-diagnose {
-  --orbit-label-angle: -2deg;
-  left: 58%;
-  top: 1%;
+  --orbit-label-angle: 12deg;
+  left: 28%;
+  top: -16px;
 }
 
 .orbit-label-clean {
-  --orbit-label-angle: -12deg;
-  left: 14%;
-  top: 11%;
+  --orbit-label-angle: -17deg;
+  left: 3%;
+  top: 48%;
 }
 
 .orbit-label-restore {
-  --orbit-label-angle: 7deg;
+  --orbit-label-angle: 27deg;
   background: var(--sky);
-  bottom: 25%;
-  right: -2%;
+  bottom: -14px;
+  right: 7%;
 }
 
 @keyframes sd-orbit-label-drift {
@@ -5185,18 +5187,18 @@ body.shoe-cursor-active label {
   }
 
   .orbit-label-diagnose {
-    left: 50%;
-    top: 1%;
+    left: 24%;
+    top: -14px;
   }
 
   .orbit-label-clean {
-    left: 16%;
-    top: 9%;
+    left: 2%;
+    top: 47%;
   }
 
   .orbit-label-restore {
-    bottom: 18%;
-    right: -1%;
+    bottom: -13px;
+    right: 4%;
   }
 
   .sd-hero-stat {
@@ -8431,7 +8433,7 @@ body.shoe-cursor-active label {
 
 .sd-hero-visual {
   --hero-opening-delay: 3.65s;
-  --hero-opening-loop: 15.8s;
+  --hero-opening-loop: 14.6s;
 }
 
 .sd-hero-dirty-shoe {

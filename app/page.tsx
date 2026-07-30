@@ -88,9 +88,17 @@ export default async function Home({
 
         <div className="sd-hero-visual" data-tilt>
           <div className="sd-hero-glow" />
-          <div className="sd-orbit sd-orbit-one" />
-          <div className="sd-orbit sd-orbit-two" />
-          <div className="sd-orbit sd-orbit-three" />
+          <div className="sd-orbit sd-orbit-one">
+            <span className="sd-orbit-label orbit-label-diagnose">
+              DIAGNOSE
+            </span>
+          </div>
+          <div className="sd-orbit sd-orbit-two">
+            <span className="sd-orbit-label orbit-label-clean">CLEAN</span>
+          </div>
+          <div className="sd-orbit sd-orbit-three">
+            <span className="sd-orbit-label orbit-label-restore">RESTORE</span>
+          </div>
           <div className="sd-hero-shoe-wrap">
             <Image
               className="sd-hero-shoe"
@@ -117,11 +125,6 @@ export default async function Home({
             <span className="sd-hero-foam-lather" aria-hidden="true" />
             <span className="sd-hero-clean-shine" aria-hidden="true" />
           </div>
-          <span className="sd-orbit-label orbit-label-diagnose">
-            DIAGNOSE
-          </span>
-          <span className="sd-orbit-label orbit-label-clean">CLEAN</span>
-          <span className="sd-orbit-label orbit-label-restore">RESTORE</span>
           <div className="hero-cleaning-foam" aria-hidden="true">
             <span />
             <span />
