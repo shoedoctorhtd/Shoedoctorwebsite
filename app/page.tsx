@@ -90,7 +90,7 @@ export default async function Home({
           <div className="sd-hero-glow" />
           <div className="sd-orbit sd-orbit-one" />
           <div className="sd-orbit sd-orbit-two" />
-          <span className="sd-floating-tag tag-clean">BRUSH CLEAN</span>
+          <span className="sd-floating-tag tag-diagnose">DIAGNOSE</span>
           <span className="sd-floating-tag tag-restore">RESTORE</span>
           <div className="sd-hero-shoe-wrap">
             <Image
@@ -150,7 +150,7 @@ export default async function Home({
             </span>
           </div>
           <span className="hero-cleaning-caption" aria-hidden="true">
-            MATERIAL-SAFE SCRUB
+            CLEAN
           </span>
           <div className="hero-foam-bottle" aria-hidden="true">
             <span className="hero-foam-bottle__pump" />
