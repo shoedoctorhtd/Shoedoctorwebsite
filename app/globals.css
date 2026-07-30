@@ -3551,37 +3551,66 @@ body {
   width: 100%;
 }
 
-.sd-floating-tag {
+.sd-orbit-three {
+  height: 58%;
+  right: 4%;
+  top: 8%;
+  transform: rotate(-27deg);
+  width: 74%;
+}
+
+.sd-orbit-label {
+  --orbit-label-angle: 0deg;
   background: var(--white);
   border: 1px solid var(--ink);
   border-radius: 999px;
+  color: var(--ink);
+  display: inline-flex;
   font-family: var(--font-geist-mono), monospace;
   font-size: 8px;
   font-weight: 800;
+  letter-spacing: 0.08em;
   padding: 8px 12px;
+  pointer-events: none;
   position: absolute;
+  transform: rotate(var(--orbit-label-angle));
+  transform-origin: center;
+  white-space: nowrap;
   z-index: 5;
 }
 
-.tag-clean {
-  animation: sd-float 3.8s ease-in-out infinite;
-  left: 0;
-  top: 22%;
-  transform: rotate(-8deg);
+.motion-ready .sd-orbit-label {
+  animation: sd-orbit-label-drift 4.2s ease-in-out infinite;
 }
 
-.tag-diagnose {
-  left: 0;
-  top: 22%;
-  transform: rotate(-8deg);
+.orbit-label-diagnose {
+  --orbit-label-angle: -2deg;
+  left: 58%;
+  top: 1%;
 }
 
-.tag-restore {
-  animation: sd-float 4.4s 0.6s ease-in-out infinite;
+.orbit-label-clean {
+  --orbit-label-angle: -12deg;
+  left: 14%;
+  top: 11%;
+}
+
+.orbit-label-restore {
+  --orbit-label-angle: 7deg;
   background: var(--sky);
   bottom: 25%;
   right: -2%;
-  transform: rotate(7deg);
+}
+
+@keyframes sd-orbit-label-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(var(--orbit-label-angle));
+  }
+
+  50% {
+    transform: translate3d(5px, -5px, 0) rotate(var(--orbit-label-angle));
+  }
 }
 
 .sd-hero-stat {
@@ -5148,18 +5177,26 @@ body.shoe-cursor-active label {
     width: 110%;
   }
 
-  .tag-clean {
-    left: 2%;
-    top: 15%;
+  .sd-orbit-three {
+    height: 62%;
+    right: -4%;
+    top: 6%;
+    width: 88%;
   }
 
-  .tag-diagnose {
-    left: 2%;
-    top: 15%;
+  .orbit-label-diagnose {
+    left: 50%;
+    top: 1%;
   }
 
-  .tag-restore {
+  .orbit-label-clean {
+    left: 16%;
+    top: 9%;
+  }
+
+  .orbit-label-restore {
     bottom: 18%;
+    right: -1%;
   }
 
   .sd-hero-stat {
@@ -8754,59 +8791,9 @@ body.shoe-cursor-active label {
   }
 }
 
-/* The hero labels follow the service sequence rather than floating at random. */
-
-.sd-hero-visual .tag-diagnose {
-  animation: sd-process-diagnose var(--hero-opening-loop) var(--hero-opening-delay) ease-out infinite both;
-  will-change: opacity, transform;
-}
-
-.sd-hero-visual .tag-restore {
-  animation: sd-process-restore var(--hero-opening-loop) var(--hero-opening-delay) ease-out infinite both;
-  will-change: opacity, transform;
-}
-
-@keyframes sd-process-diagnose {
-  0%, 4% {
-    opacity: 0;
-    transform: translate3d(-18px, 10px, 0) rotate(-8deg) scale(0.88);
-  }
-
-  9%, 23% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) rotate(-8deg) scale(1);
-  }
-
-  29%, 100% {
-    opacity: 0;
-    transform: translate3d(18px, -12px, 0) rotate(-8deg) scale(0.92);
-  }
-}
-
-@keyframes sd-process-restore {
-  0%, 82% {
-    opacity: 0;
-    transform: translate3d(18px, 14px, 0) rotate(7deg) scale(0.88);
-  }
-
-  89%, 96% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) rotate(7deg) scale(1);
-  }
-
-  100% {
-    opacity: 0;
-    transform: translate3d(-14px, -10px, 0) rotate(7deg) scale(0.92);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .sd-hero-visual .tag-diagnose,
-  .sd-hero-visual .tag-restore,
-  .hero-cleaning-caption {
+  .sd-orbit-label {
     animation: none !important;
-    display: inline-flex;
-    opacity: 1;
   }
 }
 
