@@ -137,6 +137,17 @@ export default async function Home({
             <span />
             <span />
           </div>
+          <div className="hero-foam-cluster" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+            <i />
+            <i />
+            <i />
+            <i />
+            <i />
+            <i />
+          </div>
           <div className="hero-clean-sparkles" aria-hidden="true">
             <span>✦</span>
             <span>✦</span>
@@ -159,10 +170,7 @@ export default async function Home({
           <div className="hero-foam-bottle" aria-hidden="true">
             <span className="hero-foam-bottle__pump" />
             <span className="hero-foam-bottle__neck" />
-            <span className="hero-foam-bottle__body">
-              <i>SD</i>
-              <b>FOAM</b>
-            </span>
+            <span className="hero-foam-bottle__body" />
           </div>
           <div className="hero-foam-spray" aria-hidden="true">
             <i />

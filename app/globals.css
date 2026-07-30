@@ -3534,23 +3534,24 @@ body {
 .sd-orbit {
   border: 1px solid rgba(7, 26, 58, 0.22);
   border-radius: 50%;
-  height: 69%;
-  pointer-events: none;
-  position: absolute;
-  right: -3%;
-  top: 0;
-  transform: rotate(-12deg);
-  width: 88%;
-  z-index: 4;
-}
-
-.sd-orbit-two {
   border-style: dashed;
   height: 79%;
+  pointer-events: none;
+  position: absolute;
   right: -10%;
   top: -5%;
   transform: rotate(17deg);
   width: 100%;
+  z-index: 4;
+}
+
+.sd-orbit-two {
+  border-style: solid;
+  height: 69%;
+  right: -3%;
+  top: 0;
+  transform: rotate(-12deg);
+  width: 88%;
 }
 
 .sd-orbit-three {
@@ -3586,15 +3587,15 @@ body {
 }
 
 .orbit-label-diagnose {
-  --orbit-label-angle: 12deg;
-  left: 28%;
-  top: -16px;
+  --orbit-label-angle: -17deg;
+  left: 5%;
+  top: 37%;
 }
 
 .orbit-label-clean {
-  --orbit-label-angle: -17deg;
-  left: 3%;
-  top: 48%;
+  --orbit-label-angle: 12deg;
+  left: -5%;
+  top: 34%;
 }
 
 .orbit-label-restore {
@@ -5187,13 +5188,13 @@ body.shoe-cursor-active label {
   }
 
   .orbit-label-diagnose {
-    left: 24%;
-    top: -14px;
+    left: 4%;
+    top: 37%;
   }
 
   .orbit-label-clean {
-    left: 2%;
-    top: 47%;
+    left: -7%;
+    top: 34%;
   }
 
   .orbit-label-restore {
@@ -8513,41 +8514,35 @@ body.shoe-cursor-active label {
 }
 
 .hero-foam-bottle__body {
-  background: linear-gradient(135deg, #f8fdff, #d9edfb 48%, #aacfe8 100%);
+  background: linear-gradient(102deg, #ffffff 0 12%, #eef8fc 46%, #c2dce8 100%);
   border: 2px solid rgba(255, 255, 255, 0.34);
   border-radius: 18px 18px 21px 21px;
   bottom: 0;
   box-shadow: inset 0 0 0 5px rgba(255, 255, 255, 0.48), 0 16px 23px rgba(7, 26, 58, 0.24);
-  color: #08264a;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
   left: 8px;
   position: absolute;
-  text-align: center;
+  overflow: hidden;
   width: 66px;
 }
 
-.hero-foam-bottle__body i,
-.hero-foam-bottle__body b {
-  font-family: var(--font-geist-mono), monospace;
-  font-style: normal;
-  letter-spacing: 0.1em;
+.hero-foam-bottle__body::before {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.68), transparent 42%);
+  border-radius: inherit;
+  content: "";
+  inset: 6px;
+  position: absolute;
 }
 
-.hero-foam-bottle__body i {
-  color: #0d3668;
-  font-size: 8px;
-  font-weight: 900;
-}
-
-.hero-foam-bottle__body b {
-  background: #0d3668;
+.hero-foam-bottle__body::after {
+  background: rgba(255, 255, 255, 0.6);
   border-radius: 999px;
-  color: #fff;
-  font-size: 9px;
-  margin: 6px 8px 0;
-  padding: 3px 0;
+  content: "";
+  height: 46px;
+  left: 12px;
+  position: absolute;
+  top: 16px;
+  transform: rotate(18deg);
+  width: 9px;
 }
 
 .hero-foam-bottle__neck {
@@ -8615,6 +8610,46 @@ body.shoe-cursor-active label {
 .hero-foam-spray i:nth-child(3) { height: 28px; left: 46%; top: 38%; width: 28px; }
 .hero-foam-spray i:nth-child(4) { height: 17px; left: 28%; top: 52%; width: 17px; }
 .hero-foam-spray i:nth-child(5) { height: 23px; left: 10%; top: 66%; width: 23px; }
+
+.hero-foam-cluster {
+  animation: sd-opening-foam-cluster var(--hero-opening-loop) var(--hero-opening-delay) ease-out infinite both;
+  height: 170px;
+  left: 25%;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  scale: 1;
+  top: 38%;
+  transform-origin: center;
+  width: 270px;
+  z-index: 12;
+}
+
+.hero-foam-cluster i {
+  background: radial-gradient(circle at 34% 27%, #fff 0 20%, #f5fcff 52%, #c6e5f3 100%);
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  border-radius: 50%;
+  box-shadow: 0 5px 12px rgba(105, 160, 182, 0.18), inset 7px 8px 10px rgba(255, 255, 255, 0.78);
+  height: 74px;
+  position: absolute;
+  width: 74px;
+}
+
+.hero-foam-cluster i:nth-child(1) { left: 0; top: 62px; }
+.hero-foam-cluster i:nth-child(2) { height: 62px; left: 44px; top: 28px; width: 62px; }
+.hero-foam-cluster i:nth-child(3) { height: 88px; left: 76px; top: 50px; width: 88px; }
+.hero-foam-cluster i:nth-child(4) { height: 56px; left: 132px; top: 19px; width: 56px; }
+.hero-foam-cluster i:nth-child(5) { height: 82px; left: 158px; top: 49px; width: 82px; }
+.hero-foam-cluster i:nth-child(6) { height: 47px; left: 213px; top: 26px; width: 47px; }
+.hero-foam-cluster i:nth-child(7) { height: 53px; left: 28px; top: 108px; width: 53px; }
+.hero-foam-cluster i:nth-child(8) { height: 58px; left: 120px; top: 106px; width: 58px; }
+.hero-foam-cluster i:nth-child(9) { height: 41px; left: 201px; top: 113px; width: 41px; }
+
+@keyframes sd-opening-foam-cluster {
+  0%, 25% { opacity: 0; transform: scale(0.58) rotate(-8deg); }
+  32%, 56% { opacity: 0.96; transform: scale(1) rotate(0deg); }
+  65%, 100% { opacity: 0; transform: scale(0.72) rotate(8deg); }
+}
 
 .hero-microfibre-towel {
   animation: sd-opening-towel var(--hero-opening-loop) var(--hero-opening-delay) cubic-bezier(0.45, 0, 0.26, 1) infinite both;
@@ -8751,6 +8786,15 @@ body.shoe-cursor-active label {
     transform-origin: top right;
   }
 
+  .hero-foam-cluster {
+    height: 128px;
+    left: 18%;
+    scale: 0.7;
+    top: 42%;
+    transform-origin: left top;
+    width: 205px;
+  }
+
   .hero-microfibre-towel {
     height: 76px;
     top: 47%;
@@ -8787,6 +8831,7 @@ body.shoe-cursor-active label {
   .hero-cleaning-caption,
   .hero-foam-bottle,
   .hero-foam-spray,
+  .hero-foam-cluster,
   .hero-microfibre-towel {
     animation: none !important;
     display: none;
