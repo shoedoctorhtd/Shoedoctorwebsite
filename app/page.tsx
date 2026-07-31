@@ -315,10 +315,7 @@ export default async function Home({
               <i />
             </span>
           </div>
-          <div className="wash-stage-label">
-            <span>Material-safe care</span>
-            <strong>ACTIVE CLEAN</strong>
-          </div>
+
         </div>
       </section>
 
