@@ -199,7 +199,9 @@ export default async function Home({
           <i>✦</i>
           <span>DEEP CLEAN · RS 399</span>
           <i>✦</i>
-          <span>EXPRESS · +RS 149</span>
+          <span>UV Sterilization · RS 149</span>
+          <i>✦</i>
+          <span>EXPRESS · RS 149</span>
           <i>✦</i>
           <span>NEPALI BRANDS SAVE RS 50</span>
           <i>✦</i>
@@ -209,7 +211,9 @@ export default async function Home({
           <i>✦</i>
           <span>DEEP CLEAN · RS 399</span>
           <i>✦</i>
-          <span>EXPRESS · +RS 149</span>
+          <span>UV Sterilization · RS 149</span>
+          <i>✦</i>
+          <span>EXPRESS · RS 149</span>
           <i>✦</i>
           <span>NEPALI BRANDS SAVE RS 50</span>
           <i>✦</i>
