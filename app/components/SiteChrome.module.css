@@ -1,0 +1,14 @@
+@media (min-width: 881px) {
+  :global(.sd-desktop-nav) .steamNavTrigger {
+    padding: 0 !important;
+  }
+}
+
+@media (max-width: 640px) {
+  :global(.sd-mobile-nav) .steamNavTrigger {
+    font-size: clamp(8px, 2.5vw, 11px) !important;
+    letter-spacing: -0.035em;
+    padding: 10px 0 5px !important;
+    white-space: nowrap !important;
+  }
+}

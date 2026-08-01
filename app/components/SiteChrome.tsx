@@ -9,6 +9,7 @@ import {
   STEAM_ASSISTED_DEEP_CLEAN_ID,
   steamCleaningContent,
 } from "@/lib/steam-cleaning";
+import styles from "./SiteChrome.module.css";
 
 const navItems = [
   { href: "/", label: "Home" },
@@ -54,7 +55,7 @@ function NavigationItems({
       <button
         aria-controls={popupId}
         aria-expanded={isSteamPopupOpen}
-        className="sd-steam-nav-trigger"
+        className={`sd-steam-nav-trigger ${styles.steamNavTrigger}`}
         data-current={isCurrentPage("/steam-cleaning") || isSteamPopupOpen}
         onClick={onSteamPopupToggle}
         type="button"
