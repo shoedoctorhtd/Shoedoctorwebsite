@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
+import { Fragment, type ReactNode } from "react";
 import {
   SERVICE_CATEGORIES,
   type Service,
@@ -34,7 +35,15 @@ function groupServices(services: Service[], category: ServiceCategory) {
   return services.filter((service) => service.category === category);
 }
 
-export default function ServiceMenu({ services }: { services: Service[] }) {
+type ServiceMenuProps = {
+  services: Service[];
+  afterCategory?: Partial<Record<ServiceCategory, ReactNode>>;
+};
+
+export default function ServiceMenu({
+  services,
+  afterCategory,
+}: ServiceMenuProps) {
   return (
     <>
       <div className="services-overview" aria-label="Everything we do">
@@ -89,61 +98,64 @@ export default function ServiceMenu({ services }: { services: Service[] }) {
         if (!categoryServices.length) return null;
         const copy = categoryCopy[category];
         return (
-          <div className="menu-group" key={category} data-reveal>
-            <header className="menu-group-heading">
-              <p>{copy.label}</p>
-              <h2>{copy.title}</h2>
-              <span>{copy.intro}</span>
-            </header>
+          <Fragment key={category}>
+            <div className="menu-group" data-reveal>
+              <header className="menu-group-heading">
+                <p>{copy.label}</p>
+                <h2>{copy.title}</h2>
+                <span>{copy.intro}</span>
+              </header>
 
-            <div
-              className={`menu-grid ${
-                category === "Add-ons" ? "compact" : ""
-              }`}
-            >
-              {categoryServices.map((service, index) => (
-                <article
-                  className={`menu-card ${service.tone}`}
-                  key={service.id}
-                >
-                  <div className="menu-card-top">
-                    <span className="menu-number">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <span className="menu-icon">{service.icon}</span>
-                  </div>
-                  {service.badge && (
-                    <span className="menu-badge">{service.badge}</span>
-                  )}
-                  <p className="menu-turnaround">{service.turnaround}</p>
-                  <h3>{service.name}</h3>
-                  <p className="menu-description">{service.description}</p>
-                  <ul>
-                    {service.features.map((feature) => (
-                      <li key={feature}>{feature}</li>
-                    ))}
-                  </ul>
-                  <div className="menu-price">
-                    <div>
-                      <span>Service price</span>
-                      <strong>{service.priceLabel}</strong>
-                      {service.specialPriceLabel && (
-                        <em>{service.specialPriceLabel}</em>
-                      )}
+              <div
+                className={`menu-grid ${
+                  category === "Add-ons" ? "compact" : ""
+                }`}
+              >
+                {categoryServices.map((service, index) => (
+                  <article
+                    className={`menu-card ${service.tone}`}
+                    key={service.id}
+                  >
+                    <div className="menu-card-top">
+                      <span className="menu-number">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span className="menu-icon">{service.icon}</span>
                     </div>
-                    <a
-                      href={`/?service=${encodeURIComponent(
-                        service.id,
-                      )}#book`}
-                      aria-label={`Book ${service.name}`}
-                    >
-                      Book <ArrowUpRight />
-                    </a>
-                  </div>
-                </article>
-              ))}
+                    {service.badge && (
+                      <span className="menu-badge">{service.badge}</span>
+                    )}
+                    <p className="menu-turnaround">{service.turnaround}</p>
+                    <h3>{service.name}</h3>
+                    <p className="menu-description">{service.description}</p>
+                    <ul>
+                      {service.features.map((feature) => (
+                        <li key={feature}>{feature}</li>
+                      ))}
+                    </ul>
+                    <div className="menu-price">
+                      <div>
+                        <span>Service price</span>
+                        <strong>{service.priceLabel}</strong>
+                        {service.specialPriceLabel && (
+                          <em>{service.specialPriceLabel}</em>
+                        )}
+                      </div>
+                      <a
+                        href={`/?service=${encodeURIComponent(
+                          service.id,
+                        )}#book`}
+                        aria-label={`Book ${service.name}`}
+                      >
+                        Book <ArrowUpRight />
+                      </a>
+                    </div>
+                  </article>
+                ))}
+              </div>
             </div>
-          </div>
+            {afterCategory?.[category]}
+          </Fragment>
         );
       })}
 

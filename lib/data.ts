@@ -99,12 +99,14 @@ const seedServices: Array<
     priceLabel: "Rs 449",
     specialPriceLabel: "Made-in-Nepal: Rs 399",
     turnaround: "2–3 days",
-    description: "Inside-and-out care for pairs that need a proper reset.",
+    description:
+      "Inside-and-out care with detailed treatment for pairs that need a proper reset.",
     features: [
       "Inside & outside",
       "Stain treatment",
       "Deodorizing",
       "Detailed finishing",
+      "Steam brush detailing on suitable areas when required",
     ],
     badge: "Most popular",
     tone: "lime",
@@ -127,6 +129,7 @@ const seedServices: Array<
       "Crease reduction",
       "Minor touch-up or repaint",
       "Semi re-gluing if needed",
+      "Precision steam brush detailing where suitable",
     ],
     badge: "Premium",
     tone: "violet",

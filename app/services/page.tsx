@@ -1,7 +1,9 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
+import type { Metadata } from "next";
 import { listPublicServices } from "@/lib/data";
 import ServiceMenu from "../components/ServiceMenu";
 import SiteMotion from "../components/SiteMotion";
+import SteamBrushCleaningSection from "../components/SteamBrushCleaningSection";
 import {
   ArrowUpRight,
   SiteFooter,
@@ -9,6 +11,14 @@ import {
 } from "../components/SiteChrome";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: {
+    absolute: "Steam Gun Brush Shoe Cleaning Services | Shoe Doctor Nepal",
+  },
+  description:
+    "Explore Shoe Doctor’s Steam Gun Brush Cleaning process, combining controlled steam and specialised brushing for sole grooves, seams, edges and difficult-to-reach areas.",
+};
 
 const faqs = [
   {
@@ -30,6 +40,31 @@ const faqs = [
     question: "Can I request express service?",
     answer:
       "Yes. Express Wash & Dry is +Rs 199 and aims for 2–3 hours. Repair Priority is +Rs 150. Both depend on treatment and available capacity.",
+  },
+  {
+    question: "What is Steam Gun Brush Cleaning?",
+    answer:
+      "It is a precision detailing process that combines controlled hot steam with a specialised brush. Steam helps soften stubborn buildup while the brush lifts dirt from grooves, edges, seams and other difficult areas.",
+  },
+  {
+    question: "Does steam replace regular shoe cleaning?",
+    answer:
+      "No. Steam brush detailing supports the normal cleaning process. Cleaning solution, brushing, wiping and controlled drying are still required.",
+  },
+  {
+    question: "Is steam used on every shoe?",
+    answer:
+      "No. Every shoe is inspected first. Steam is used only on materials and areas considered suitable by the Shoe Doctor team.",
+  },
+  {
+    question: "Can steam damage delicate shoes?",
+    answer:
+      "Too much heat or moisture can affect delicate materials, glue, paint and decorations. That is why we use controlled steam only after inspecting the shoe.",
+  },
+  {
+    question: "Does steam completely sterilise shoes?",
+    answer:
+      "We offer steam-assisted cleaning and detailing, not medical sterilisation. The treatment focuses on loosening stubborn dirt and improving detailed cleaning.",
   },
 ];
 
@@ -60,7 +95,10 @@ export default async function ServicesPage() {
       </section>
 
       <section className="sd-services-page sd-section">
-        <ServiceMenu services={services} />
+        <ServiceMenu
+          services={services}
+          afterCategory={{ Cleaning: <SteamBrushCleaningSection /> }}
+        />
       </section>
 
       <section className="sd-faq sd-section" data-reveal>

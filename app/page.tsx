@@ -1,15 +1,26 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
+import type { Metadata } from "next";
 import BookingForm from "./components/BookingForm";
 import Image from "next/image";
 import SiteMotion from "./components/SiteMotion";
+import SteamBrushVisual from "./components/SteamBrushVisual";
 import {
   ArrowUpRight,
   SiteFooter,
   SiteHeader,
 } from "./components/SiteChrome";
 import { listPublicServices } from "@/lib/data";
+import { steamCleaningContent } from "@/lib/steam-cleaning";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: {
+    absolute: "Shoe Doctor Nepal | Steam Brush Shoe Cleaning, Repair & Restoration",
+  },
+  description:
+    "Professional shoe cleaning, repair and restoration by Shoe Doctor. Discover Nepal’s first Steam Gun Brush Cleaning for detailed treatment of soles, seams, grooves and difficult areas.",
+};
 
 const steps = [
   ["Choose care", "Pick the cleaning, repair or restoration your pair needs."],
@@ -316,6 +327,64 @@ export default async function Home({
             </span>
           </div>
 
+        </div>
+      </section>
+
+      <section className="sd-steam-home sd-section" data-reveal>
+        <div className="sd-steam-home-copy">
+          <span className="sd-steam-badge">{steamCleaningContent.badge}</span>
+          <p className="sd-kicker">{steamCleaningContent.technologyLabel}</p>
+          <h2>
+            STEAM. BRUSH.
+            <br />
+            <span>DETAIL.</span>
+          </h2>
+          <h3>{steamCleaningContent.marketingClaim}</h3>
+          <p className="sd-steam-home-description">
+            Shoe Doctor introduces Steam Gun Brush Cleaning—a precision
+            detailing process that combines controlled hot steam with a
+            specialised brush. Steam helps soften stubborn dirt and greasy
+            buildup while the brush lifts it from sole grooves, stitching
+            lines, edges, seams and other difficult-to-reach areas.
+          </p>
+          <p className="sd-steam-clarification">
+            Steam does not replace our regular cleaning process. Every
+            suitable pair is first inspected, cleaned and brushed before
+            controlled steam detailing is used where required.
+          </p>
+          <div className="sd-steam-home-actions">
+            <a className="sd-steam-explore" href="/services#steam-brush-cleaning">
+              Explore Steam Cleaning <ArrowUpRight />
+            </a>
+            <a className="sd-primary-button" href="/?service=deep-clean#book">
+              Book Deep Clean <ArrowUpRight />
+            </a>
+          </div>
+        </div>
+
+        <SteamBrushVisual />
+
+        <div className="sd-steam-benefits" aria-label="Steam brush cleaning benefits">
+          <article>
+            <span>01</span>
+            <h3>DEEPER DETAILING</h3>
+            <p>Targets sole grooves, seams, edges and difficult corners.</p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>STEAM-ASSISTED CLEANING</h3>
+            <p>Controlled steam helps soften embedded dirt and stubborn buildup.</p>
+          </article>
+          <article>
+            <span>03</span>
+            <h3>BRUSH AGITATION</h3>
+            <p>The specialised brush physically lifts loosened dirt from textured areas.</p>
+          </article>
+          <article>
+            <span>04</span>
+            <h3>MATERIAL INSPECTION</h3>
+            <p>Steam is used only on materials and areas considered suitable.</p>
+          </article>
         </div>
       </section>
 
