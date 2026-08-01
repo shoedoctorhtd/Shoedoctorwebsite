@@ -1,23 +1,7 @@
-import { steamCleaningContent } from "@/lib/steam-cleaning";
-
-const processSteps = [
-  {
-    title: "DIAGNOSE",
-    copy: "We inspect the shoe’s material, construction, paint, glue and overall condition before deciding where steam can be used.",
-  },
-  {
-    title: "CLEAN",
-    copy: "Material-appropriate cleaning solution and brushes remove general dirt from the upper, interior and sole.",
-  },
-  {
-    title: "STEAM DETAIL",
-    copy: "Controlled steam and the specialised brush help loosen and lift stubborn dirt from suitable detailed areas.",
-  },
-  {
-    title: "WIPE & DRY",
-    copy: "The loosened dirt is removed using a clean microfiber towel before controlled drying and final inspection.",
-  },
-];
+import {
+  steamCleaningContent,
+  steamCleaningProcess,
+} from "@/lib/steam-cleaning";
 
 const bestUsedFor = [
   "Textured rubber outsoles",
@@ -93,7 +77,7 @@ export default function SteamBrushCleaningSection() {
             <h3>DETAIL WITH A PLAN.</h3>
           </div>
           <ol className="sd-steam-steps">
-            {processSteps.map((step, index) => (
+            {steamCleaningProcess.map((step, index) => (
               <li key={step.title}>
                 <span>{String(index + 1).padStart(2, "0")}</span>
                 <div>

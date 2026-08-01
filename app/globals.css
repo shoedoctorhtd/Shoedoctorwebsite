@@ -10413,6 +10413,72 @@ body.shoe-cursor-active label {
   margin: 14px 0 0;
 }
 
+.sd-steam-home-detail {
+  border-top: 1px solid var(--ink);
+  display: grid;
+  gap: clamp(30px, 6vw, 92px);
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
+  margin-top: clamp(22px, 3vw, 38px);
+  padding-top: clamp(30px, 5vw, 62px);
+}
+
+.sd-steam-home-detail h3 {
+  font-size: clamp(2.25rem, 4.3vw, 5.1rem);
+  font-weight: 950;
+  letter-spacing: -0.075em;
+  line-height: 0.85;
+  margin: 18px 0 0;
+}
+
+.sd-steam-home-detail > div > p:not(.sd-kicker) {
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 25px 0 0;
+  max-width: 44ch;
+}
+
+.sd-steam-home-detail ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sd-steam-home-detail li {
+  border-top: 1px solid var(--ink);
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 36px minmax(0, 1fr);
+  padding: 17px 0;
+}
+
+.sd-steam-home-detail li:last-child {
+  border-bottom: 1px solid var(--ink);
+}
+
+.sd-steam-home-detail li > span {
+  color: var(--coral);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+  font-weight: 900;
+  padding-top: 3px;
+}
+
+.sd-steam-home-detail strong {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.sd-steam-home-detail li p {
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 7px 0 0;
+  max-width: 60ch;
+}
+
 .sd-steam-service {
   border-top: 1px solid var(--ink);
   margin-top: 90px;
@@ -10609,7 +10675,8 @@ body.shoe-cursor-active label {
   .sd-steam-home,
   .sd-steam-service-header,
   .sd-steam-service-main,
-  .sd-steam-service-bottom {
+  .sd-steam-service-bottom,
+  .sd-steam-home-detail {
     grid-template-columns: 1fr;
   }
 
@@ -10637,6 +10704,8 @@ body.shoe-cursor-active label {
   .sd-steam-benefits,
   .sd-steam-comparison > div { grid-template-columns: 1fr; }
   .sd-steam-benefits h3 { margin-top: 30px; }
+  .sd-steam-home-detail { gap: 28px; }
+  .sd-steam-home-detail li { gap: 12px; grid-template-columns: 30px minmax(0, 1fr); }
   .sd-steam-service { margin-top: 70px; }
   .sd-steam-service-header h2 { max-width: 9ch; }
   .sd-steam-steps li { gap: 12px; grid-template-columns: 31px minmax(0, 1fr); }
