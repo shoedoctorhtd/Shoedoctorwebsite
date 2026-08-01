@@ -1,8 +1,10 @@
 import {
+  STEAM_ASSISTED_DEEP_CLEAN_ID,
   steamCleaningComparison,
   steamCleaningContent,
   steamCleaningProcess,
 } from "@/lib/steam-cleaning";
+import { ArrowUpRight } from "./SiteChrome";
 
 const bestUsedFor = [
   "Textured rubber outsoles",
@@ -25,25 +27,18 @@ export default function SteamBrushCleaningSection() {
     >
       <header className="sd-steam-service-header">
         <div>
-          <span className="sd-steam-badge">{steamCleaningContent.badge}</span>
+          <span className="sd-steam-badge">
+            {steamCleaningContent.serviceBadge}
+          </span>
           <p className="sd-kicker">ADVANCED SHOE CLEANING TECHNOLOGY</p>
-          <h2>STEAM GUN BRUSH CLEANING</h2>
+          <h2>{steamCleaningContent.serviceTitle}</h2>
           <p className="sd-steam-service-subheading">
-            Not just washed. Steam-detailed.
+            Not just washed. Steam-assisted.
           </p>
         </div>
         <div className="sd-steam-service-copy">
           <p className="sd-steam-service-intro">
-            Our Steam Gun Brush Cleaning treatment combines controlled hot
-            steam with a specialised detailing brush. The steam helps soften
-            stubborn dirt and greasy buildup while the bristles work around
-            textured soles, stitching lines, seams, edges and difficult
-            corners. The loosened dirt is then brushed and wiped away before
-            the shoe is carefully dried.
-          </p>
-          <p className="sd-steam-service-inclusion">
-            Included within eligible Deep Clean or Premium Care treatments
-            after diagnosis; it is not a separate-priced service.
+            {steamCleaningContent.serviceIntro}
           </p>
         </div>
       </header>
@@ -80,7 +75,11 @@ export default function SteamBrushCleaningSection() {
       <div className="sd-steam-service-bottom">
         <div className="sd-steam-comparison">
           <p className="sd-kicker">THE DIFFERENCE</p>
-          <h3>REGULAR CLEANING.<br />DETAILED FURTHER.</h3>
+          <h3>
+            REGULAR CLEANING.
+            <br />
+            DETAILED FURTHER.
+          </h3>
           <div>
             {steamCleaningComparison.map((column) => (
               <article key={column.title}>
@@ -106,14 +105,18 @@ export default function SteamBrushCleaningSection() {
           </aside>
           <aside className="sd-steam-safety">
             <strong>MATERIAL-SAFE TREATMENT</strong>
-            <p>
-              Steam is not automatically used on every shoe. Extra care or
-              alternative treatment may be required for suede, nubuck,
-              delicate leather, customised paint, vintage footwear, weak glue
-              joints, glued decorations and heat-sensitive materials.
-            </p>
+            <p>{steamCleaningContent.serviceSafety}</p>
           </aside>
         </div>
+      </div>
+
+      <div className="sd-steam-service-actions">
+        <a
+          className="sd-primary-button"
+          href={`/?service=${STEAM_ASSISTED_DEEP_CLEAN_ID}#book`}
+        >
+          LET US DIAGNOSE YOUR PAIR <ArrowUpRight />
+        </a>
       </div>
     </section>
   );

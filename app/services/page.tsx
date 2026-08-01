@@ -14,10 +14,10 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Steam Gun Brush Shoe Cleaning Services | Shoe Doctor Nepal",
+    absolute: "Steam-Assisted Deep Clean & Shoe Cleaning Services | Shoe Doctor Nepal",
   },
   description:
-    "Explore Shoe Doctor’s Steam Gun Brush Cleaning process, combining controlled steam and specialised brushing for sole grooves, seams, edges and difficult-to-reach areas.",
+    "Explore Shoe Doctor Nepal’s steam shoe cleaning in Nepal, with steam-assisted sneaker cleaning for detailed areas plus professional shoe cleaning in Hetauda, repair and restoration.",
 };
 
 const faqs = [
@@ -42,14 +42,14 @@ const faqs = [
       "Yes. Express Wash & Dry is +Rs 199 and aims for 2–3 hours. Repair Priority is +Rs 150. Both depend on treatment and available capacity.",
   },
   {
-    question: "What is Steam Gun Brush Cleaning?",
+    question: "What is Steam-Assisted Deep Clean?",
     answer:
-      "It is a precision detailing process that combines controlled hot steam with a specialised brush. Steam helps soften stubborn buildup while the brush lifts dirt from grooves, edges, seams and other difficult areas.",
+      "It is a precision detailing process that combines controlled steam with a specialised brush. Steam helps loosen stubborn buildup while the brush lifts dirt from grooves, edges, seams and other difficult areas.",
   },
   {
     question: "Does steam replace regular shoe cleaning?",
     answer:
-      "No. Steam brush detailing supports the normal cleaning process. Cleaning solution, brushing, wiping and controlled drying are still required.",
+      "No. Steam-assisted detailing supports the normal cleaning process. Cleaning solution, brushing, wiping and controlled drying are still required.",
   },
   {
     question: "Is steam used on every shoe?",

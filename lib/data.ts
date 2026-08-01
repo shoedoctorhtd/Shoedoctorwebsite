@@ -1,3 +1,8 @@
+import {
+  STEAM_ASSISTED_DEEP_CLEAN_ID,
+  steamCleaningContent,
+} from "./steam-cleaning";
+
 export const SERVICE_CATEGORIES = ["Cleaning", "Repairs", "Add-ons"] as const;
 export const SERVICE_TONES = ["lime", "coral", "violet", "blue", "cream"] as const;
 export const BOOKING_STATUSES = [
@@ -113,6 +118,26 @@ const seedServices: Array<
     icon: "✦",
     active: true,
     sortOrder: 20,
+  },
+  {
+    id: STEAM_ASSISTED_DEEP_CLEAN_ID,
+    name: steamCleaningContent.serviceName,
+    category: "Cleaning",
+    priceLabel: steamCleaningContent.priceLabel,
+    specialPriceLabel: null,
+    turnaround: steamCleaningContent.turnaround,
+    description: steamCleaningContent.serviceIntro,
+    features: [
+      "Material inspection before treatment",
+      "Controlled steam brush detailing",
+      "Material-safe cleaning and drying",
+      "Price confirmed after diagnosis",
+    ],
+    badge: null,
+    tone: "blue",
+    icon: "≋",
+    active: true,
+    sortOrder: 25,
   },
   {
     id: "premium-care",

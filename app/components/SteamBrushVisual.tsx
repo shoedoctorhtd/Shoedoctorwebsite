@@ -15,6 +15,19 @@ export default function SteamBrushVisual() {
       <span className="sd-steam-plume plume-two" aria-hidden="true" />
       <span className="sd-steam-plume plume-three" aria-hidden="true" />
 
+      <span
+        className="sd-steam-visual-label sd-steam-visual-label--control"
+        aria-hidden="true"
+      >
+        Controlled Steam
+      </span>
+      <span
+        className="sd-steam-visual-label sd-steam-visual-label--checked"
+        aria-hidden="true"
+      >
+        Material Checked
+      </span>
+
       <div className="sd-steam-image-frame">
         {imageAvailable ? (
           <Image
@@ -34,7 +47,7 @@ export default function SteamBrushVisual() {
         )}
       </div>
 
-      <ol className="sd-steam-process" aria-label="Steam brush cleaning process">
+      <ol className="sd-steam-process" aria-label="Steam cleaning process">
         {processSteps.map((step, index) => (
           <li key={step}>
             <span>{step}</span>

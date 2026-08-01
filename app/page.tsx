@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     absolute: "Shoe Doctor Nepal | Steam Brush Shoe Cleaning, Repair & Restoration",
   },
   description:
-    "Professional shoe cleaning, repair and restoration by Shoe Doctor. Discover Nepal’s first Steam Gun Brush Cleaning for detailed treatment of soles, seams, grooves and difficult areas.",
+    "Professional shoe cleaning in Hetauda by Shoe Doctor Nepal. Discover steam shoe cleaning in Nepal and steam-assisted sneaker cleaning alongside expert repair and restoration.",
 };
 
 const steps = [

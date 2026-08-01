@@ -1,5 +1,6 @@
-/* eslint-disable @next/next/no-html-link-for-pages */
 import {
+  STEAM_ASSISTED_DEEP_CLEAN_ID,
+  steamCleaningBenefits,
   steamCleaningComparison,
   steamCleaningContent,
   steamCleaningProcess,
@@ -7,36 +8,38 @@ import {
 import { ArrowUpRight } from "./SiteChrome";
 import SteamBrushVisual from "./SteamBrushVisual";
 
+const [homeHeadingLineOne, homeHeadingLineTwo, ...homeHeadingTail] =
+  steamCleaningContent.homeHeading.split(" ");
+const homeHeadingSecondLine = homeHeadingTail.slice(0, 2).join(" ");
+const homeHeadingOutline = homeHeadingTail.slice(2).join(" ");
+
 export default function SteamBrushHomeSection() {
   return (
     <section className="sd-steam-home sd-section" data-reveal>
       <div className="sd-steam-home-copy">
-        <span className="sd-steam-badge">{steamCleaningContent.badge}</span>
-        <p className="sd-kicker">{steamCleaningContent.technologyLabel}</p>
+        <span className="sd-steam-badge">
+          {steamCleaningContent.homeBadge}
+        </span>
         <h2>
-          STEAM. BRUSH.
+          {homeHeadingLineOne} {homeHeadingLineTwo}
           <br />
-          <span>DETAIL.</span>
+          {homeHeadingSecondLine} <span>{homeHeadingOutline}</span>
         </h2>
-        <h3>{steamCleaningContent.marketingClaim}</h3>
         <p className="sd-steam-home-description">
-          Shoe Doctor introduces Steam Gun Brush Cleaning—a precision
-          detailing process that combines controlled hot steam with a
-          specialised brush. Steam helps soften stubborn dirt and greasy
-          buildup while the brush lifts it from sole grooves, stitching lines,
-          edges, seams and other difficult-to-reach areas.
+          {steamCleaningContent.homeDescription}
         </p>
         <p className="sd-steam-clarification">
-          Steam does not replace our regular cleaning process. Every suitable
-          pair is first inspected, cleaned and brushed before controlled steam
-          detailing is used where required.
+          {steamCleaningContent.homeSupporting}
         </p>
         <div className="sd-steam-home-actions">
-          <a className="sd-steam-explore" href="/services#steam-brush-cleaning">
-            Explore Steam Cleaning <ArrowUpRight />
+          <a
+            className="sd-primary-button"
+            href={`/?service=${STEAM_ASSISTED_DEEP_CLEAN_ID}#book`}
+          >
+            BOOK A STEAM CLEAN <ArrowUpRight />
           </a>
-          <a className="sd-primary-button" href="/?service=deep-clean#book">
-            Book Deep Clean <ArrowUpRight />
+          <a className="sd-steam-explore" href="/services#steam-brush-cleaning">
+            LEARN HOW IT WORKS <ArrowUpRight />
           </a>
         </div>
       </div>
@@ -45,43 +48,27 @@ export default function SteamBrushHomeSection() {
 
       <div
         className="sd-steam-benefits"
-        aria-label="Steam brush cleaning benefits"
+        aria-label="Steam-assisted deep clean benefits"
       >
-        <article>
-          <span>01</span>
-          <h3>DEEPER DETAILING</h3>
-          <p>Targets sole grooves, seams, edges and difficult corners.</p>
-        </article>
-        <article>
-          <span>02</span>
-          <h3>STEAM-ASSISTED CLEANING</h3>
-          <p>
-            Controlled steam helps soften embedded dirt and stubborn buildup.
-          </p>
-        </article>
-        <article>
-          <span>03</span>
-          <h3>BRUSH AGITATION</h3>
-          <p>
-            The specialised brush physically lifts loosened dirt from textured
-            areas.
-          </p>
-        </article>
-        <article>
-          <span>04</span>
-          <h3>MATERIAL INSPECTION</h3>
-          <p>Steam is used only on materials and areas considered suitable.</p>
-        </article>
+        {steamCleaningBenefits.map((benefit, index) => (
+          <article key={benefit}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <h3>{benefit}</h3>
+          </article>
+        ))}
       </div>
 
       <div className="sd-steam-home-detail">
         <div>
           <p className="sd-kicker">DETAILING PROCESS</p>
-          <h3>INSPECT. CLEAN.<br />DETAIL. DRY.</h3>
+          <h3>
+            INSPECT. CLEAN.
+            <br />
+            DETAIL. DRY.
+          </h3>
           <p>
-            Steam brush detailing is included only within eligible Deep Clean
-            or Premium Care treatments after diagnosis. Each pair is assessed
-            before heat or moisture is used.
+            Each pair is assessed before heat or moisture is used, then cleaned
+            and finished according to its material and condition.
           </p>
         </div>
         <ol>
@@ -99,7 +86,11 @@ export default function SteamBrushHomeSection() {
 
       <div className="sd-steam-home-comparison sd-steam-comparison">
         <p className="sd-kicker">THE DIFFERENCE</p>
-        <h3>REGULAR CLEANING.<br />DETAILED FURTHER.</h3>
+        <h3>
+          REGULAR CLEANING.
+          <br />
+          DETAILED FURTHER.
+        </h3>
         <div>
           {steamCleaningComparison.map((column) => (
             <article key={column.title}>
