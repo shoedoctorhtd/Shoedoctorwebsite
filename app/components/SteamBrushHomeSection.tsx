@@ -3,6 +3,7 @@ import {
   steamCleaningContent,
 } from "@/lib/steam-cleaning";
 import { ArrowUpRight } from "./SiteChrome";
+import SteamBrushAdvantage from "./SteamBrushAdvantage";
 import SteamBrushVisual from "./SteamBrushVisual";
 
 const [homeHeadingLineOne, homeHeadingLineTwo, ...homeHeadingTail] =
@@ -42,6 +43,7 @@ export default function SteamBrushHomeSection() {
       </div>
 
       <SteamBrushVisual />
+      <SteamBrushAdvantage />
     </section>
   );
 }

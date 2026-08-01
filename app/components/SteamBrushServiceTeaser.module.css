@@ -6,7 +6,7 @@
   display: grid;
   gap: clamp(28px, 5vw, 72px);
   grid-template-columns: minmax(0, 0.95fr) minmax(280px, 0.8fr);
-  margin-top: clamp(46px, 6vw, 78px);
+  margin-top: 0;
   padding: clamp(30px, 4vw, 54px);
   position: relative;
 }

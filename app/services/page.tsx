@@ -70,10 +70,8 @@ export default async function ServicesPage() {
       </section>
 
       <section className="sd-services-page sd-section">
-        <ServiceMenu
-          services={services}
-          afterCategory={{ Cleaning: <SteamBrushServiceTeaser /> }}
-        />
+        <SteamBrushServiceTeaser />
+        <ServiceMenu services={services} />
       </section>
 
       <section className="sd-faq sd-section" data-reveal>
