@@ -26,3 +26,26 @@ export const steamCleaningProcess = [
     copy: "The loosened dirt is removed using a clean microfiber towel before controlled drying and final inspection.",
   },
 ] as const;
+
+export const steamCleaningComparison = [
+  {
+    title: "REGULAR CLEANING",
+    items: [
+      "Cleans the main upper and sole",
+      "Uses material-appropriate solution",
+      "Removes general surface dirt",
+      "Includes brushing and wiping",
+      "Suitable for routine shoe care",
+    ],
+  },
+  {
+    title: "STEAM BRUSH DETAILING",
+    items: [
+      "Targets difficult detailed areas",
+      "Helps soften embedded buildup",
+      "Combines steam and brush agitation",
+      "Works around grooves, seams and edges",
+      "Used only after material inspection",
+    ],
+  },
+] as const;

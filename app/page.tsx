@@ -232,6 +232,8 @@ export default async function Home({
         </div>
       </section>
 
+      <SteamBrushHomeSection />
+
       <section className="sd-home-services sd-section" data-reveal>
         <div className="sd-section-heading">
           <p className="sd-kicker">What we treat</p>
@@ -269,8 +271,6 @@ export default async function Home({
           ))}
         </div>
       </section>
-
-      <SteamBrushHomeSection />
 
       <section className="sd-wash-lab sd-section" data-reveal>
         <div className="sd-wash-copy">

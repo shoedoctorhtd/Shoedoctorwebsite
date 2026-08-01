@@ -10479,6 +10479,13 @@ body.shoe-cursor-active label {
   max-width: 60ch;
 }
 
+.sd-steam-home-comparison {
+  border-top: 1px solid var(--ink);
+  grid-column: 1 / -1;
+  margin-top: clamp(22px, 3vw, 38px);
+  padding-top: clamp(30px, 5vw, 62px);
+}
+
 .sd-steam-service {
   border-top: 1px solid var(--ink);
   margin-top: 90px;

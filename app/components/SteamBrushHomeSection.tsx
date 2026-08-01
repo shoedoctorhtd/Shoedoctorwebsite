@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
 import {
+  steamCleaningComparison,
   steamCleaningContent,
   steamCleaningProcess,
 } from "@/lib/steam-cleaning";
@@ -94,6 +95,23 @@ export default function SteamBrushHomeSection() {
             </li>
           ))}
         </ol>
+      </div>
+
+      <div className="sd-steam-home-comparison sd-steam-comparison">
+        <p className="sd-kicker">THE DIFFERENCE</p>
+        <h3>REGULAR CLEANING.<br />DETAILED FURTHER.</h3>
+        <div>
+          {steamCleaningComparison.map((column) => (
+            <article key={column.title}>
+              <strong>{column.title}</strong>
+              <ul>
+                {column.items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
       </div>
     </section>
   );

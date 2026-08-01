@@ -1,4 +1,5 @@
 import {
+  steamCleaningComparison,
   steamCleaningContent,
   steamCleaningProcess,
 } from "@/lib/steam-cleaning";
@@ -13,29 +14,6 @@ const bestUsedFor = [
   "Durable mesh and selected synthetic surfaces",
   "Hard-to-reach detailed areas",
   "Stubborn and greasy surface buildup",
-];
-
-const comparisonColumns = [
-  {
-    title: "REGULAR CLEANING",
-    items: [
-      "Cleans the main upper and sole",
-      "Uses material-appropriate solution",
-      "Removes general surface dirt",
-      "Includes brushing and wiping",
-      "Suitable for routine shoe care",
-    ],
-  },
-  {
-    title: "STEAM BRUSH DETAILING",
-    items: [
-      "Targets difficult detailed areas",
-      "Helps soften embedded buildup",
-      "Combines steam and brush agitation",
-      "Works around grooves, seams and edges",
-      "Used only after material inspection",
-    ],
-  },
 ];
 
 export default function SteamBrushCleaningSection() {
@@ -104,7 +82,7 @@ export default function SteamBrushCleaningSection() {
           <p className="sd-kicker">THE DIFFERENCE</p>
           <h3>REGULAR CLEANING.<br />DETAILED FURTHER.</h3>
           <div>
-            {comparisonColumns.map((column) => (
+            {steamCleaningComparison.map((column) => (
               <article key={column.title}>
                 <strong>{column.title}</strong>
                 <ul>
