@@ -40,129 +40,43 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="sd-founder-story sd-section" aria-labelledby="founder-story-title">
-        <aside className="sd-founder-panel-wrap">
-          <div className="sd-founder-panel" data-reveal data-tilt>
-            <div className="sd-founder-panel-copy">
-              <p className="sd-kicker">Why I Started Shoe Doctor</p>
-              <h2 id="founder-story-title">
-                I CHOSE THE
-                <br />
-                <span>OTHER DIRECTION.</span>
-              </h2>
-              <p>
-                When many were leaving hometown for bigger cities, I came back
-                to Hetauda to build something meaningful.
-              </p>
-            </div>
-
-            <div className="sd-founder-journey-art" aria-hidden="true">
-              <svg viewBox="0 0 420 160" fill="none">
-                <path d="M13 127C74 127 71 28 151 28c69 0 75 100 148 100 51 0 60-45 105-81" />
-                <circle cx="13" cy="127" r="6" />
-                <circle cx="151" cy="28" r="6" />
-                <circle cx="299" cy="128" r="6" />
-                <path d="m395 47 10-1-4 9" />
-              </svg>
-              <span>Hetauda</span>
-              <i />
-            </div>
-
-            <ul className="sd-founder-milestones">
-              <li>Master&apos;s in Computer Engineering</li>
-              <li>2 Years Corporate Experience</li>
-              <li>Returned to Hetauda</li>
-              <li>Built Shoe Doctor</li>
-            </ul>
-          </div>
-        </aside>
-
-        <div className="sd-founder-story-content">
-          <ol className="sd-founder-timeline" data-reveal>
-            <li data-reveal>
-              <span>01</span>
-              <article>
-                <h3>The Safe Path</h3>
-                <p>
-                  I spent years in Kathmandu for study, completed my Master&apos;s
-                  in Computer Engineering, and worked for around two years in a
-                  corporate 9-to-5 job. From the outside, life looked safe and
-                  settled.
-                </p>
-              </article>
-            </li>
-            <li data-reveal>
-              <span>02</span>
-              <article>
-                <h3>Something Felt Missing</h3>
-                <p>
-                  I had a salary, a routine, and stability&mdash;but deep inside,
-                  something felt incomplete.
-                </p>
-              </article>
-            </li>
-            <li data-reveal>
-              <span>03</span>
-              <article>
-                <h3>The Question That Stayed</h3>
-                <p>
-                  One question kept returning: would I reach 45 and regret not
-                  trying when I was 25? Or should I take the risk while I still
-                  had the time and courage to build?
-                </p>
-              </article>
-            </li>
-            <li data-reveal>
-              <span>04</span>
-              <article>
-                <h3>Coming Back With Purpose</h3>
-                <p>
-                  I had lived away from Hetauda for years and mostly came home
-                  during festivals. This time, I returned with a different
-                  purpose.
-                </p>
-              </article>
-            </li>
-            <li data-reveal>
-              <span>05</span>
-              <article>
-                <h3>Why Shoe Doctor</h3>
-                <p>
-                  I used my savings, accepted the financial risk, and started
-                  building a professional shoe cleaning, repair, and
-                  restoration service for my hometown.
-                </p>
-              </article>
-            </li>
-          </ol>
-
-          <blockquote className="sd-founder-quote" data-reveal>
-            <span aria-hidden="true">“</span>
-            <p>
-              Better to try at 25 than spend 45 wondering what might have
-              happened.
-            </p>
-            <cite>&mdash; Founder, Shoe Doctor</cite>
+      <section className="sd-story-section sd-section" data-reveal>
+        <div className="sd-story-intro">
+          <p className="sd-kicker">Why I started Shoe Doctor</p>
+          <h2>
+            I CHOSE THE
+            <br />
+            <span>OTHER DIRECTION.</span>
+          </h2>
+        </div>
+        <div className="sd-story-copy">
+          <p className="sd-story-lead">
+            While many people were leaving their hometown for Kathmandu or
+            abroad, I chose to return.
+          </p>
+          <p>
+            I spent years in Kathmandu for study, completed my Master’s in
+            Computer Engineering, and worked for around two years in a
+            corporate 9-to-5 job. I had a salary, a routine and a life that
+            looked safe from the outside. But even inside that safety,
+            something felt missing.
+          </p>
+          <p>
+            One question kept returning: would I reach 45 and regret that I
+            never tried when I was 25? Or would I take the risk now, while I
+            still had the time and courage to build?
+          </p>
+          <p>
+            I had lived away from Hetauda for years and came home mostly during
+            festivals. This time, I returned with a different purpose. I used
+            my savings, accepted the financial risk, and started creating a
+            professional shoe cleaning, repair and restoration service for my
+            hometown.
+          </p>
+          <blockquote>
+            “Better to try at 25 than spend 45 wondering what might have
+            happened.”
           </blockquote>
-
-          <div className="sd-founder-cta" data-reveal>
-            <div>
-              <p className="sd-kicker">Built to return more</p>
-              <h3>BUILT IN HETAUDA.<br />DESIGNED TO SERVE ACROSS NEPAL.</h3>
-              <p>
-                Shoe Doctor was created from a personal decision to return,
-                build, and create something useful for the community.
-              </p>
-            </div>
-            <div className="sd-founder-cta-actions">
-              <a className="sd-primary-button" href="/services">
-                Explore Our Services <ArrowUpRight />
-              </a>
-              <a className="sd-founder-secondary-button" href="/#book">
-                Book Pickup <ArrowUpRight />
-              </a>
-            </div>
-          </div>
         </div>
       </section>
 
