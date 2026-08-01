@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { steamCleaningContent } from "@/lib/steam-cleaning";
 
 type SteamAdvantageIconName = "steam" | "detail" | "gentle" | "expert";
 
@@ -9,6 +8,7 @@ const steamAdvantageSteps: Array<{
   icon: SteamAdvantageIconName;
   imageAlt: string;
   imageClass: string;
+  imageSrc: string;
   tone: "coral" | "indigo" | "sky" | "lime";
 }> = [
   {
@@ -18,6 +18,7 @@ const steamAdvantageSteps: Array<{
     icon: "steam",
     imageAlt: "Steam cleaning treatment lifting grime from a shoe surface",
     imageClass: "is-grime",
+    imageSrc: "/images/steam-brush-loosens-grime.png",
     tone: "coral",
   },
   {
@@ -27,6 +28,7 @@ const steamAdvantageSteps: Array<{
     icon: "detail",
     imageAlt: "Steam brush cleaning detailed shoe grooves and edges",
     imageClass: "is-details",
+    imageSrc: "/images/steam-brush-reaches-details.png",
     tone: "indigo",
   },
   {
@@ -36,6 +38,7 @@ const steamAdvantageSteps: Array<{
     icon: "gentle",
     imageAlt: "A shoe being treated with controlled, gentle steam cleaning",
     imageClass: "is-gentle",
+    imageSrc: "/images/steam-brush-gentler-cleaning.png",
     tone: "sky",
   },
   {
@@ -45,6 +48,7 @@ const steamAdvantageSteps: Array<{
     icon: "expert",
     imageAlt: "Shoe Doctor steam-cleaning equipment used after material inspection",
     imageClass: "is-expert",
+    imageSrc: "/images/steam-brush-expert-controlled.png",
     tone: "lime",
   },
 ];
@@ -142,7 +146,7 @@ export default function SteamBrushAdvantage() {
               <figure className="sd-steam-advantage__image-frame">
                 <Image
                   className={`sd-steam-advantage__image ${step.imageClass}`}
-                  src={steamCleaningContent.image.src}
+                  src={step.imageSrc}
                   alt={step.imageAlt}
                   fill
                   sizes="(max-width: 640px) calc(100vw - 72px), (max-width: 980px) calc(50vw - 48px), 22vw"
