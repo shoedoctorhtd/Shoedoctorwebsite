@@ -80,65 +80,133 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section
-        className="sd-why-started sd-section"
-        data-reveal
-        aria-labelledby="why-started-title"
-      >
-        <div className="sd-why-started-intro">
-          <p className="sd-kicker">Why We Started Shoe Doctor</p>
-          <h2 id="why-started-title">
-            CARE FOR WHAT
-            <br />
-            <span>CARRIES YOU.</span>
-          </h2>
-          <div className="sd-why-started-seal" aria-hidden="true">
-            <span>Diagnose</span>
-            <i>+</i>
-            <span>Clean</span>
-            <i>+</i>
-            <span>Restore</span>
+      <section className="sd-origin-story sd-section" aria-labelledby="why-started-title">
+        <div className="sd-origin-intro" data-reveal>
+          <div>
+            <p className="sd-kicker">Why We Started Shoe Doctor</p>
+            <h2 id="why-started-title">
+              CARE FOR WHAT
+              <br />
+              <span>CARRIES YOU.</span>
+            </h2>
           </div>
+          <p>
+            We started Shoe Doctor because great shoes deserve expert care, not
+            guesswork.
+          </p>
+          <span className="sd-origin-intro-accent" aria-hidden="true">
+            <i />
+            <b />
+          </span>
         </div>
 
-        <div className="sd-why-started-copy">
-          <p className="sd-why-started-lead">
-            Shoe Doctor began with a simple observation: people spend thousands
-            of rupees on shoes they love, yet professional footwear care is
-            still difficult to access&mdash;especially outside major cities.
-          </p>
-          <p>
-            I noticed that most people either cleaned their shoes at home using
-            unsuitable products or depended on services that were not designed
-            for different shoe materials. This often resulted in faded colours,
-            weakened glue, damaged suede, unpleasant odour or shoes being
-            thrown away before their time.
-          </p>
-          <p>
-            That gap inspired the creation of Shoe Doctor&mdash;a specialised
-            footwear-care clinic focused on cleaning, repairing and restoring
-            shoes professionally.
-          </p>
-          <p>
-            We believe shoes are more than something people wear. They carry us
-            through work, celebrations, travel, sports and everyday life. A
-            good pair should not be discarded simply because it has become
-            dirty, damaged or old.
-          </p>
-          <p>
-            At Shoe Doctor, every pair is inspected and treated according to
-            its material and condition. Through professional cleaning,
-            steam-assisted care, controlled drying, repair and restoration, our
-            goal is to help customers protect their favourite footwear and
-            extend its life.
-          </p>
-          <p>
-            Starting from Hetauda, we aim to make reliable and convenient shoe
-            care accessible across Nepal through pickup and return delivery.
-          </p>
-          <p className="sd-why-started-closing">
-            We Diagnose. We Clean. We Restore.
-          </p>
+        <div className="sd-origin-layout">
+          <aside className="sd-origin-visual-wrap">
+            <div className="sd-origin-visual" data-reveal data-tilt>
+              <div className="sd-origin-visual-card">
+                <div className="sd-origin-brand">
+                  <span>SD</span>
+                  <p>Shoe Doctor</p>
+                </div>
+                <p className="sd-origin-visual-message">
+                  Your shoes carry your work, travel, memories, and everyday
+                  life.
+                </p>
+                <ul className="sd-origin-services" aria-label="Our care services">
+                  <li>Professional Cleaning</li>
+                  <li>Repair &amp; Restoration</li>
+                  <li>Pickup &amp; Return Delivery</li>
+                </ul>
+                <div className="sd-origin-shoe-art" aria-hidden="true">
+                  <svg viewBox="0 0 230 110" fill="none">
+                    <path d="M29 70c18-1 36-8 50-21l19-18c9 13 22 26 41 31l36 9c13 3 23 13 25 25H28c-8 0-11-7-8-14 1-5 4-10 9-12Z" />
+                    <path d="M59 70h86" />
+                    <path d="M108 43 91 57M124 49l-17 14M140 55l-17 14" />
+                  </svg>
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <ol className="sd-origin-story-list">
+            <li className="sd-origin-story-card" data-reveal>
+              <span>01</span>
+              <div>
+                <h3>The Observation</h3>
+                <p>
+                  People spend thousands on shoes they love, yet professional
+                  footwear care is still difficult to access&mdash;especially
+                  outside major cities.
+                </p>
+              </div>
+            </li>
+            <li className="sd-origin-story-card" data-reveal>
+              <span>02</span>
+              <div>
+                <h3>The Problem</h3>
+                <p>
+                  Most people either clean shoes at home with unsuitable
+                  products or depend on services that do not understand
+                  different materials. This can cause fading, glue damage, bad
+                  odour, and shorter shoe life.
+                </p>
+              </div>
+            </li>
+            <li className="sd-origin-story-card" data-reveal>
+              <span>03</span>
+              <div>
+                <h3>The Gap</h3>
+                <p>
+                  That gap inspired Shoe Doctor&mdash;a specialised footwear-care
+                  clinic focused on cleaning, repairing, and restoring shoes
+                  professionally.
+                </p>
+              </div>
+            </li>
+            <li className="sd-origin-story-card" data-reveal>
+              <span>04</span>
+              <div>
+                <h3>What We Believe</h3>
+                <p>
+                  We believe shoes are more than something people wear. They
+                  carry us through work, celebrations, sports, travel, and
+                  everyday life. A good pair should not be discarded just
+                  because it became dirty or damaged.
+                </p>
+              </div>
+            </li>
+            <li className="sd-origin-story-card" data-reveal>
+              <span>05</span>
+              <div>
+                <h3>Our Mission</h3>
+                <p>
+                  At Shoe Doctor, every pair is treated according to its
+                  material and condition. Starting from Hetauda, our goal is to
+                  make reliable shoe care accessible across Nepal through
+                  professional service, pickup, and return delivery.
+                </p>
+              </div>
+            </li>
+          </ol>
+        </div>
+
+        <div className="sd-origin-cta" data-reveal>
+          <div>
+            <p className="sd-kicker">The journey continues</p>
+            <h3>EVERY PAIR DESERVES<br />ANOTHER JOURNEY.</h3>
+            <p>We diagnose. We clean. We restore.</p>
+          </div>
+          <div className="sd-origin-cta-actions">
+            <a className="sd-primary-button" href="/services">
+              Explore Our Services <ArrowUpRight />
+            </a>
+            <a className="sd-origin-secondary-button" href="/#book">
+              Book Pickup <ArrowUpRight />
+            </a>
+          </div>
         </div>
       </section>
 
