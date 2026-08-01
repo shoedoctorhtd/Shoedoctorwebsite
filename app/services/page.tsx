@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { listPublicServices } from "@/lib/data";
 import ServiceMenu from "../components/ServiceMenu";
 import SiteMotion from "../components/SiteMotion";
+import SteamBrushAdvantage from "../components/SteamBrushAdvantage";
 import SteamBrushServiceTeaser from "../components/SteamBrushServiceTeaser";
 import {
   ArrowUpRight,
@@ -69,10 +70,11 @@ export default async function ServicesPage() {
         </div>
       </section>
 
-      <section className="sd-services-page sd-section">
+      <div className="sd-services-page sd-section">
         <SteamBrushServiceTeaser />
+        <SteamBrushAdvantage />
         <ServiceMenu services={services} />
-      </section>
+      </div>
 
       <section className="sd-faq sd-section" data-reveal>
         <div>
