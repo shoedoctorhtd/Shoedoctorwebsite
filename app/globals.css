@@ -11034,7 +11034,7 @@ video {
   .sd-mobile-nav {
     display: grid;
     gap: 6px;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     justify-content: stretch;
     width: 100%;
   }
@@ -11134,6 +11134,10 @@ video {
 
   .sd-mobile-nav a {
     min-height: 36px;
+  }
+
+  .public-site section {
+    scroll-margin-top: 158px;
   }
 
   .sd-hero,

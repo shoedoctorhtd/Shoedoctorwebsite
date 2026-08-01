@@ -14,10 +14,6 @@ const navItems = [
   { href: "/contact", label: "Contact Us" },
 ];
 
-const primaryMobileNavItems = navItems.filter((item) =>
-  ["/", "/about", "/services", "/contact"].includes(item.href),
-);
-
 export function ArrowUpRight() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -82,7 +78,7 @@ export function SiteHeader() {
           Book your pair <ArrowUpRight />
         </a>
         <nav className="sd-mobile-nav" aria-label="Primary navigation">
-          {primaryMobileNavItems.map((item) => (
+          {navItems.map((item) => (
             <a
               aria-current={isCurrentPage(item.href) ? "page" : undefined}
               href={item.href}
