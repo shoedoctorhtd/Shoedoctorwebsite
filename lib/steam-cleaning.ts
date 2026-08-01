@@ -29,6 +29,18 @@ export const steamCleaningBenefits = [
   "Applied carefully by trained shoe-care technicians",
 ] as const;
 
+export const steamCleaningBestUsedFor = [
+  "Textured rubber outsoles",
+  "Deep outsole grooves",
+  "Midsole edges",
+  "Stitching lines",
+  "Welt areas between the upper and sole",
+  "Eyelet and tongue corners",
+  "Durable mesh and selected synthetic surfaces",
+  "Hard-to-reach detailed areas",
+  "Stubborn and greasy surface buildup",
+] as const;
+
 export const steamCleaningProcess = [
   {
     title: "DIAGNOSE",
@@ -68,5 +80,33 @@ export const steamCleaningComparison = [
       "Works around grooves, seams and edges",
       "Used only after material inspection",
     ],
+  },
+] as const;
+
+export const steamCleaningFaqs = [
+  {
+    question: "What is Steam-Assisted Deep Clean?",
+    answer:
+      "It is a precision detailing process that combines controlled steam with a specialised brush. Steam helps loosen stubborn buildup while the brush lifts dirt from grooves, edges, seams and other difficult areas.",
+  },
+  {
+    question: "Does steam replace regular shoe cleaning?",
+    answer:
+      "No. Steam-assisted detailing supports the normal cleaning process. Cleaning solution, brushing, wiping and controlled drying are still required.",
+  },
+  {
+    question: "Is steam used on every shoe?",
+    answer:
+      "No. Every shoe is inspected first. Steam is used only on materials and areas considered suitable by the Shoe Doctor team.",
+  },
+  {
+    question: "Can steam damage delicate shoes?",
+    answer:
+      "Too much heat or moisture can affect delicate materials, glue, paint and decorations. That is why we use controlled steam only after inspecting the shoe.",
+  },
+  {
+    question: "Does steam completely sterilise shoes?",
+    answer:
+      "We offer steam-assisted cleaning and detailing, not medical sterilisation. The treatment focuses on loosening stubborn dirt and improving detailed cleaning.",
   },
 ] as const;

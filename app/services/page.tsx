@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { listPublicServices } from "@/lib/data";
 import ServiceMenu from "../components/ServiceMenu";
 import SiteMotion from "../components/SiteMotion";
-import SteamBrushCleaningSection from "../components/SteamBrushCleaningSection";
+import SteamBrushServiceTeaser from "../components/SteamBrushServiceTeaser";
 import {
   ArrowUpRight,
   SiteFooter,
@@ -14,10 +14,10 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Steam-Assisted Deep Clean & Shoe Cleaning Services | Shoe Doctor Nepal",
+    absolute: "Shoe Cleaning, Repair & Restoration Services | Shoe Doctor Nepal",
   },
   description:
-    "Explore Shoe Doctor Nepal’s steam shoe cleaning in Nepal, with steam-assisted sneaker cleaning for detailed areas plus professional shoe cleaning in Hetauda, repair and restoration.",
+    "Explore Shoe Doctor Nepal's professional shoe cleaning in Hetauda, repair and restoration services. Steam-assisted deep cleaning is available after material inspection.",
 };
 
 const faqs = [
@@ -40,31 +40,6 @@ const faqs = [
     question: "Can I request express service?",
     answer:
       "Yes. Express Wash & Dry is +Rs 199 and aims for 2–3 hours. Repair Priority is +Rs 150. Both depend on treatment and available capacity.",
-  },
-  {
-    question: "What is Steam-Assisted Deep Clean?",
-    answer:
-      "It is a precision detailing process that combines controlled steam with a specialised brush. Steam helps loosen stubborn buildup while the brush lifts dirt from grooves, edges, seams and other difficult areas.",
-  },
-  {
-    question: "Does steam replace regular shoe cleaning?",
-    answer:
-      "No. Steam-assisted detailing supports the normal cleaning process. Cleaning solution, brushing, wiping and controlled drying are still required.",
-  },
-  {
-    question: "Is steam used on every shoe?",
-    answer:
-      "No. Every shoe is inspected first. Steam is used only on materials and areas considered suitable by the Shoe Doctor team.",
-  },
-  {
-    question: "Can steam damage delicate shoes?",
-    answer:
-      "Too much heat or moisture can affect delicate materials, glue, paint and decorations. That is why we use controlled steam only after inspecting the shoe.",
-  },
-  {
-    question: "Does steam completely sterilise shoes?",
-    answer:
-      "We offer steam-assisted cleaning and detailing, not medical sterilisation. The treatment focuses on loosening stubborn dirt and improving detailed cleaning.",
   },
 ];
 
@@ -97,7 +72,7 @@ export default async function ServicesPage() {
       <section className="sd-services-page sd-section">
         <ServiceMenu
           services={services}
-          afterCategory={{ Cleaning: <SteamBrushCleaningSection /> }}
+          afterCategory={{ Cleaning: <SteamBrushServiceTeaser /> }}
         />
       </section>
 

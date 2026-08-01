@@ -1,0 +1,102 @@
+.teaser {
+  background:
+    radial-gradient(circle at 86% 20%, rgba(174, 230, 31, 0.27), transparent 21%),
+    linear-gradient(135deg, #fff9f4 0%, #e8efff 100%);
+  border-top: 1px solid var(--ink);
+  display: grid;
+  gap: clamp(28px, 5vw, 72px);
+  grid-template-columns: minmax(0, 0.95fr) minmax(280px, 0.8fr);
+  margin-top: clamp(46px, 6vw, 78px);
+  padding: clamp(30px, 4vw, 54px);
+  position: relative;
+}
+
+.teaser::after {
+  border: 1px solid rgba(7, 26, 58, 0.18);
+  border-radius: 50%;
+  content: "";
+  height: clamp(140px, 17vw, 230px);
+  pointer-events: none;
+  position: absolute;
+  right: clamp(-45px, -3vw, -20px);
+  top: clamp(-54px, -3vw, -24px);
+  width: clamp(140px, 17vw, 230px);
+}
+
+.heading,
+.copy {
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.heading :global(.sd-steam-badge) {
+  margin-bottom: 17px;
+}
+
+.heading :global(.sd-kicker) {
+  color: var(--blue);
+}
+
+.heading h2 {
+  font-size: clamp(2.35rem, 4.8vw, 5.2rem);
+  font-weight: 950;
+  letter-spacing: -0.08em;
+  line-height: 0.84;
+  margin: 16px 0 0;
+}
+
+.heading h2 span {
+  color: transparent;
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 500;
+  -webkit-text-stroke: 1.4px var(--blue);
+}
+
+.copy {
+  align-self: end;
+}
+
+.copy > p:first-child {
+  font-size: 15px;
+  line-height: 1.7;
+  margin: 0;
+  max-width: 52ch;
+}
+
+.note {
+  border-left: 3px solid var(--coral);
+  font-size: 12px;
+  line-height: 1.65;
+  margin: 22px 0 0;
+  max-width: 53ch;
+  padding-left: 13px;
+}
+
+.note strong {
+  display: block;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  margin-bottom: 5px;
+}
+
+.actions {
+  margin-top: 28px;
+}
+
+.actions :global(.sd-primary-button) svg {
+  height: 18px;
+  width: 18px;
+}
+
+@media (max-width: 760px) {
+  .teaser { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .teaser { margin-top: 48px; padding: 28px 20px; }
+
+  .heading h2 { font-size: clamp(2.5rem, 12vw, 4.2rem); }
+}

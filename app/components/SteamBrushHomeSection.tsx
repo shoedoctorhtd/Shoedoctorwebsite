@@ -1,6 +1,5 @@
 import {
   STEAM_ASSISTED_DEEP_CLEAN_ID,
-  steamCleaningBenefits,
   steamCleaningContent,
 } from "@/lib/steam-cleaning";
 import { ArrowUpRight } from "./SiteChrome";
@@ -10,12 +9,6 @@ const [homeHeadingLineOne, homeHeadingLineTwo, ...homeHeadingTail] =
   steamCleaningContent.homeHeading.split(" ");
 const homeHeadingSecondLine = homeHeadingTail.slice(0, 2).join(" ");
 const homeHeadingOutline = homeHeadingTail.slice(2).join(" ");
-const steamBenefitLabels = [
-  "SURFACE GRIME",
-  "DETAILED REACH",
-  "GENTLER CARE",
-  "EXPERT CHECKED",
-] as const;
 
 export default function SteamBrushHomeSection() {
   return (
@@ -42,32 +35,13 @@ export default function SteamBrushHomeSection() {
           >
             BOOK A STEAM CLEAN <ArrowUpRight />
           </a>
-          <a className="sd-steam-explore" href="/services#steam-brush-cleaning">
+          <a className="sd-steam-explore" href="/steam-cleaning">
             LEARN HOW IT WORKS <ArrowUpRight />
           </a>
         </div>
       </div>
 
       <SteamBrushVisual />
-
-      <div
-        className="sd-steam-benefits"
-        aria-label="Steam-assisted deep clean benefits"
-      >
-        {steamCleaningBenefits.map((benefit, index) => (
-          <article key={benefit} data-reveal>
-            <div className="sd-steam-benefit-meta">
-              <span>{String(index + 1).padStart(2, "0")}</span>
-              <p>{steamBenefitLabels[index]}</p>
-            </div>
-            <span className="sd-steam-benefit-orbit" aria-hidden="true" />
-            <span className="sd-steam-benefit-watermark" aria-hidden="true">
-              {String(index + 1).padStart(2, "0")}
-            </span>
-            <h3>{benefit}</h3>
-          </article>
-        ))}
-      </div>
     </section>
   );
 }

@@ -1,22 +1,11 @@
 import {
   STEAM_ASSISTED_DEEP_CLEAN_ID,
+  steamCleaningBestUsedFor,
   steamCleaningComparison,
   steamCleaningContent,
   steamCleaningProcess,
 } from "@/lib/steam-cleaning";
 import { ArrowUpRight } from "./SiteChrome";
-
-const bestUsedFor = [
-  "Textured rubber outsoles",
-  "Deep outsole grooves",
-  "Midsole edges",
-  "Stitching lines",
-  "Welt areas between the upper and sole",
-  "Eyelet and tongue corners",
-  "Durable mesh and selected synthetic surfaces",
-  "Hard-to-reach detailed areas",
-  "Stubborn and greasy surface buildup",
-];
 
 export default function SteamBrushCleaningSection() {
   return (
@@ -65,7 +54,7 @@ export default function SteamBrushCleaningSection() {
         <aside className="sd-steam-best-used">
           <p className="sd-kicker">BEST USED FOR</p>
           <ul>
-            {bestUsedFor.map((item) => (
+            {steamCleaningBestUsedFor.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
