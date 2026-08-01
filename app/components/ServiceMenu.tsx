@@ -46,8 +46,12 @@ export default function ServiceMenu({
 }: ServiceMenuProps) {
   return (
     <>
-      <div className="services-overview" aria-label="Everything we do">
-        <article>
+      <div
+        className="services-overview"
+        data-reveal
+        aria-label="Everything we do"
+      >
+        <article data-service-overview-card>
           <span>Clean</span>
           <strong>Exterior to deep interior care</strong>
           <p>
@@ -55,7 +59,7 @@ export default function ServiceMenu({
             deodorizing, lace and sole detailing.
           </p>
         </article>
-        <article>
+        <article data-service-overview-card>
           <span>Repair</span>
           <strong>Stitch, bond and rebuild</strong>
           <p>
@@ -63,7 +67,7 @@ export default function ServiceMenu({
             careful structural repair.
           </p>
         </article>
-        <article>
+        <article data-service-overview-card>
           <span>Restore</span>
           <strong>Colour, shape and finish</strong>
           <p>
@@ -71,7 +75,7 @@ export default function ServiceMenu({
             repainting and protective finishing.
           </p>
         </article>
-        <article>
+        <article data-service-overview-card>
           <span>Convenience</span>
           <strong>Express and doorstep options</strong>
           <p>
@@ -81,7 +85,7 @@ export default function ServiceMenu({
         </article>
       </div>
 
-      <div className="wear-local-banner">
+      <div className="wear-local-banner" data-reveal>
         <div>
           <span>Made in Nepal deserves local care</span>
           <strong>WEAR LOCAL. SAVE LOCAL.</strong>
@@ -114,6 +118,7 @@ export default function ServiceMenu({
                 {categoryServices.map((service, index) => (
                   <article
                     className={`menu-card ${service.tone}`}
+                    data-service-card
                     key={service.id}
                   >
                     <div className="menu-card-top">

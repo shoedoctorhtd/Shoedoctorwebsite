@@ -988,11 +988,11 @@ footer > span {
 
 .menu-group {
   border-top: 1px solid var(--ink);
-  margin-top: 90px;
-  padding-top: 26px;
+  margin-top: clamp(44px, 5vw, 64px);
+  padding-top: 22px;
 }
 
-.menu-group:first-of-type {
+.wear-local-banner + .menu-group {
   margin-top: 0;
 }
 
@@ -1000,7 +1000,7 @@ footer > span {
   display: grid;
   gap: 24px;
   grid-template-columns: 0.55fr 1.3fr 0.85fr;
-  margin-bottom: 34px;
+  margin-bottom: 26px;
 }
 
 .menu-group-heading p,
@@ -2710,7 +2710,7 @@ body.shoe-cursor-active label {
   font-size: 20px;
   letter-spacing: -0.045em;
   line-height: 1.05;
-  margin: 45px 0 12px;
+  margin: 32px 0 10px;
 }
 
 .services-overview p {
@@ -2727,7 +2727,7 @@ body.shoe-cursor-active label {
   display: grid;
   gap: 35px;
   grid-template-columns: 1.1fr 1fr auto;
-  margin: 18px 0 80px;
+  margin: 14px 0 28px;
   overflow: hidden;
   padding: 24px;
   position: relative;
@@ -12015,5 +12015,54 @@ video {
 
   .loader-branding-copy {
     animation: sd-loader-brand-reveal 0.4s 0.95s ease-out both;
+  }
+}
+
+/* Services page rhythm and staged content reveals. */
+@media (prefers-reduced-motion: no-preference) {
+  .motion-ready .services-overview[data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .motion-ready .services-overview[data-reveal] [data-service-overview-card],
+  .motion-ready .menu-group [data-service-card] {
+    opacity: 0;
+    transform: translateY(26px);
+    transition:
+      box-shadow 180ms ease,
+      opacity 540ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      transform 620ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .motion-ready .services-overview.is-revealed [data-service-overview-card],
+  .motion-ready .menu-group.is-revealed [data-service-card] {
+    opacity: 1;
+    transform: none;
+  }
+
+  .motion-ready .services-overview.is-revealed [data-service-overview-card]:nth-child(2),
+  .motion-ready .menu-group.is-revealed [data-service-card]:nth-child(2) {
+    transition-delay: 90ms, 90ms, 90ms;
+  }
+
+  .motion-ready .services-overview.is-revealed [data-service-overview-card]:nth-child(3),
+  .motion-ready .menu-group.is-revealed [data-service-card]:nth-child(3) {
+    transition-delay: 180ms, 180ms, 180ms;
+  }
+
+  .motion-ready .services-overview.is-revealed [data-service-overview-card]:nth-child(4),
+  .motion-ready .menu-group.is-revealed [data-service-card]:nth-child(4) {
+    transition-delay: 270ms, 270ms, 270ms;
+  }
+
+  .motion-ready .menu-group.is-revealed [data-service-card]:nth-child(n + 5) {
+    transition-delay: 360ms, 360ms, 360ms;
+  }
+
+  .motion-ready .menu-group.is-revealed [data-service-card]:hover {
+    transform: translate(-4px, -4px);
+    transition-delay: 0ms;
   }
 }
