@@ -1,14 +1,22 @@
+"use client";
+
 /* eslint-disable @next/next/no-html-link-for-pages */
 /* eslint-disable @next/next/no-img-element */
 
+import { usePathname } from "next/navigation";
+
 const navItems = [
   { href: "/", label: "Home" },
-  { href: "/about", label: "About us" },
+  { href: "/about", label: "About Us" },
   { href: "/services", label: "Services" },
   { href: "/shoe-donation", label: "Donate Shoes" },
   { href: "/blog", label: "Blog" },
-  { href: "/contact", label: "Contact" },
+  { href: "/contact", label: "Contact Us" },
 ];
+
+const primaryMobileNavItems = navItems.filter((item) =>
+  ["/", "/about", "/services", "/contact"].includes(item.href),
+);
 
 export function ArrowUpRight() {
   return (
@@ -31,6 +39,7 @@ export function Brand({ footer = false }: { footer?: boolean }) {
           alt=""
           width={180}
           height={180}
+          loading={footer ? "lazy" : "eager"}
         />
       </span>
       <span className="sd-wordmark" aria-hidden="true">
@@ -41,6 +50,12 @@ export function Brand({ footer = false }: { footer?: boolean }) {
 }
 
 export function SiteHeader() {
+  const pathname = usePathname();
+
+  function isCurrentPage(href: string) {
+    return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  }
+
   return (
     <>
       <div className="sd-topbar">
@@ -54,7 +69,11 @@ export function SiteHeader() {
         <Brand />
         <nav className="sd-desktop-nav" aria-label="Main navigation">
           {navItems.map((item) => (
-            <a href={item.href} key={item.href}>
+            <a
+              aria-current={isCurrentPage(item.href) ? "page" : undefined}
+              href={item.href}
+              key={item.href}
+            >
               {item.label}
             </a>
           ))}
@@ -62,23 +81,23 @@ export function SiteHeader() {
         <a className="sd-header-cta" href="/#book">
           Book your pair <ArrowUpRight />
         </a>
-        <details className="sd-mobile-menu">
-          <summary aria-label="Open navigation">
-            <span />
-            <span />
-          </summary>
-          <nav aria-label="Mobile navigation">
-            {navItems.map((item) => (
-              <a href={item.href} key={item.href}>
-                {item.label}
-              </a>
-            ))}
-            <a className="sd-mobile-book" href="/#book">
-              Book your pair <ArrowUpRight />
+        <nav className="sd-mobile-nav" aria-label="Primary navigation">
+          {primaryMobileNavItems.map((item) => (
+            <a
+              aria-current={isCurrentPage(item.href) ? "page" : undefined}
+              href={item.href}
+              key={item.href}
+            >
+              {item.label}
             </a>
-          </nav>
-        </details>
+          ))}
+        </nav>
       </header>
+      <nav className="sd-mobile-action-bar" aria-label="Quick actions">
+        <a href="tel:+9779761716743">Call</a>
+        <a href="https://wa.me/9779761716743">WhatsApp</a>
+        <a href="/#book">Book Now</a>
+      </nav>
     </>
   );
 }

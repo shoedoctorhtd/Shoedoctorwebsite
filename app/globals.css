@@ -10797,3 +10797,361 @@ body.shoe-cursor-active label {
     transform: none !important;
   }
 }
+
+/* Mobile-first refinements for the shared public site chrome and content. */
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+img,
+video {
+  height: auto;
+  max-width: 100%;
+}
+
+.sd-mobile-nav,
+.sd-mobile-action-bar {
+  display: none;
+}
+
+.sd-desktop-nav a[aria-current="page"]::after {
+  transform: scaleX(1);
+}
+
+@media (max-width: 880px) {
+  .sd-header {
+    column-gap: 18px;
+    grid-template-columns: auto minmax(0, 1fr);
+    min-height: 0;
+    padding: 10px clamp(16px, 4vw, 30px);
+  }
+
+  .sd-header-cta,
+  .sd-mobile-menu {
+    display: none !important;
+  }
+
+  .sd-mobile-nav {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    justify-content: flex-end;
+    min-width: 0;
+  }
+
+  .sd-mobile-nav a {
+    align-items: center;
+    border: 1px solid transparent;
+    display: inline-flex;
+    font-size: clamp(11px, 1.75vw, 13px);
+    font-weight: 800;
+    justify-content: center;
+    line-height: 1.1;
+    min-height: 40px;
+    padding: 8px 10px;
+    text-align: center;
+  }
+
+  .sd-mobile-nav a[aria-current="page"] {
+    background: var(--berry);
+    border-color: var(--berry);
+    color: var(--white);
+  }
+
+  .public-site section {
+    scroll-margin-top: 118px;
+  }
+}
+
+@media (max-width: 768px) {
+  .public-site {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+
+  .sd-mobile-action-bar {
+    align-items: stretch;
+    background: rgba(7, 26, 58, 0.96);
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
+    bottom: 0;
+    display: grid;
+    gap: 1px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    left: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    position: fixed;
+    right: 0;
+    z-index: 950;
+  }
+
+  .sd-mobile-action-bar a {
+    align-items: center;
+    color: var(--white);
+    display: flex;
+    font-size: 11px;
+    font-weight: 850;
+    justify-content: center;
+    letter-spacing: 0.01em;
+    min-height: 64px;
+    padding: 10px 6px;
+    text-align: center;
+  }
+
+  .sd-mobile-action-bar a:nth-child(2) {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .sd-mobile-action-bar a:last-child {
+    background: var(--coral);
+    color: var(--ink);
+  }
+
+  .sd-hero {
+    padding: clamp(38px, 8vw, 62px) 18px 42px;
+  }
+
+  .sd-hero h1 {
+    font-size: clamp(2.8rem, 13vw, 4.8rem);
+    line-height: 0.85;
+  }
+
+  .sd-hero-intro {
+    font-size: 16px;
+    line-height: 1.6;
+    margin-top: 26px;
+    max-width: 38ch;
+  }
+
+  .sd-hero-visual {
+    margin-top: 32px;
+    min-height: clamp(310px, 94vw, 460px);
+    width: 100%;
+  }
+
+  .sd-page-hero {
+    min-height: 0;
+    padding: 56px 18px 46px;
+  }
+
+  .sd-page-hero h1 {
+    font-size: clamp(2.8rem, 13vw, 4.9rem);
+    line-height: 0.84;
+    overflow-wrap: anywhere;
+  }
+
+  .sd-page-hero-bottom {
+    gap: 25px;
+    margin-top: 34px;
+  }
+
+  .sd-page-hero-bottom > p,
+  .sd-section-heading > div,
+  .sd-story-copy > p {
+    font-size: 16px;
+    line-height: 1.65;
+  }
+
+  .sd-section,
+  .booking-section,
+  .sd-care-checklist {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .sd-local-banner,
+  .sd-home-cta,
+  .sd-page-cta,
+  .sd-footer {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .form-grid input,
+  .form-grid select,
+  .form-grid textarea,
+  .submit-booking,
+  .location-control button,
+  .sd-primary-button,
+  .sd-steam-explore {
+    min-height: 48px;
+  }
+
+  .form-grid input,
+  .form-grid select,
+  .form-grid textarea {
+    font-size: 16px;
+  }
+
+  .form-message {
+    font-size: 13px;
+  }
+
+  .sd-contact-grid article > a,
+  .sd-contact-grid article > strong,
+  .sd-story-copy,
+  .menu-card,
+  .sd-steam-home,
+  .sd-steam-service {
+    overflow-wrap: anywhere;
+  }
+
+  @media (pointer: coarse) {
+    body.shoe-cursor-active,
+    body.shoe-cursor-active :is(a, button, input, select, textarea, summary, label) {
+      cursor: auto !important;
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .sd-header {
+    gap: 8px;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 8px 16px 10px;
+  }
+
+  .sd-brand {
+    justify-self: center;
+  }
+
+  .sd-mobile-nav {
+    display: grid;
+    gap: 6px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    justify-content: stretch;
+    width: 100%;
+  }
+
+  .sd-mobile-nav a {
+    font-size: clamp(10px, 3.1vw, 12px);
+    min-height: 38px;
+    padding: 7px 3px;
+    white-space: normal;
+  }
+
+  .public-site section {
+    scroll-margin-top: 126px;
+  }
+
+  .sd-section,
+  .booking-section,
+  .sd-care-checklist {
+    padding-bottom: 64px;
+    padding-top: 64px;
+  }
+
+  .sd-hero-actions {
+    align-items: stretch;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 1fr;
+  }
+
+  .sd-hero-actions .sd-primary-button,
+  .sd-page-hero-bottom .sd-primary-button,
+  .sd-home-cta .sd-primary-button,
+  .sd-page-cta .sd-primary-button,
+  .sd-steam-home-actions .sd-primary-button,
+  .sd-steam-home-actions .sd-steam-explore,
+  .sd-steam-service-actions .sd-primary-button {
+    width: 100%;
+  }
+
+  .sd-hero-actions .sd-play-link {
+    justify-content: center;
+    min-height: 48px;
+  }
+
+  .sd-hero-visual {
+    min-height: clamp(300px, 96vw, 400px);
+  }
+
+  .sd-hero-glow {
+    height: min(86vw, 340px);
+    width: min(86vw, 340px);
+  }
+
+  .sd-highlight-card,
+  .public-site .menu-card {
+    min-height: 0;
+  }
+
+  .public-site .menu-card {
+    padding: 20px;
+  }
+
+  .menu-description,
+  .menu-card li,
+  .sd-steam-home-description,
+  .sd-steam-service-intro,
+  .sd-steam-steps p {
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  .booking-form {
+    box-shadow: 6px 6px 0 var(--ink);
+    padding: 18px;
+  }
+
+  .booking-summary {
+    gap: 8px 12px;
+  }
+
+  .sd-contact-grid article {
+    min-height: 0;
+    padding: 28px 22px;
+  }
+
+  .sd-contact-grid article > a,
+  .sd-contact-grid article > strong {
+    font-size: clamp(1.55rem, 8vw, 2.4rem);
+    margin-top: 42px;
+  }
+}
+
+@media (max-width: 340px) {
+  .sd-mobile-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sd-mobile-nav a {
+    min-height: 36px;
+  }
+
+  .sd-hero,
+  .sd-page-hero,
+  .sd-section,
+  .booking-section,
+  .sd-local-banner,
+  .sd-home-cta,
+  .sd-page-cta,
+  .sd-footer {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .sd-mobile-action-bar a {
+    font-size: 10px;
+    min-height: 60px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) and (max-width: 640px) {
+  .site-loader {
+    animation-duration: 2.25s;
+  }
+
+  .loader-diagnosis-art::after,
+  .loader-diagnosis-art i {
+    animation-duration: 0.9s;
+  }
+
+  .loader-branding-copy {
+    animation: sd-loader-brand-reveal 0.4s 0.95s ease-out both;
+  }
+}
