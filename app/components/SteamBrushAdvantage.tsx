@@ -94,22 +94,31 @@ function SteamAdvantageIcon({ name }: { name: SteamAdvantageIconName }) {
   );
 }
 
-export default function SteamBrushAdvantage() {
+type SteamBrushAdvantageProps = {
+  showHeader?: boolean;
+};
+
+export default function SteamBrushAdvantage({
+  showHeader = true,
+}: SteamBrushAdvantageProps) {
   return (
     <section
-      className="sd-steam-advantage"
-      aria-labelledby="steam-advantage-heading"
+      className={`sd-steam-advantage${showHeader ? "" : " sd-steam-advantage--compact"}`}
+      aria-label={showHeader ? undefined : "Steam-cleaning process"}
+      aria-labelledby={showHeader ? "steam-advantage-heading" : undefined}
       data-reveal
     >
       <span className="sd-steam-advantage__mist" aria-hidden="true" />
-      <header className="sd-steam-advantage__header">
-        <p className="sd-kicker">THE STEAM CLEANING ADVANTAGE</p>
-        <h3 id="steam-advantage-heading">CLEANER. SAFER. BETTER.</h3>
-        <p>
-          Our steam-cleaning process is designed to care for your shoes from
-          the surface to the finest details.
-        </p>
-      </header>
+      {showHeader && (
+        <header className="sd-steam-advantage__header">
+          <p className="sd-kicker">THE STEAM CLEANING ADVANTAGE</p>
+          <h3 id="steam-advantage-heading">CLEANER. SAFER. BETTER.</h3>
+          <p>
+            Our steam-cleaning process is designed to care for your shoes from
+            the surface to the finest details.
+          </p>
+        </header>
+      )}
 
       <div className="sd-steam-advantage__timeline">
         <svg

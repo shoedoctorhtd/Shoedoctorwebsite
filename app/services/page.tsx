@@ -72,7 +72,7 @@ export default async function ServicesPage() {
 
       <div className="sd-services-page sd-section">
         <SteamBrushServiceTeaser />
-        <SteamBrushAdvantage />
+        <SteamBrushAdvantage showHeader={false} />
         <ServiceMenu services={services} />
       </div>
 
