@@ -80,6 +80,68 @@ export default function AboutPage() {
         </div>
       </section>
 
+      <section
+        className="sd-why-started sd-section"
+        data-reveal
+        aria-labelledby="why-started-title"
+      >
+        <div className="sd-why-started-intro">
+          <p className="sd-kicker">Why We Started Shoe Doctor</p>
+          <h2 id="why-started-title">
+            CARE FOR WHAT
+            <br />
+            <span>CARRIES YOU.</span>
+          </h2>
+          <div className="sd-why-started-seal" aria-hidden="true">
+            <span>Diagnose</span>
+            <i>+</i>
+            <span>Clean</span>
+            <i>+</i>
+            <span>Restore</span>
+          </div>
+        </div>
+
+        <div className="sd-why-started-copy">
+          <p className="sd-why-started-lead">
+            Shoe Doctor began with a simple observation: people spend thousands
+            of rupees on shoes they love, yet professional footwear care is
+            still difficult to access&mdash;especially outside major cities.
+          </p>
+          <p>
+            I noticed that most people either cleaned their shoes at home using
+            unsuitable products or depended on services that were not designed
+            for different shoe materials. This often resulted in faded colours,
+            weakened glue, damaged suede, unpleasant odour or shoes being
+            thrown away before their time.
+          </p>
+          <p>
+            That gap inspired the creation of Shoe Doctor&mdash;a specialised
+            footwear-care clinic focused on cleaning, repairing and restoring
+            shoes professionally.
+          </p>
+          <p>
+            We believe shoes are more than something people wear. They carry us
+            through work, celebrations, travel, sports and everyday life. A
+            good pair should not be discarded simply because it has become
+            dirty, damaged or old.
+          </p>
+          <p>
+            At Shoe Doctor, every pair is inspected and treated according to
+            its material and condition. Through professional cleaning,
+            steam-assisted care, controlled drying, repair and restoration, our
+            goal is to help customers protect their favourite footwear and
+            extend its life.
+          </p>
+          <p>
+            Starting from Hetauda, we aim to make reliable and convenient shoe
+            care accessible across Nepal through pickup and return delivery.
+          </p>
+          <p className="sd-why-started-closing">
+            We Diagnose. We Clean. We Restore.
+          </p>
+        </div>
+      </section>
+
       <section className="sd-journey" data-reveal>
         <article>
           <span>01</span>
