@@ -9,37 +9,6 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const founderMilestones = [
-  {
-    step: "01",
-    label: "Kathmandu",
-    title: "Study",
-    description: "Master’s in Computer Engineering",
-    tone: "sky",
-  },
-  {
-    step: "02",
-    label: "Corporate life",
-    title: "Work",
-    description: "Around two years in a 9-to-5 role",
-    tone: "berry",
-  },
-  {
-    step: "03",
-    label: "Homecoming",
-    title: "Risk",
-    description: "Savings, courage and a new beginning",
-    tone: "coral",
-  },
-  {
-    step: "04",
-    label: "Shoe Doctor",
-    title: "Build",
-    description: "Professional care for every worthy pair",
-    tone: "lime",
-  },
-] as const;
-
 export default function AboutPage() {
   return (
     <main className="public-site inner-site">
@@ -241,41 +210,31 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section
-        className="sd-journey sd-section"
-        data-reveal
-        aria-labelledby="founder-journey-title"
-      >
-        <div className="sd-journey-intro">
-          <div>
-            <p className="sd-kicker">Founder journey</p>
-            <h2 id="founder-journey-title">
-              FROM STUDY
-              <br />
-              <span>TO STARTUP.</span>
-            </h2>
-          </div>
-          <p>
-            A four-step journey from Kathmandu to building Shoe Doctor in
-            Hetauda.
-          </p>
-        </div>
-
-        <ol className="sd-journey-track">
-          {founderMilestones.map((milestone) => (
-            <li
-              className={`sd-journey-card sd-journey-card--${milestone.tone}`}
-              key={milestone.step}
-            >
-              <div className="sd-journey-card-meta">
-                <span>{milestone.step}</span>
-                <p>{milestone.label}</p>
-              </div>
-              <h3>{milestone.title}</h3>
-              <strong>{milestone.description}</strong>
-            </li>
-          ))}
-        </ol>
+      <section className="sd-journey" data-reveal>
+        <article>
+          <span>01</span>
+          <p>Kathmandu</p>
+          <h3>Study</h3>
+          <strong>Master’s in Computer Engineering</strong>
+        </article>
+        <article>
+          <span>02</span>
+          <p>Corporate life</p>
+          <h3>Work</h3>
+          <strong>Around two years in a 9-to-5 role</strong>
+        </article>
+        <article>
+          <span>03</span>
+          <p>Homecoming</p>
+          <h3>Risk</h3>
+          <strong>Savings, courage and a new beginning</strong>
+        </article>
+        <article>
+          <span>04</span>
+          <p>Shoe Doctor</p>
+          <h3>Build</h3>
+          <strong>Professional care for every worthy pair</strong>
+        </article>
       </section>
 
       <section className="sd-about-purpose sd-section" data-reveal>
