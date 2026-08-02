@@ -4366,14 +4366,15 @@ body {
 
 .sd-origin-visual-card {
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.11), transparent 45%),
-    var(--ink);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+    radial-gradient(circle at 86% 13%, rgba(255, 255, 255, 0.94), transparent 25%),
+    linear-gradient(145deg, #fffdf9 0%, #fff0ea 53%, #f6d6df 100%);
+  border: 1px solid rgba(123, 23, 56, 0.18);
   border-radius: 26px;
-  box-shadow: 0 26px 58px rgba(17, 17, 15, 0.2);
-  color: var(--white);
+  box-shadow: 0 26px 58px rgba(123, 23, 56, 0.16);
+  color: var(--ink);
   display: flex;
   flex-direction: column;
+  isolation: isolate;
   min-height: 560px;
   overflow: hidden;
   padding: clamp(25px, 3vw, 38px);
@@ -4381,11 +4382,11 @@ body {
 }
 
 .sd-origin-visual-card::before {
-  background: radial-gradient(circle, rgba(49, 94, 232, 0.92) 0%, rgba(49, 94, 232, 0) 68%);
+  background: radial-gradient(circle, rgba(255, 95, 85, 0.34) 0%, rgba(255, 95, 85, 0) 68%);
   content: "";
-  filter: blur(3px);
+  filter: blur(1px);
   height: 290px;
-  opacity: 0.8;
+  opacity: 0.9;
   pointer-events: none;
   position: absolute;
   right: -92px;
@@ -4398,6 +4399,19 @@ body {
   z-index: 1;
 }
 
+.sd-origin-visual-card::after {
+  border: 1px solid rgba(123, 23, 56, 0.17);
+  border-radius: 50%;
+  bottom: -185px;
+  content: "";
+  height: 360px;
+  pointer-events: none;
+  position: absolute;
+  right: -138px;
+  width: 360px;
+  z-index: 0;
+}
+
 .sd-origin-brand {
   align-items: center;
   display: flex;
@@ -4406,9 +4420,9 @@ body {
 
 .sd-origin-brand span {
   align-items: center;
-  background: var(--coral);
+  background: var(--berry);
   border-radius: 50%;
-  color: var(--ink);
+  color: var(--white);
   display: flex;
   font-family: Georgia, "Times New Roman", serif;
   font-size: 18px;
@@ -4420,6 +4434,7 @@ body {
 }
 
 .sd-origin-brand p {
+  color: var(--berry);
   font-family: var(--font-geist-mono), monospace;
   font-size: 9px;
   font-weight: 800;
@@ -4429,6 +4444,7 @@ body {
 }
 
 .sd-origin-visual-message {
+  color: var(--ink);
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(2rem, 3vw, 3.15rem);
   font-style: italic;
@@ -4448,7 +4464,7 @@ body {
 
 .sd-origin-services li {
   align-items: center;
-  border-top: 1px solid rgba(255, 255, 255, 0.23);
+  border-top: 1px solid rgba(123, 23, 56, 0.2);
   display: flex;
   font-size: 10px;
   font-weight: 750;
@@ -4484,14 +4500,14 @@ body {
 }
 
 .sd-origin-shoe-art path {
-  stroke: rgba(255, 254, 248, 0.82);
+  stroke: rgba(123, 23, 56, 0.8);
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 3;
 }
 
 .sd-origin-shoe-art span {
-  border-left: 2px solid rgba(247, 217, 225, 0.76);
+  border-left: 2px solid rgba(255, 95, 85, 0.68);
   border-radius: 999px;
   height: 33px;
   position: absolute;
