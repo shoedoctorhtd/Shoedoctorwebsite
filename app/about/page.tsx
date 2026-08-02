@@ -9,6 +9,68 @@ import {
 
 export const dynamic = "force-dynamic";
 
+type OriginTimelineIconName = "observation" | "problem" | "reason";
+
+const originTimelineItems: Array<{
+  step: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  icon: OriginTimelineIconName;
+}> = [
+  {
+    step: "01",
+    eyebrow: "01 — The Observation",
+    title: "What We Noticed",
+    description:
+      "People invest in shoes they love, but professional footwear care is still difficult to find outside major cities.",
+    icon: "observation",
+  },
+  {
+    step: "02",
+    eyebrow: "02 — The Problem",
+    title: "What Was Going Wrong",
+    description:
+      "Incorrect products and one-method-fits-all cleaning can damage colour, glue, shape and delicate materials.",
+    icon: "problem",
+  },
+  {
+    step: "03",
+    eyebrow: "03 — The Reason",
+    title: "Why Shoe Doctor Exists",
+    description:
+      "We brought material-specific cleaning, repair and restoration services to Hetauda—so every pair receives the care it actually needs.",
+    icon: "reason",
+  },
+];
+
+function OriginTimelineIcon({ icon }: { icon: OriginTimelineIconName }) {
+  if (icon === "observation") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3.5 12s3.2-5.4 8.5-5.4 8.5 5.4 8.5 5.4-3.2 5.4-8.5 5.4S3.5 12 3.5 12Z" />
+        <circle cx="12" cy="12" r="2.1" />
+      </svg>
+    );
+  }
+
+  if (icon === "problem") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m12 3.8 8.5 15H3.5l8.5-15Z" />
+        <path d="M12 9v4.7M12 16.8v.1" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="m12 3.6 1.3 4.1 4.1 1.3-4.1 1.3L12 14.4l-1.3-4.1L6.6 9l4.1-1.3L12 3.6Z" />
+      <path d="m18.3 14.5.7 2.1 2.1.7-2.1.7-.7 2.1-.7-2.1-2.1-.7 2.1-.7.7-2.1Z" />
+    </svg>
+  );
+}
+
 const founderMilestones = [
   {
     step: "01",
@@ -133,15 +195,22 @@ export default function AboutPage() {
 
         <div className="sd-origin-layout">
           <aside className="sd-origin-visual-wrap">
-            <div className="sd-origin-visual" data-reveal data-tilt>
+            <div className="sd-origin-visual" data-reveal>
               <div className="sd-origin-visual-card">
                 <div className="sd-origin-brand">
                   <span>SD</span>
                   <p>Shoe Doctor</p>
                 </div>
                 <p className="sd-origin-visual-message">
-                  Your shoes carry your work, travel, memories, and everyday
-                  life.
+                  Your shoes carry
+                  <br />
+                  your work,
+                  <br />
+                  travel,
+                  <br />
+                  memories, and
+                  <br />
+                  everyday life.
                 </p>
                 <ul className="sd-origin-services" aria-label="Our care services">
                   <li>Professional Cleaning</li>
@@ -162,81 +231,61 @@ export default function AboutPage() {
             </div>
           </aside>
 
-          <ol className="sd-origin-story-list">
-            <li className="sd-origin-story-card" data-reveal>
-              <span>01</span>
-              <div>
-                <h3>The Observation</h3>
-                <p>
-                  People spend thousands on shoes they love, yet professional
-                  footwear care is still difficult to access&mdash;especially
-                  outside major cities.
-                </p>
-              </div>
-            </li>
-            <li className="sd-origin-story-card" data-reveal>
-              <span>02</span>
-              <div>
-                <h3>The Problem</h3>
-                <p>
-                  Most people either clean shoes at home with unsuitable
-                  products or depend on services that do not understand
-                  different materials. This can cause fading, glue damage, bad
-                  odour, and shorter shoe life.
-                </p>
-              </div>
-            </li>
-            <li className="sd-origin-story-card" data-reveal>
-              <span>03</span>
-              <div>
-                <h3>The Gap</h3>
-                <p>
-                  That gap inspired Shoe Doctor&mdash;a specialised footwear-care
-                  clinic focused on cleaning, repairing, and restoring shoes
-                  professionally.
-                </p>
-              </div>
-            </li>
-            <li className="sd-origin-story-card" data-reveal>
-              <span>04</span>
-              <div>
-                <h3>What We Believe</h3>
-                <p>
-                  We believe shoes are more than something people wear. They
-                  carry us through work, celebrations, sports, travel, and
-                  everyday life. A good pair should not be discarded just
-                  because it became dirty or damaged.
-                </p>
-              </div>
-            </li>
-            <li className="sd-origin-story-card" data-reveal>
-              <span>05</span>
-              <div>
-                <h3>Our Mission</h3>
-                <p>
-                  At Shoe Doctor, every pair is treated according to its
-                  material and condition. Starting from Hetauda, our goal is to
-                  make reliable shoe care accessible across Nepal through
-                  professional service, pickup, and return delivery.
-                </p>
-              </div>
-            </li>
-          </ol>
-        </div>
+          <div className="sd-origin-story-flow">
+            <ol className="sd-origin-timeline" data-reveal>
+              {originTimelineItems.map((item) => (
+                <li
+                  className="sd-origin-timeline-step"
+                  data-reveal
+                  key={item.step}
+                >
+                  <span className="sd-origin-timeline-marker" aria-hidden="true">
+                    <span>{item.step}</span>
+                    <i>
+                      <OriginTimelineIcon icon={item.icon} />
+                    </i>
+                  </span>
+                  <div className="sd-origin-timeline-copy">
+                    <p>{item.eyebrow}</p>
+                    <h3>{item.title}</h3>
+                    <p>{item.description}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
 
-        <div className="sd-origin-cta" data-reveal>
-          <div>
-            <p className="sd-kicker">The journey continues</p>
-            <h3>EVERY PAIR DESERVES<br />ANOTHER JOURNEY.</h3>
-            <p>We diagnose. We clean. We restore.</p>
-          </div>
-          <div className="sd-origin-cta-actions">
-            <a className="sd-primary-button" href="/services">
-              Explore Our Services <ArrowUpRight />
-            </a>
-            <a className="sd-origin-secondary-button" href="/#book">
-              Book Pickup <ArrowUpRight />
-            </a>
+            <blockquote className="sd-origin-quote" data-reveal>
+              <span aria-hidden="true">&ldquo;</span>
+              <p>
+                Shoes carry more than our feet. They carry our work, memories
+                and everyday journeys.<span aria-hidden="true">&rdquo;</span>
+              </p>
+            </blockquote>
+
+            <section
+              className="sd-origin-mission"
+              data-reveal
+              aria-labelledby="origin-mission-title"
+            >
+              <p className="sd-kicker">Our Mission</p>
+              <h3 id="origin-mission-title">
+                Professional Shoe Care,
+                <br />
+                <span>Made Accessible</span>
+              </h3>
+              <p>
+                To provide honest, material-specific shoe cleaning, repair and
+                restoration&mdash;starting from Hetauda and growing across Nepal.
+              </p>
+              <div className="sd-origin-mission-actions">
+                <a className="sd-primary-button" href="/services">
+                  Explore Our Services <ArrowUpRight />
+                </a>
+                <a className="sd-origin-mission-link" href="/#book">
+                  Book Your Pair <ArrowUpRight />
+                </a>
+              </div>
+            </section>
           </div>
         </div>
       </section>
