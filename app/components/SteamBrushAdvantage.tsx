@@ -112,7 +112,7 @@ export default function SteamBrushAdvantage({
       {showHeader && (
         <header className="sd-steam-advantage__header">
           <p className="sd-kicker">THE STEAM CLEANING ADVANTAGE</p>
-          <h2 id="steam-advantage-heading">CLEANER. SAFER. BETTER.</h2>
+          <h3 id="steam-advantage-heading">CLEANER. SAFER. BETTER.</h3>
           <p>
             Our steam-cleaning process is designed to care for your shoes from
             the surface to the finest details.
@@ -149,7 +149,7 @@ export default function SteamBrushAdvantage({
                 </span>
               )}
               <div className="sd-steam-advantage__copy">
-                <h3>{step.title}</h3>
+                <h4>{step.title}</h4>
                 <p>{step.description}</p>
               </div>
               <figure className="sd-steam-advantage__image-frame">

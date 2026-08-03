@@ -1,7 +1,6 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
-import Image from "next/image";
-import BeforeAfterComparison from "../components/BeforeAfterComparison";
 import SiteMotion from "../components/SiteMotion";
+import Image from "next/image";
 import {
   ArrowUpRight,
   SiteFooter,
@@ -10,525 +9,360 @@ import {
 
 export const dynamic = "force-dynamic";
 
-type AboutIconName =
-  | "observe"
-  | "risk"
-  | "opportunity"
-  | "clean"
-  | "materials"
-  | "repair"
-  | "steam"
-  | "express"
-  | "delivery";
+type OriginTimelineIconName = "observation" | "problem" | "reason";
 
-const problemTimeline = [
+const originTimelineItems: Array<{
+  step: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  icon: OriginTimelineIconName;
+}> = [
   {
-    number: "01",
-    label: "What we noticed",
-    title: "People Valued Their Shoes, but Proper Care Was Missing.",
+    step: "01",
+    eyebrow: "01 — The Observation",
+    title: "What We Noticed",
     description:
-      "People invest in shoes they love, yet professional footwear care is still difficult to access outside major cities.",
-    icon: "observe",
+      "People invest in shoes they love, but professional footwear care is still difficult to find outside major cities.",
+    icon: "observation",
   },
   {
-    number: "02",
-    label: "What was going wrong",
-    title: "The Wrong Treatment Can Ruin a Good Pair.",
+    step: "02",
+    eyebrow: "02 — The Problem",
+    title: "What Was Going Wrong",
     description:
       "Incorrect products and one-method-fits-all cleaning can damage colour, glue, shape and delicate materials.",
-    icon: "risk",
+    icon: "problem",
   },
   {
-    number: "03",
-    label: "The opportunity",
-    title: "Hetauda Needed Better Shoe Care.",
+    step: "03",
+    eyebrow: "03 — The Reason",
+    title: "Why Shoe Doctor Exists",
     description:
-      "There was space for a service that understood different footwear materials and could clean, repair and restore every pair professionally.",
-    icon: "opportunity",
+      "We brought material-specific cleaning, repair and restoration services to Hetauda—so every pair receives the care it actually needs.",
+    icon: "reason",
   },
-] as const;
+];
 
-const services = [
-  {
-    title: "Professional Cleaning",
-    description: "A considered reset for dirt, stains and everyday wear.",
-    icon: "clean",
-  },
-  {
-    title: "Deep and Material-Specific Care",
-    description: "Tools and products selected for the pair in front of us.",
-    icon: "materials",
-  },
-  {
-    title: "Repair and Restoration",
-    description: "Thoughtful repairs that respect the character of the shoe.",
-    icon: "repair",
-  },
-  {
-    title: "Steam-Assisted Cleaning",
-    description: "Targeted steam care for stubborn surface grime.",
-    icon: "steam",
-  },
-  {
-    title: "Express Wash and Dry",
-    description: "A faster refresh when the next journey cannot wait.",
-    icon: "express",
-  },
-  {
-    title: "Pickup and Return Delivery",
-    description: "Convenient handover from collection through return.",
-    icon: "delivery",
-  },
-] as const;
-
-const standards = [
-  {
-    number: "01",
-    title: "Diagnosis First",
-    description:
-      "We inspect the material, condition and damage before deciding how the pair should be treated.",
-  },
-  {
-    number: "02",
-    title: "Honest Expectations",
-    description:
-      "We explain what can improve, what may remain and what the service will cost before beginning the work.",
-  },
-  {
-    number: "03",
-    title: "Material-Specific Care",
-    description:
-      "Leather, suede, mesh, canvas and synthetic materials require different products, tools and techniques.",
-  },
-  {
-    number: "04",
-    title: "Wear More, Waste Less",
-    description:
-      "Cleaning and restoring a worthy pair can extend its life and reduce unnecessary replacement.",
-  },
-] as const;
-
-const journeyAhead = [
-  {
-    number: "01",
-    title: "The Beginning",
-    description:
-      "Returned to Hetauda with the decision to build a meaningful local business.",
-  },
-  {
-    number: "02",
-    title: "The Foundation",
-    description:
-      "Created a professional shoe-cleaning, repair and restoration service.",
-  },
-  {
-    number: "03",
-    title: "The Growth",
-    description:
-      "Expand pickup, delivery, restoration and shoe-donation services.",
-  },
-  {
-    number: "04",
-    title: "The Vision",
-    description:
-      "Make reliable professional footwear care accessible across Nepal.",
-  },
-] as const;
-
-function AboutIcon({ name }: { name: AboutIconName }) {
-  if (name === "observe") {
+function OriginTimelineIcon({ icon }: { icon: OriginTimelineIconName }) {
+  if (icon === "observation") {
     return (
-      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
-        <path d="M3.5 12s3.1-5.2 8.5-5.2 8.5 5.2 8.5 5.2-3.1 5.2-8.5 5.2S3.5 12 3.5 12Z" />
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3.5 12s3.2-5.4 8.5-5.4 8.5 5.4 8.5 5.4-3.2 5.4-8.5 5.4S3.5 12 3.5 12Z" />
         <circle cx="12" cy="12" r="2.1" />
       </svg>
     );
   }
 
-  if (name === "risk") {
+  if (icon === "problem") {
     return (
-      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
-        <path d="m12 3.5 8.8 15.3H3.2L12 3.5Z" />
-        <path d="M12 9v4.5M12 16.5v.1" />
-      </svg>
-    );
-  }
-
-  if (name === "opportunity") {
-    return (
-      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
-        <path d="m12 3.5 1.5 4.9 4.9 1.5-4.9 1.5-1.5 4.9-1.5-4.9-4.9-1.5 4.9-1.5L12 3.5Z" />
-        <path d="m18.1 15 .7 2.2 2.2.7-2.2.7-.7 2.2-.7-2.2-2.2-.7 2.2-.7.7-2.2Z" />
-      </svg>
-    );
-  }
-
-  if (name === "clean") {
-    return (
-      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
-        <path d="M7.5 4.5c2.2 2.7 3.3 4.7 3.3 6.1A3.3 3.3 0 0 1 7.5 14a3.3 3.3 0 0 1-3.3-3.4c0-1.4 1.1-3.4 3.3-6.1Z" />
-        <path d="M16.8 9.2c2 2.4 3 4.2 3 5.5a3 3 0 1 1-6 0c0-1.3 1-3.1 3-5.5ZM4 19.5h16" />
-      </svg>
-    );
-  }
-
-  if (name === "materials") {
-    return (
-      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
-        <path d="m12 3.5 8 4.2-8 4.2-8-4.2 8-4.2Z" />
-        <path d="m4 12 8 4.2 8-4.2M4 16.2l8 4.3 8-4.3" />
-      </svg>
-    );
-  }
-
-  if (name === "repair") {
-    return (
-      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
-        <path d="m5 18 13-13M8.2 6.2 9.8 7.8M11.2 9.2l1.6 1.6M14.2 12.2l1.6 1.6M17.2 15.2l1.6 1.6" />
-        <path d="M4 20h6M14 4h6" />
-      </svg>
-    );
-  }
-
-  if (name === "steam") {
-    return (
-      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
-        <path d="M6.5 19.5h11M8 16c0-1.9 2.2-2.1 2.2-4.2S8 9.5 8 7.5M13 16c0-1.9 2.2-2.1 2.2-4.2S13 9.5 13 7.5M18 16c0-1.9 2.2-2.1 2.2-4.2S18 9.5 18 7.5" />
-      </svg>
-    );
-  }
-
-  if (name === "express") {
-    return (
-      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
-        <path d="M4 12h14M13 7l5 5-5 5M4 6h5M4 18h7" />
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m12 3.8 8.5 15H3.5l8.5-15Z" />
+        <path d="M12 9v4.7M12 16.8v.1" />
       </svg>
     );
   }
 
   return (
-    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
-      <path d="M3.5 7.5h11v8h-11v-8ZM14.5 10h3.1l2.9 3v2.5h-6V10Z" />
-      <circle cx="7.5" cy="17.5" r="1.8" />
-      <circle cx="17.5" cy="17.5" r="1.8" />
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="m12 3.6 1.3 4.1 4.1 1.3-4.1 1.3L12 14.4l-1.3-4.1L6.6 9l4.1-1.3L12 3.6Z" />
+      <path d="m18.3 14.5.7 2.1 2.1.7-2.1.7-.7 2.1-.7-2.1-2.1-.7 2.1-.7.7-2.1Z" />
     </svg>
   );
 }
 
-function ShoeLineArt() {
-  return (
-    <svg aria-hidden="true" focusable="false" viewBox="0 0 340 150">
-      <path d="M36 93c31-3 55-16 76-38l24-26c14 20 34 38 61 45l49 12c18 5 34 18 40 37H40c-12 0-18-10-14-20 2-5 5-9 10-10Z" />
-      <path d="M75 92h132" />
-      <path d="m151 52-24 22M172 60l-24 22M194 67l-24 22" />
-      <path d="M80 112c58 4 132-1 200-13" />
-    </svg>
-  );
-}
+const founderMilestones = [
+  {
+    step: "01",
+    label: "Kathmandu",
+    title: "Study",
+    description: "Master’s in Computer Engineering",
+    tone: "sky",
+  },
+  {
+    step: "02",
+    label: "Corporate life",
+    title: "Work",
+    description: "Around two years in a 9-to-5 role",
+    tone: "berry",
+  },
+  {
+    step: "03",
+    label: "Homecoming",
+    title: "Risk",
+    description: "Savings, courage and a new beginning",
+    tone: "coral",
+  },
+  {
+    step: "04",
+    label: "Shoe Doctor",
+    title: "Build",
+    description: "Professional care for every worthy pair",
+    tone: "lime",
+  },
+] as const;
 
 export default function AboutPage() {
   return (
-    <main className="public-site inner-site about-page">
+    <main className="public-site inner-site">
       <SiteMotion />
       <SiteHeader />
 
-      <section className="about-page-hero" aria-labelledby="about-page-title">
-        <div className="about-page-hero-copy" data-reveal>
-          <p className="about-page-hero-label">Master degree graduated</p>
-          <h1 id="about-page-title">
-            <span className="about-page-hero-engineer">Computer Engineer.</span>
-            <span className="about-page-hero-job">Safe 9-to-5 Job</span>
-            <span className="about-page-hero-question">
-              Why left everything for <em>Shoes?</em>
-            </span>
-          </h1>
-          <p className="about-page-hero-summary">
-            A secure career, years of education and one difficult decision&mdash;to
-            return to Hetauda and build something of my own.
+      <section className="sd-page-hero about-hero">
+        <p className="sd-kicker">The opening story</p>
+        <h1>
+          25 MA TRY.
+          <br />
+          <span>45 MA REGRET HOINA.</span>
+        </h1>
+        <div className="sd-page-hero-bottom">
+          <p>
+            A safe career in Kathmandu, one difficult question, and the choice
+            to come home to Hetauda and build something real.
           </p>
-          <a className="about-page-scroll-cue" href="#founder-story">
-            <span aria-hidden="true" />
-            Meet the founder
-          </a>
-        </div>
-
-        <div className="about-page-hero-visual" data-reveal aria-hidden="true">
-          <span className="about-page-hero-stamp">Hetauda, Nepal</span>
-          <span className="about-page-hero-orbit about-page-hero-orbit--one" />
-          <span className="about-page-hero-orbit about-page-hero-orbit--two" />
-          <div className="about-page-hero-shoe">
+          <div className="sd-story-mark">
             <Image
-              alt=""
-              height={854}
+              src="/shoe-doctor-logo.png"
+              alt="Shoe Doctor logo"
+              width={180}
+              height={180}
               priority
-              sizes="(max-width: 1024px) 86vw, 46vw"
-              src="/sneaker-cleaning-clean.webp"
-              width={1280}
+              unoptimized
             />
           </div>
-          <div className="about-page-hero-line-art">
-            <ShoeLineArt />
+        </div>
+      </section>
+
+      <section className="sd-story-section sd-section" data-reveal>
+        <div className="sd-story-intro">
+          <p className="sd-kicker">Why I started Shoe Doctor</p>
+          <h2>
+            I CHOSE THE
+            <br />
+            <span>OTHER DIRECTION.</span>
+          </h2>
+        </div>
+        <div className="sd-story-copy">
+          <p className="sd-story-lead">
+            While many people were leaving their hometown for Kathmandu or
+            abroad, I chose to return.
+          </p>
+          <p>
+            I spent years in Kathmandu for study, completed my Master’s in
+            Computer Engineering, and worked for around two years in a
+            corporate 9-to-5 job. I had a salary, a routine and a life that
+            looked safe from the outside. But even inside that safety,
+            something felt missing.
+          </p>
+          <p>
+            One question kept returning: would I reach 45 and regret that I
+            never tried when I was 25? Or would I take the risk now, while I
+            still had the time and courage to build?
+          </p>
+          <p>
+            I had lived away from Hetauda for years and came home mostly during
+            festivals. This time, I returned with a different purpose. I used
+            my savings, accepted the financial risk, and started creating a
+            professional shoe cleaning, repair and restoration service for my
+            hometown.
+          </p>
+          <blockquote>
+            “Better to try at 25 than spend 45 wondering what might have
+            happened.”
+          </blockquote>
+        </div>
+      </section>
+
+      <section className="sd-origin-story sd-section" aria-labelledby="why-started-title">
+        <div className="sd-origin-intro" data-reveal>
+          <div>
+            <p className="sd-kicker">Why We Started Shoe Doctor</p>
+            <h2 id="why-started-title">
+              CARE FOR WHAT
+              <br />
+              <span>CARRIES YOU.</span>
+            </h2>
           </div>
-          <p>Built with care, not guesswork.</p>
+          <p>
+            We started Shoe Doctor because great shoes deserve expert care, not
+            guesswork.
+          </p>
+          <span className="sd-origin-intro-accent" aria-hidden="true">
+            <i />
+            <b />
+          </span>
+        </div>
+
+        <div className="sd-origin-layout">
+          <aside className="sd-origin-visual-wrap">
+            <div className="sd-origin-visual" data-reveal>
+              <div className="sd-origin-visual-card">
+                <div className="sd-origin-brand">
+                  <span>SD</span>
+                  <p>Shoe Doctor</p>
+                </div>
+                <p className="sd-origin-visual-message">
+                  Your shoes carry
+                  <br />
+                  your work,
+                  <br />
+                  travel,
+                  <br />
+                  memories, and
+                  <br />
+                  everyday life.
+                </p>
+                <ul className="sd-origin-services" aria-label="Our care services">
+                  <li>Professional Cleaning</li>
+                  <li>Repair &amp; Restoration</li>
+                  <li>Pickup &amp; Return Delivery</li>
+                </ul>
+                <div className="sd-origin-shoe-art" aria-hidden="true">
+                  <svg viewBox="0 0 230 110" fill="none">
+                    <path d="M29 70c18-1 36-8 50-21l19-18c9 13 22 26 41 31l36 9c13 3 23 13 25 25H28c-8 0-11-7-8-14 1-5 4-10 9-12Z" />
+                    <path d="M59 70h86" />
+                    <path d="M108 43 91 57M124 49l-17 14M140 55l-17 14" />
+                  </svg>
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <div className="sd-origin-story-flow">
+            <ol className="sd-origin-timeline" data-reveal>
+              {originTimelineItems.map((item) => (
+                <li
+                  className="sd-origin-timeline-step"
+                  data-reveal
+                  key={item.step}
+                >
+                  <span className="sd-origin-timeline-marker" aria-hidden="true">
+                    <span>{item.step}</span>
+                    <i>
+                      <OriginTimelineIcon icon={item.icon} />
+                    </i>
+                  </span>
+                  <div className="sd-origin-timeline-copy">
+                    <p>{item.eyebrow}</p>
+                    <h3>{item.title}</h3>
+                    <p>{item.description}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+
+            <blockquote className="sd-origin-quote" data-reveal>
+              <span aria-hidden="true">&ldquo;</span>
+              <p>
+                Shoes carry more than our feet. They carry our work, memories
+                and everyday journeys.<span aria-hidden="true">&rdquo;</span>
+              </p>
+            </blockquote>
+
+            <section
+              className="sd-origin-mission"
+              data-reveal
+              aria-labelledby="origin-mission-title"
+            >
+              <p className="sd-kicker">Our Mission</p>
+              <h3 id="origin-mission-title">
+                Professional Shoe Care,
+                <br />
+                <span>Made Accessible</span>
+              </h3>
+              <p>
+                To provide honest, material-specific shoe cleaning, repair and
+                restoration&mdash;starting from Hetauda and growing across Nepal.
+              </p>
+              <div className="sd-origin-mission-actions">
+                <a className="sd-primary-button" href="/services">
+                  Explore Our Services <ArrowUpRight />
+                </a>
+                <a className="sd-origin-mission-link" href="/#book">
+                  Book Your Pair <ArrowUpRight />
+                </a>
+              </div>
+            </section>
+          </div>
         </div>
       </section>
 
       <section
-        className="about-founder about-page-section"
-        id="founder-story"
-        aria-labelledby="founder-story-title"
+        className="sd-journey sd-section"
+        data-reveal
+        aria-labelledby="founder-journey-title"
       >
-        <div className="about-founder-copy" data-reveal>
-          <p className="sd-kicker">The founder story</p>
-          <h2 id="founder-story-title">
-            I Chose the <span>Other Direction.</span>
-          </h2>
+        <div className="sd-journey-intro">
+          <div>
+            <p className="sd-kicker">Founder journey</p>
+            <h2 id="founder-journey-title">
+              FROM STUDY
+              <br />
+              <span>TO STARTUP.</span>
+            </h2>
+          </div>
           <p>
-            While many people were leaving Hetauda for Kathmandu or abroad, I
-            chose to come home. After completing my Master&apos;s degree in
-            Computer Engineering and spending around two years in a corporate
-            9-to-5 job, life felt secure&mdash;but I knew I wanted to build
-            something of my own.
+            A four-step journey from Kathmandu to building Shoe Doctor in
+            Hetauda.
           </p>
-          <p>
-            One question kept returning: should I take the risk now, or spend
-            the future wondering what might have happened? I returned to
-            Hetauda, invested my savings, accepted the uncertainty and began
-            building Shoe Doctor.
-          </p>
-          <blockquote>
-            <span aria-hidden="true">&ldquo;</span>
-            <p>
-              I did not leave a secure career because it was easy. I left
-              because building something meaningful in my hometown mattered
-              more.<span aria-hidden="true">&rdquo;</span>
-            </p>
-          </blockquote>
         </div>
 
-        <aside
-          className="about-founder-visual"
-          data-reveal
-          aria-label="The move from engineering to building Shoe Doctor"
-        >
-          <div className="about-founder-visual-top">
-            <span>One direction</span>
-            <strong>Hetauda</strong>
-          </div>
-          <ol className="about-founder-direction">
-            <li>
-              <span>01</span>
-              <div>
-                <strong>Learn</strong>
-                <p>Computer engineering.</p>
+        <ol className="sd-journey-track">
+          {founderMilestones.map((milestone) => (
+            <li
+              className={`sd-journey-card sd-journey-card--${milestone.tone}`}
+              key={milestone.step}
+            >
+              <div className="sd-journey-card-meta">
+                <span>{milestone.step}</span>
+                <p>{milestone.label}</p>
               </div>
-            </li>
-            <li>
-              <span>02</span>
-              <div>
-                <strong>Work</strong>
-                <p>A secure corporate role.</p>
-              </div>
-            </li>
-            <li>
-              <span>03</span>
-              <div>
-                <strong>Return</strong>
-                <p>Home with a question.</p>
-              </div>
-            </li>
-            <li>
-              <span>04</span>
-              <div>
-                <strong>Build</strong>
-                <p>A new kind of shoe care.</p>
-              </div>
-            </li>
-          </ol>
-          <div className="about-founder-line-art" aria-hidden="true">
-            <ShoeLineArt />
-          </div>
-        </aside>
-      </section>
-
-      <section className="about-problem about-page-section" aria-labelledby="problem-title">
-        <header className="about-section-heading" data-reveal>
-          <p className="sd-kicker">Why Shoe Doctor?</p>
-          <h2 id="problem-title">
-            The Idea Started <span>With a Problem.</span>
-          </h2>
-          <p>
-            A growing love for good footwear revealed a care gap that deserved
-            better than one-size-fits-all cleaning.
-          </p>
-        </header>
-
-        <ol className="about-problem-timeline" data-reveal>
-          {problemTimeline.map((step) => (
-            <li className="about-problem-step" data-reveal key={step.number}>
-              <span className="about-problem-marker" aria-hidden="true">
-                {step.number}
-                <i>
-                  <AboutIcon name={step.icon} />
-                </i>
-              </span>
-              <div>
-                <p>
-                  <span>{step.number}</span> &mdash; {step.label}
-                </p>
-                <h3>{step.title}</h3>
-                <p>{step.description}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section className="about-solution about-page-section" aria-labelledby="solution-title">
-        <header className="about-section-heading" data-reveal>
-          <p className="sd-kicker">The solution</p>
-          <h2 id="solution-title">
-            So We Built <span>Shoe Doctor.</span>
-          </h2>
-          <p>
-            Shoe Doctor is a professional footwear-care clinic created to
-            diagnose, clean, repair and restore shoes according to their
-            material, construction and condition.
-          </p>
-        </header>
-
-        <div className="about-solution-layout">
-          <figure className="about-solution-media" data-reveal>
-            <BeforeAfterComparison
-              afterSrc="/sneaker-cleaning-clean.webp"
-              beforeSrc="/sneaker-cleaning-dirty.webp"
-              title="a Shoe Doctor cleaning treatment"
-            />
-            <figcaption>
-              Slide to see how considered care can change a pair&apos;s next
-              chapter.
-            </figcaption>
-          </figure>
-
-          <div className="about-service-list" aria-label="Shoe Doctor services">
-            {services.map((service) => (
-              <article data-reveal key={service.title}>
-                <span className="about-service-icon" aria-hidden="true">
-                  <AboutIcon name={service.icon} />
-                </span>
-                <div>
-                  <h3>{service.title}</h3>
-                  <p>{service.description}</p>
-                </div>
-              </article>
-            ))}
-            <a className="about-inline-link" href="/services">
-              Explore Our Services <ArrowUpRight />
-            </a>
-          </div>
-        </div>
-      </section>
-
-      <section className="about-standard about-page-section" aria-labelledby="standard-title">
-        <header className="about-section-heading" data-reveal>
-          <p className="sd-kicker">How we work</p>
-          <h2 id="standard-title">
-            The Shoe Doctor <span>Standard.</span>
-          </h2>
-          <p>
-            Professional care starts with a clear diagnosis, a transparent
-            conversation and treatment that suits the material.
-          </p>
-        </header>
-
-        <ol className="about-standard-grid">
-          {standards.map((standard) => (
-            <li data-reveal key={standard.number}>
-              <span>{standard.number}</span>
-              <h3>{standard.title}</h3>
-              <p>{standard.description}</p>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section className="about-roadmap about-page-section" aria-labelledby="journey-ahead-title">
-        <header className="about-section-heading" data-reveal>
-          <p className="sd-kicker">The journey ahead</p>
-          <h2 id="journey-ahead-title">
-            Hetauda First. <span>Nepal Next.</span>
-          </h2>
-          <p>
-            A local beginning with a longer view of reliable care within reach
-            of every worthy pair.
-          </p>
-        </header>
-
-        <ol className="about-roadmap-list" data-reveal>
-          {journeyAhead.map((milestone) => (
-            <li key={milestone.number}>
-              <span>{milestone.number}</span>
               <h3>{milestone.title}</h3>
-              <p>{milestone.description}</p>
+              <strong>{milestone.description}</strong>
             </li>
           ))}
         </ol>
       </section>
 
-      <section className="about-mission about-page-section" aria-labelledby="mission-title">
-        <div className="about-mission-copy" data-reveal>
-          <p className="sd-kicker">Our mission</p>
-          <h2 id="mission-title">
-            Professional Shoe Care, <span>Made Accessible.</span>
-          </h2>
-          <p>
-            Starting from Hetauda, our mission is to make honest,
-            material-specific shoe cleaning, repair and restoration accessible
-            across Nepal.
-          </p>
-          <p className="about-mission-vision">
-            We want to create a culture where good shoes are cared for,
-            restored and worn longer instead of being unnecessarily discarded.
-          </p>
+      <section className="sd-about-purpose sd-section" data-reveal>
+        <div>
+          <p className="sd-kicker">What we believe</p>
+          <h2>CARE SHOULD BE<br />HONEST AND PRECISE.</h2>
         </div>
-        <div className="about-mission-art" data-reveal aria-hidden="true">
-          <ShoeLineArt />
-          <span>Care / Restore / Repeat</span>
-        </div>
-      </section>
-
-      <section className="about-closing about-page-section" aria-labelledby="closing-title">
-        <div data-reveal>
-          <p className="sd-kicker">For every pair</p>
-          <h2 id="closing-title">Every Pair Deserves Another Journey.</h2>
-        </div>
-        <div data-reveal>
-          <p>
-            Your shoes carried your work, travel, celebrations and everyday
-            memories. We help prepare them for what comes next.
-          </p>
-          <strong>We Diagnose. We Clean. We Restore.</strong>
+        <div className="sd-purpose-grid">
+          <article>
+            <span>Diagnosis first</span>
+            <p>
+              We study the material, damage and condition before choosing the
+              treatment.
+            </p>
+          </article>
+          <article>
+            <span>Expectations made clear</span>
+            <p>
+              We explain what can improve, what may remain, and what the final
+              price will be before work begins.
+            </p>
+          </article>
+          <article>
+            <span>Wear more, waste less</span>
+            <p>
+              Cleaning and repairing a good pair extends its story and avoids
+              unnecessary replacement.
+            </p>
+          </article>
         </div>
       </section>
 
-      <section className="about-final-cta" aria-labelledby="about-final-cta-title">
-        <div data-reveal>
-          <p className="sd-kicker">Your pair is next</p>
-          <h2 id="about-final-cta-title">
-            Ready to Give Your Pair <span>Another Journey?</span>
-          </h2>
-          <div className="about-final-cta-actions">
-            <a className="sd-primary-button" href="/#book">
-              Book Your Pair <ArrowUpRight />
-            </a>
-            <a className="about-final-cta-secondary" href="/services">
-              Explore Our Services <ArrowUpRight />
-            </a>
-          </div>
-          <a className="about-whatsapp-link" href="https://wa.me/9779761716743">
-            WhatsApp the Doctor <ArrowUpRight />
-          </a>
-        </div>
+      <section className="sd-page-cta">
+        <p>The story continues with every restored pair.</p>
+        <h2>READY TO START<br />YOUR PAIR’S COMEBACK?</h2>
+        <a className="sd-primary-button" href="/#book">
+          Book your pair <ArrowUpRight />
+        </a>
       </section>
 
       <SiteFooter />

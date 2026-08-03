@@ -16,21 +16,6 @@ function optionalText(value: unknown, maxLength: number) {
   return cleaned || null;
 }
 
-function getNepalCalendarDate() {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    day: "2-digit",
-    month: "2-digit",
-    timeZone: "Asia/Kathmandu",
-    year: "numeric",
-  }).formatToParts(new Date());
-  const dateValues: Record<string, string> = {};
-  parts.forEach((part) => {
-    dateValues[part.type] = part.value;
-  });
-
-  return dateValues.year + "-" + dateValues.month + "-" + dateValues.day;
-}
-
 export function parseServiceInput(value: unknown): ServiceInput {
   const input = (value ?? {}) as Record<string, unknown>;
   const name = cleanText(input.name, 80);
@@ -116,9 +101,6 @@ export function parsePublicBooking(value: unknown) {
   }
   if (preferredDate && !/^\d{4}-\d{2}-\d{2}$/.test(preferredDate)) {
     throw new Error("Please choose a valid preferred date.");
-  }
-  if (preferredDate && preferredDate < getNepalCalendarDate()) {
-    throw new Error("Please choose a preferred date that is today or later.");
   }
   if (
     !FULFILLMENT_METHODS.includes(
