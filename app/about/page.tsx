@@ -226,6 +226,39 @@ function ShoeLineArt() {
   );
 }
 
+function CareerToCraftIcon({
+  name,
+}: {
+  name: "degree" | "desk" | "craft";
+}) {
+  if (name === "degree") {
+    return (
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 32 32">
+        <path d="m3 12.1 13-6.5 13 6.5-13 6.5-13-6.5Z" />
+        <path d="M8 14.6v5.1c4.6 4 11.4 4 16 0v-5.1" />
+        <path d="M26 13.7V21" />
+      </svg>
+    );
+  }
+
+  if (name === "desk") {
+    return (
+      <svg aria-hidden="true" focusable="false" viewBox="0 0 32 32">
+        <rect height="13" rx="1.5" width="21" x="5.5" y="5.5" />
+        <path d="M16 18.5v5M10.5 26.5h11M8.5 12h7M8.5 15h4" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 32 32">
+      <path d="M4.4 20.8c4.4-.4 7.7-2.1 10.7-5.4l2.8-3.1c2.2 3 5 5.1 8.7 5.9l2.1.5c2 .5 3.3 1.8 3.8 3.8H7.1c-2.6 0-4-1.7-2.7-1.7Z" />
+      <path d="m20.5 6 .8 2.4 2.4.8-2.4.8-.8 2.4-.8-2.4-2.4-.8 2.4-.8.8-2.4Z" />
+      <path d="M11.2 20h11.4" />
+    </svg>
+  );
+}
+
 export default function AboutPage() {
   return (
     <main className="public-site inner-site about-page">
@@ -234,12 +267,13 @@ export default function AboutPage() {
 
       <section className="about-page-hero" aria-labelledby="about-page-title">
         <div className="about-page-hero-copy" data-reveal>
-          <p className="about-page-hero-label">Master degree graduated</p>
+          <p className="about-page-hero-label">A founder&apos;s turning point</p>
           <h1 id="about-page-title">
-            <span className="about-page-hero-engineer">Computer Engineer.</span>
+            <span className="about-page-hero-from">From Master&apos;s Degree,</span>
+            <span className="about-page-hero-engineer">Computer Engineer</span>
             <span className="about-page-hero-job">Safe 9-to-5 Job</span>
             <span className="about-page-hero-question">
-              Why left everything for <em>Shoes?</em>
+              to Shoe Cleaning&mdash;<em>Why?</em>
             </span>
           </h1>
           <p className="about-page-hero-summary">
@@ -254,8 +288,36 @@ export default function AboutPage() {
 
         <div className="about-page-hero-visual" data-reveal aria-hidden="true">
           <span className="about-page-hero-stamp">Hetauda, Nepal</span>
-          <span className="about-page-hero-orbit about-page-hero-orbit--one" />
-          <span className="about-page-hero-orbit about-page-hero-orbit--two" />
+          <div className="about-page-hero-journey">
+            <span className="about-page-hero-journey-trace" />
+            <div className="about-page-hero-stage about-page-hero-stage--degree">
+              <span className="about-page-hero-stage-icon">
+                <CareerToCraftIcon name="degree" />
+              </span>
+              <span>
+                <strong>Master&apos;s degree</strong>
+                <small>Computer Engineering</small>
+              </span>
+            </div>
+            <div className="about-page-hero-stage about-page-hero-stage--desk">
+              <span className="about-page-hero-stage-icon">
+                <CareerToCraftIcon name="desk" />
+              </span>
+              <span>
+                <strong>Safe 9-to-5</strong>
+                <small>Corporate life</small>
+              </span>
+            </div>
+            <div className="about-page-hero-stage about-page-hero-stage--craft">
+              <span className="about-page-hero-stage-icon">
+                <CareerToCraftIcon name="craft" />
+              </span>
+              <span>
+                <strong>Shoe Doctor</strong>
+                <small>A craft of his own</small>
+              </span>
+            </div>
+          </div>
           <div className="about-page-hero-shoe">
             <Image
               alt=""
@@ -269,7 +331,7 @@ export default function AboutPage() {
           <div className="about-page-hero-line-art">
             <ShoeLineArt />
           </div>
-          <p>Built with care, not guesswork.</p>
+          <p>One deliberate turn.</p>
         </div>
       </section>
 
