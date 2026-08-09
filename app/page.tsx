@@ -28,26 +28,109 @@ const steps = [
   ["Get it back", "Self collect or choose pickup and delivery where available."],
 ];
 
-const serviceHighlights = [
+type TreatmentGraphic = "diagnose" | "clean" | "restore";
+
+const treatmentPlans: Array<{
+  number: string;
+  name: string;
+  copy: string;
+  keywords: string[];
+  tone: TreatmentGraphic;
+  ariaLabel: string;
+}> = [
   {
     number: "01",
-    name: "Clean",
-    copy: "Exterior refresh, deep interior care, stain treatment, deodorizing, laces and sole detailing.",
-    color: "blush",
+    name: "Diagnose",
+    copy:
+      "We inspect the material, construction, stains and damage before deciding the safest treatment for your pair.",
+    keywords: ["Material", "Condition", "Damage", "Treatment plan"],
+    tone: "diagnose",
+    ariaLabel: "Learn about Shoe Doctor diagnosis",
   },
   {
     number: "02",
-    name: "Repair",
-    copy: "Minor or full stitching, half or full re-gluing, sole reinforcement and structural care.",
-    color: "blue",
+    name: "Clean",
+    copy:
+      "Material-specific cleaning for the upper, sole, interior, laces, stains and odour—with steam-assisted care where suitable.",
+    keywords: ["Surface", "Interior", "Stains", "Deodorizing"],
+    tone: "clean",
+    ariaLabel: "Learn about shoe cleaning",
   },
   {
     number: "03",
     name: "Restore",
-    copy: "Sole whitening, crease reduction, repainting, recolouring and a protective final finish.",
-    color: "coral",
+    copy:
+      "Repair, re-gluing, stitching, sole care, whitening, crease reduction and colour restoration to extend the life of your pair.",
+    keywords: ["Repair", "Recolour", "Reshape", "Protect"],
+    tone: "restore",
+    ariaLabel: "Learn about shoe restoration",
   },
 ];
+
+function TreatmentPlanGraphic({ type }: { type: TreatmentGraphic }) {
+  if (type === "diagnose") {
+    return (
+      <svg
+        aria-hidden="true"
+        className="sd-treatment-plan__graphic sd-treatment-plan__graphic--diagnose"
+        fill="none"
+        focusable="false"
+        viewBox="0 0 240 150"
+      >
+        <path
+          className="sd-treatment-plan__graphic-shoe"
+          d="M24 103c14-3 26-10 37-23l18-29 24 18c13 10 29 17 48 22l28 7c11 3 17 9 17 18H24v-13Z"
+        />
+        <path className="sd-treatment-plan__graphic-sole" d="M24 116h172c7 0 12 5 12 10H24v-10Z" />
+        <path className="sd-treatment-plan__graphic-scan" d="M42 44h68M37 61h74M118 40v42" />
+        <circle className="sd-treatment-plan__graphic-lens" cx="153" cy="55" r="23" />
+        <path className="sd-treatment-plan__graphic-handle" d="m170 72 25 25" />
+        <circle className="sd-treatment-plan__graphic-marker" cx="98" cy="91" r="4" />
+      </svg>
+    );
+  }
+
+  if (type === "clean") {
+    return (
+      <svg
+        aria-hidden="true"
+        className="sd-treatment-plan__graphic sd-treatment-plan__graphic--clean"
+        fill="none"
+        focusable="false"
+        viewBox="0 0 240 150"
+      >
+        <path
+          className="sd-treatment-plan__graphic-shoe"
+          d="M24 103c14-3 26-10 37-23l18-29 24 18c13 10 29 17 48 22l28 7c11 3 17 9 17 18H24v-13Z"
+        />
+        <path className="sd-treatment-plan__graphic-sole" d="M24 116h172c7 0 12 5 12 10H24v-10Z" />
+        <path className="sd-treatment-plan__graphic-sweep" d="M31 82c41-30 85-32 149-2" />
+        <path className="sd-treatment-plan__graphic-steam" d="M53 39c-7 9-7 18 0 27M70 30c-7 10-7 20 0 31M88 37c-6 9-6 17 0 25" />
+        <path className="sd-treatment-plan__graphic-brush" d="M160 46l23 26m-16-34 24 26m-7-34 22 25" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg
+      aria-hidden="true"
+      className="sd-treatment-plan__graphic sd-treatment-plan__graphic--restore"
+      fill="none"
+      focusable="false"
+      viewBox="0 0 240 150"
+    >
+      <path
+        className="sd-treatment-plan__graphic-shoe"
+        d="M24 103c14-3 26-10 37-23l18-29 24 18c13 10 29 17 48 22l28 7c11 3 17 9 17 18H24v-13Z"
+      />
+      <path className="sd-treatment-plan__graphic-sole" d="M24 116h172c7 0 12 5 12 10H24v-10Z" />
+      <path className="sd-treatment-plan__graphic-split" d="M117 47v68" />
+      <path className="sd-treatment-plan__graphic-stitch" d="M129 72c14 4 29 3 43-3" />
+      <path className="sd-treatment-plan__graphic-repair" d="M148 96c18-3 29-10 39-22" />
+      <path className="sd-treatment-plan__graphic-shine" d="m76 50 4 9 9 4-9 4-4 9-4-9-9-4 9-4 4-9Z" />
+    </svg>
+  );
+}
 
 export default async function Home({
   searchParams,
@@ -234,42 +317,69 @@ export default async function Home({
 
       <SteamBrushHomeSection />
 
-      <section className="sd-home-services sd-section" data-reveal>
-        <div className="sd-section-heading">
-          <p className="sd-kicker">What we treat</p>
-          <h2>
-            EVERY PAIR GETS
-            <br />
-            A <span>PROPER PLAN.</span>
+      <section
+        aria-labelledby="treatment-plan-heading"
+        className="sd-home-services sd-section"
+        data-reveal
+        id="what-we-treat"
+      >
+        <div className="sd-treatment-plan__heading">
+          <p className="sd-kicker sd-treatment-plan__kicker">What we treat</p>
+          <h2 id="treatment-plan-heading">
+            <span className="sd-treatment-plan__headline-strong">
+              EVERY PAIR GETS
+            </span>
+            <span className="sd-treatment-plan__headline-accent">
+              A PROPER PLAN.
+            </span>
           </h2>
-          <div>
+          <div className="sd-treatment-plan__supporting-copy">
             <p>
-              We inspect the material and condition before recommending
+              We inspect the material, condition and damage before recommending
               treatment. That means honest expectations and the right care
               instead of a one-method-fits-all wash.
             </p>
             <a href="/services">
-              View the full service menu <ArrowUpRight />
+              View our services <ArrowUpRight />
             </a>
           </div>
         </div>
 
-        <div className="sd-highlight-grid">
-          {serviceHighlights.map((item) => (
-            <a
-              className={`sd-highlight-card ${item.color}`}
-              href="/services"
-              key={item.name}
-            >
-              <span>{item.number}</span>
-              <h3>{item.name}</h3>
-              <p>{item.copy}</p>
-              <i>
-                <ArrowUpRight />
-              </i>
-            </a>
-          ))}
+        <div className="sd-treatment-plan__process">
+          <span className="sd-treatment-plan__process-line" aria-hidden="true" />
+          <ol className="sd-treatment-plan__cards" aria-label="Treatment process">
+            {treatmentPlans.map((item) => (
+              <li key={item.name}>
+                <a
+                  aria-label={item.ariaLabel}
+                  className={`sd-treatment-plan__card sd-treatment-plan__card--${item.tone}`}
+                  href="/services"
+                >
+                  <span className="sd-treatment-plan__card-number">
+                    {item.number}
+                  </span>
+                  <TreatmentPlanGraphic type={item.tone} />
+                  <div className="sd-treatment-plan__card-copy">
+                    <h3>{item.name}</h3>
+                    <p>{item.copy}</p>
+                  </div>
+                  <ul aria-label={`${item.name} treatment focus`}>
+                    {item.keywords.map((keyword) => (
+                      <li key={keyword}>{keyword}</li>
+                    ))}
+                  </ul>
+                  <span className="sd-treatment-plan__card-arrow" aria-hidden="true">
+                    <ArrowUpRight />
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ol>
         </div>
+
+        <p className="sd-treatment-plan__promise">
+          WE DIAGNOSE. WE CLEAN. WE RESTORE.
+        </p>
       </section>
 
       <section className="sd-wash-lab sd-section" data-reveal>
