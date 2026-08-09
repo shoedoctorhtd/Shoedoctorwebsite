@@ -38,7 +38,6 @@ type FormValues = {
 
 type FieldName = keyof Omit<FormValues, "shoeBrand" | "notes"> | "serviceId";
 type FieldErrors = Partial<Record<FieldName, string>>;
-type ProgressStep = 1 | 2 | 3 | 4;
 
 const emptyFormValues: FormValues = {
   customerName: "",
@@ -52,12 +51,11 @@ const emptyFormValues: FormValues = {
   notes: "",
 };
 
-const progressSteps: Array<{ id: ProgressStep; label: string }> = [
-  { id: 1, label: "Your details" },
-  { id: 2, label: "Your pair" },
-  { id: 3, label: "Service & delivery" },
-  { id: 4, label: "Review & request" },
-];
+const fixedPriceServiceIds = new Set([
+  "basic-clean",
+  "deep-clean",
+  "premium-care",
+]);
 
 function getNepalCalendarDate() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -161,7 +159,6 @@ export default function BookingForm({
   const [expressRequested, setExpressRequested] = useState(false);
   const [locationStatus, setLocationStatus] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [activeProgress, setActiveProgress] = useState<ProgressStep>(1);
   const [hasInteracted, setHasInteracted] = useState(false);
   const successHeadingRef = useRef<HTMLHeadingElement>(null);
   const minimumDate = useMemo(() => getNepalCalendarDate(), []);
@@ -169,6 +166,12 @@ export default function BookingForm({
   const selected = services.find((service) => service.id === selectedService);
   const expressService = services.find(
     (service) => service.id === "express-wash-dry",
+  );
+  const hasFixedServicePrice = Boolean(
+    selected &&
+      fixedPriceServiceIds.has(selected.id) &&
+      fulfillmentMethod === "self_dropoff" &&
+      !expressRequested,
   );
   const validationErrors = getValidationErrors(
     formValues,
@@ -187,11 +190,6 @@ export default function BookingForm({
 
   function clearSubmissionError() {
     if (state.type === "error") setState({ type: "idle" });
-  }
-
-  function activateProgress(step: ProgressStep) {
-    setActiveProgress(step);
-    setHasInteracted(true);
   }
 
   function updateValue<K extends keyof FormValues>(key: K, value: FormValues[K]) {
@@ -244,7 +242,6 @@ export default function BookingForm({
   function selectService(serviceId: string) {
     setSelectedService(serviceId);
     if (serviceId === expressService?.id) setExpressRequested(false);
-    setActiveProgress(3);
     setHasInteracted(true);
     clearSubmissionError();
     setFieldErrors((current) => {
@@ -256,7 +253,6 @@ export default function BookingForm({
 
   function selectFulfillment(method: "self_dropoff" | "pickup_delivery") {
     setFulfillmentMethod(method);
-    setActiveProgress(3);
     setHasInteracted(true);
     clearSubmissionError();
     if (method === "self_dropoff") {
@@ -275,7 +271,7 @@ export default function BookingForm({
       return;
     }
 
-    setLocationStatus("Finding your location…");
+    setLocationStatus("Finding your location...");
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
         updateValue(
@@ -397,229 +393,89 @@ export default function BookingForm({
           Send us the details below. We will review your pair and contact you to
           confirm the treatment, final price and pickup or drop-off time.
         </p>
-        <ol aria-label="Booking progress" className={styles.progress}>
-          {progressSteps.map((step) => {
-            const isActive = step.id === activeProgress;
-            return (
-              <li
-                aria-current={isActive ? "step" : undefined}
-                className={styles.progressItem}
-                data-active={isActive}
-                key={step.id}
-              >
-                <span className={styles.progressIndex}>{step.id}</span>
-                <span className={styles.progressText}>{step.label}</span>
-              </li>
-            );
-          })}
-        </ol>
       </header>
 
-      <section
-        aria-labelledby="contact-details-heading"
-        className={styles.formSection}
-        onFocusCapture={() => activateProgress(1)}
-      >
-        <div className={styles.sectionHeading}>
-          <h4 className={styles.sectionTitle} id="contact-details-heading">
-            01 — Contact details
-          </h4>
-          <p className={styles.sectionCopy}>
-            How should we contact you about the booking?
-          </p>
-        </div>
-        <div className={styles.fieldGrid}>
-          <label className={styles.field}>
-            <span>Full name <b aria-hidden="true">*</b></span>
-            <input
-              aria-describedby={fieldErrors.customerName ? "customerName-error" : undefined}
-              aria-invalid={Boolean(fieldErrors.customerName)}
-              autoComplete="name"
-              className={classNames(styles.input, fieldErrors.customerName && styles.invalid)}
-              id="customerName"
-              maxLength={80}
-              name="customerName"
-              onBlur={() => validateField("customerName")}
-              onChange={handleTextChange}
-              placeholder="e.g. Aashish Shrestha"
-              required
-              type="text"
-              value={formValues.customerName}
-            />
-            {fieldErrors.customerName && (
-              <span className={styles.fieldError} id="customerName-error" role="alert">
-                {fieldErrors.customerName}
-              </span>
-            )}
-          </label>
+      <div className={styles.compactFields}>
+        <label className={styles.field}>
+          <span>Full name <b aria-hidden="true">*</b></span>
+          <input
+            aria-describedby={fieldErrors.customerName ? "customerName-error" : undefined}
+            aria-invalid={Boolean(fieldErrors.customerName)}
+            autoComplete="name"
+            className={classNames(styles.input, fieldErrors.customerName && styles.invalid)}
+            id="customerName"
+            maxLength={80}
+            name="customerName"
+            onBlur={() => validateField("customerName")}
+            onChange={handleTextChange}
+            placeholder="Your name"
+            required
+            type="text"
+            value={formValues.customerName}
+          />
+          {fieldErrors.customerName && (
+            <span className={styles.fieldError} id="customerName-error" role="alert">
+              {fieldErrors.customerName}
+            </span>
+          )}
+        </label>
 
-          <label className={styles.field}>
-            <span>Phone / WhatsApp <b aria-hidden="true">*</b></span>
-            <input
-              aria-describedby={fieldErrors.phone ? "phone-error" : undefined}
-              aria-invalid={Boolean(fieldErrors.phone)}
-              autoComplete="tel"
-              className={classNames(styles.input, fieldErrors.phone && styles.invalid)}
-              id="phone"
-              inputMode="tel"
-              maxLength={30}
-              name="phone"
-              onBlur={() => validateField("phone")}
-              onChange={handleTextChange}
-              placeholder="e.g. +977 98XXXXXXXX"
-              required
-              type="tel"
-              value={formValues.phone}
-            />
-            {fieldErrors.phone && (
-              <span className={styles.fieldError} id="phone-error" role="alert">
-                {fieldErrors.phone}
-              </span>
-            )}
-          </label>
+        <label className={styles.field}>
+          <span>Phone / WhatsApp <b aria-hidden="true">*</b></span>
+          <input
+            aria-describedby={fieldErrors.phone ? "phone-error" : undefined}
+            aria-invalid={Boolean(fieldErrors.phone)}
+            autoComplete="tel"
+            className={classNames(styles.input, fieldErrors.phone && styles.invalid)}
+            id="phone"
+            inputMode="tel"
+            maxLength={30}
+            name="phone"
+            onBlur={() => validateField("phone")}
+            onChange={handleTextChange}
+            placeholder="+977 98XXXXXXXX"
+            required
+            type="tel"
+            value={formValues.phone}
+          />
+          {fieldErrors.phone && (
+            <span className={styles.fieldError} id="phone-error" role="alert">
+              {fieldErrors.phone}
+            </span>
+          )}
+        </label>
 
-          <label className={styles.field}>
-            <span>Email <em className={styles.optional}>Optional</em></span>
-            <input
-              aria-describedby={fieldErrors.email ? "email-error" : undefined}
-              aria-invalid={Boolean(fieldErrors.email)}
-              autoComplete="email"
-              className={classNames(styles.input, fieldErrors.email && styles.invalid)}
-              id="email"
-              maxLength={120}
-              name="email"
-              onBlur={() => validateField("email")}
-              onChange={handleTextChange}
-              placeholder="e.g. you@example.com"
-              type="email"
-              value={formValues.email}
-            />
-            {fieldErrors.email && (
-              <span className={styles.fieldError} id="email-error" role="alert">
-                {fieldErrors.email}
-              </span>
-            )}
-          </label>
-        </div>
-      </section>
+        <label className={styles.field}>
+          <span>Email <em className={styles.optional}>Optional</em></span>
+          <input
+            aria-describedby={fieldErrors.email ? "email-error" : undefined}
+            aria-invalid={Boolean(fieldErrors.email)}
+            autoComplete="email"
+            className={classNames(styles.input, fieldErrors.email && styles.invalid)}
+            id="email"
+            maxLength={120}
+            name="email"
+            onBlur={() => validateField("email")}
+            onChange={handleTextChange}
+            placeholder="you@example.com"
+            type="email"
+            value={formValues.email}
+          />
+          {fieldErrors.email && (
+            <span className={styles.fieldError} id="email-error" role="alert">
+              {fieldErrors.email}
+            </span>
+          )}
+        </label>
 
-      <section
-        aria-labelledby="pair-details-heading"
-        className={styles.formSection}
-        onFocusCapture={() => activateProgress(2)}
-      >
-        <div className={styles.sectionHeading}>
-          <h4 className={styles.sectionTitle} id="pair-details-heading">
-            02 — About your pair
-          </h4>
-          <p className={styles.sectionCopy}>
-            Tell us what type of footwear we will be treating.
-          </p>
-        </div>
-        <div className={styles.fieldGrid}>
-          <label className={styles.field}>
-            <span>Footwear type <b aria-hidden="true">*</b></span>
-            <input
-              aria-describedby={fieldErrors.shoeType ? "shoeType-error" : undefined}
-              aria-invalid={Boolean(fieldErrors.shoeType)}
-              className={classNames(styles.input, fieldErrors.shoeType && styles.invalid)}
-              id="shoeType"
-              maxLength={80}
-              name="shoeType"
-              onBlur={() => validateField("shoeType")}
-              onChange={handleTextChange}
-              placeholder="e.g. Sneakers, boots or heels"
-              required
-              type="text"
-              value={formValues.shoeType}
-            />
-            {fieldErrors.shoeType && (
-              <span className={styles.fieldError} id="shoeType-error" role="alert">
-                {fieldErrors.shoeType}
-              </span>
-            )}
-          </label>
-
-          <label className={styles.field}>
-            <span>Brand <em className={styles.optional}>Optional</em></span>
-            <input
-              className={styles.input}
-              id="shoeBrand"
-              maxLength={80}
-              name="shoeBrand"
-              onChange={handleTextChange}
-              placeholder="e.g. Nike, Goldstar or Caliber"
-              type="text"
-              value={formValues.shoeBrand}
-            />
-          </label>
-        </div>
-      </section>
-
-      <section
-        aria-labelledby="service-heading"
-        className={styles.formSection}
-        onFocusCapture={() => activateProgress(3)}
-      >
-        <div className={styles.sectionHeading}>
-          <h4 className={styles.sectionTitle} id="service-heading">
-            03 — Choose a service
-          </h4>
-          <p className={styles.sectionCopy}>
-            Choose the service that best matches your pair. We will confirm the
-            final treatment after diagnosis.
-          </p>
-        </div>
-        {services.length === 0 ? (
-          <p className={styles.sectionCopy} role="status">
-            Services are temporarily unavailable. Please use WhatsApp for help
-            with your booking.
-          </p>
-        ) : services.length <= 16 ? (
-          <fieldset
-            aria-describedby={fieldErrors.serviceId ? "serviceId-error" : undefined}
-            className={styles.serviceList}
-          >
-            <legend className="sr-only">Choose a service</legend>
-            {services.map((service) => {
-              const isSelected = selectedService === service.id;
-              return (
-                <label
-                  className={classNames(styles.serviceCard, isSelected && styles.selected)}
-                  data-selected={isSelected}
-                  key={service.id}
-                >
-                  <input
-                    checked={isSelected}
-                    name="serviceId"
-                    onChange={() => selectService(service.id)}
-                    required
-                    type="radio"
-                    value={service.id}
-                  />
-                  <span className={styles.serviceCardTop}>
-                    <span>
-                      <strong>{service.name}</strong>
-                      {service.badge && <small>{service.badge}</small>}
-                    </span>
-                    <span className={styles.selectionMark} aria-hidden="true">✓</span>
-                  </span>
-                  <span className={styles.serviceMeta}>
-                    <span>{service.description}</span>
-                    <strong>{service.priceLabel}</strong>
-                    <small>{service.turnaround}</small>
-                  </span>
-                </label>
-              );
-            })}
-          </fieldset>
-        ) : (
-          <label className={classNames(styles.field, styles.fieldWide)}>
-            <span>Select a service <b aria-hidden="true">*</b></span>
+        <label className={styles.field}>
+          <span>Service <b aria-hidden="true">*</b></span>
+          {services.length > 0 ? (
             <select
               aria-describedby={fieldErrors.serviceId ? "serviceId-error" : undefined}
               aria-invalid={Boolean(fieldErrors.serviceId)}
               className={classNames(styles.input, fieldErrors.serviceId && styles.invalid)}
+              id="serviceId"
               name="serviceId"
               onBlur={() => validateField("serviceId")}
               onChange={(event) => selectService(event.target.value)}
@@ -633,162 +489,56 @@ export default function BookingForm({
                 </option>
               ))}
             </select>
-          </label>
-        )}
-        {fieldErrors.serviceId && (
-          <p className={styles.fieldError} id="serviceId-error" role="alert">
-            {fieldErrors.serviceId}
-          </p>
-        )}
-      </section>
-
-      <section
-        aria-labelledby="collection-heading"
-        className={styles.formSection}
-        onFocusCapture={() => activateProgress(3)}
-      >
-        <div className={styles.sectionHeading}>
-          <h4 className={styles.sectionTitle} id="collection-heading">
-            04 — Collection &amp; return
-          </h4>
-          <p className={styles.sectionCopy}>
-            How should we receive and return your shoes?
-          </p>
-        </div>
-        <fieldset className={styles.deliveryOptions}>
-          <legend className="sr-only">Choose how we should receive and return your shoes</legend>
-          <label
-            className={classNames(
-              styles.deliveryCard,
-              fulfillmentMethod === "self_dropoff" && styles.selected,
-            )}
-            data-selected={fulfillmentMethod === "self_dropoff"}
-          >
-            <input
-              checked={fulfillmentMethod === "self_dropoff"}
-              name="fulfillmentMethod"
-              onChange={() => selectFulfillment("self_dropoff")}
-              required
-              type="radio"
-              value="self_dropoff"
-            />
-            <span className={styles.deliveryCardContent}>
-              <strong>Self Drop &amp; Pickup</strong>
-              <small>Bring and collect your pair from our Hetauda studio.</small>
+          ) : (
+            <span className={styles.unavailableServices} role="status">
+              Services are temporarily unavailable. Please use WhatsApp for help.
             </span>
-            <span className={styles.deliveryPrice}>Free</span>
-          </label>
-          <label
-            className={classNames(
-              styles.deliveryCard,
-              fulfillmentMethod === "pickup_delivery" && styles.selected,
-            )}
-            data-selected={fulfillmentMethod === "pickup_delivery"}
-          >
-            <input
-              checked={fulfillmentMethod === "pickup_delivery"}
-              name="fulfillmentMethod"
-              onChange={() => selectFulfillment("pickup_delivery")}
-              required
-              type="radio"
-              value="pickup_delivery"
-            />
-            <span className={styles.deliveryCardContent}>
-              <strong>Pickup &amp; Return Delivery</strong>
-              <small>We collect and return the pair at your location.</small>
+          )}
+          {fieldErrors.serviceId && (
+            <span className={styles.fieldError} id="serviceId-error" role="alert">
+              {fieldErrors.serviceId}
             </span>
-            <span className={styles.deliveryPrice}>Area-based fee</span>
-          </label>
-        </fieldset>
+          )}
+        </label>
 
-        <div
-          aria-hidden={fulfillmentMethod !== "pickup_delivery"}
-          className={styles.pickupDetails}
-          data-open={fulfillmentMethod === "pickup_delivery"}
-        >
-            <div className={styles.fieldGrid}>
-              <label className={classNames(styles.field, styles.fieldWide)}>
-                <span>Pickup and drop-off address <b aria-hidden="true">*</b></span>
-                <textarea
-                  aria-describedby={fieldErrors.pickupAddress ? "pickupAddress-error" : undefined}
-                  aria-invalid={Boolean(fieldErrors.pickupAddress)}
-                  autoComplete="street-address"
-                  className={classNames(styles.input, fieldErrors.pickupAddress && styles.invalid)}
-                  id="pickupAddress"
-                  maxLength={300}
-                  name="pickupAddress"
-                  onBlur={() => validateField("pickupAddress")}
-                  onChange={handleTextChange}
-                  placeholder="Area, street or tole, building and a nearby landmark"
-                  required={fulfillmentMethod === "pickup_delivery"}
-                  rows={3}
-                  disabled={fulfillmentMethod !== "pickup_delivery"}
-                  value={formValues.pickupAddress}
-                />
-                {fieldErrors.pickupAddress && (
-                  <span className={styles.fieldError} id="pickupAddress-error" role="alert">
-                    {fieldErrors.pickupAddress}
-                  </span>
-                )}
-              </label>
+        <label className={styles.field}>
+          <span>Footwear type <b aria-hidden="true">*</b></span>
+          <input
+            aria-describedby={fieldErrors.shoeType ? "shoeType-error" : undefined}
+            aria-invalid={Boolean(fieldErrors.shoeType)}
+            className={classNames(styles.input, fieldErrors.shoeType && styles.invalid)}
+            id="shoeType"
+            maxLength={80}
+            name="shoeType"
+            onBlur={() => validateField("shoeType")}
+            onChange={handleTextChange}
+            placeholder="Sneakers, boots, heels..."
+            required
+            type="text"
+            value={formValues.shoeType}
+          />
+          {fieldErrors.shoeType && (
+            <span className={styles.fieldError} id="shoeType-error" role="alert">
+              {fieldErrors.shoeType}
+            </span>
+          )}
+        </label>
 
-              <label className={classNames(styles.field, styles.fieldWide)}>
-                <span>Map location link <em className={styles.optional}>Optional</em></span>
-                <span className={styles.locationControl}>
-                  <input
-                    aria-describedby={[
-                      fieldErrors.locationUrl ? "locationUrl-error" : "",
-                      locationStatus ? "location-status" : "",
-                    ].filter(Boolean).join(" ") || undefined}
-                    aria-invalid={Boolean(fieldErrors.locationUrl)}
-                    className={classNames(styles.input, fieldErrors.locationUrl && styles.invalid)}
-                    id="locationUrl"
-                    maxLength={500}
-                    name="locationUrl"
-                    onBlur={() => validateField("locationUrl")}
-                    onChange={handleTextChange}
-                    placeholder="Paste a Google Maps link"
-                    type="url"
-                    disabled={fulfillmentMethod !== "pickup_delivery"}
-                    value={formValues.locationUrl}
-                  />
-                  <button
-                    disabled={fulfillmentMethod !== "pickup_delivery"}
-                    onClick={useCurrentLocation}
-                    type="button"
-                  >
-                    Use my location
-                  </button>
-                </span>
-                {fieldErrors.locationUrl && (
-                  <span className={styles.fieldError} id="locationUrl-error" role="alert">
-                    {fieldErrors.locationUrl}
-                  </span>
-                )}
-                {locationStatus && <small id="location-status">{locationStatus}</small>}
-              </label>
-            </div>
-            <p>
-              Pickup and delivery charges are confirmed according to your area
-              before the booking is accepted.
-            </p>
-          </div>
-      </section>
+        <label className={styles.field}>
+          <span>Brand <em className={styles.optional}>Optional</em></span>
+          <input
+            className={styles.input}
+            id="shoeBrand"
+            maxLength={80}
+            name="shoeBrand"
+            onChange={handleTextChange}
+            placeholder="Nike, Goldstar, Caliber..."
+            type="text"
+            value={formValues.shoeBrand}
+          />
+        </label>
 
-      <section
-        aria-labelledby="date-heading"
-        className={styles.formSection}
-        onFocusCapture={() => activateProgress(3)}
-      >
-        <div className={styles.sectionHeading}>
-          <h4 className={styles.sectionTitle} id="date-heading">
-            05 — Preferred date
-          </h4>
-          <p className={styles.sectionCopy}>
-            Choose your preferred date. Final timing will be confirmed by our team.
-          </p>
-        </div>
-        <label className={classNames(styles.field, styles.fieldWide)}>
+        <label className={styles.field}>
           <span>Preferred service date <em className={styles.optional}>Optional</em></span>
           <input
             aria-describedby={fieldErrors.preferredDate ? "preferredDate-error" : undefined}
@@ -808,77 +558,168 @@ export default function BookingForm({
             </span>
           )}
         </label>
-      </section>
 
-      <section
-        aria-labelledby="express-heading"
-        className={styles.formSection}
-        onFocusCapture={() => activateProgress(3)}
-      >
-        <div className={styles.sectionHeading}>
-          <h4 className={styles.sectionTitle} id="express-heading">
-            06 — Optional add-on
-          </h4>
-          <p className={styles.sectionCopy}>
-            Add priority cleaning and drying when an express slot is available.
-          </p>
+        <div className={classNames(styles.field, styles.compactExpressField)}>
+          <span>Express service <em className={styles.optional}>Optional</em></span>
+          {selectedService === expressService?.id ? (
+            <div className={classNames(styles.expressOption, styles.selected)}>
+              <span className={styles.expressOptionText}>
+                <strong>{expressService.name}</strong>
+                <small>This is already your selected primary service.</small>
+              </span>
+              <span className={styles.deliveryPrice}>Selected</span>
+            </div>
+          ) : (
+            <label
+              className={classNames(styles.expressOption, expressRequested && styles.selected)}
+              data-selected={expressRequested}
+            >
+              <input
+                checked={expressRequested}
+                name="expressRequested"
+                onChange={() => {
+                  setExpressRequested((current) => !current);
+                  setHasInteracted(true);
+                  clearSubmissionError();
+                }}
+                type="checkbox"
+              />
+              <span className={styles.expressOptionText}>
+                <strong>Request express service</strong>
+                <small>
+                  {expressService?.priceLabel
+                    ? "Available from " + expressService.priceLabel + " when a slot is open."
+                    : "We will confirm availability and any extra charge."}
+                </small>
+              </span>
+            </label>
+          )}
         </div>
-        {selectedService === expressService?.id ? (
-          <div className={styles.expressOption}>
-            <span className={styles.expressOptionText}>
-              <strong>{expressService?.name ?? "Express Wash & Dry"}</strong>
-              <small>This is already your selected primary service.</small>
-            </span>
-            <span className={styles.deliveryPrice}>Selected</span>
+
+        <fieldset className={classNames(styles.collectionGroup, styles.compactFull)}>
+          <legend>How should we receive and return the shoes? *</legend>
+          <div className={styles.deliveryOptions}>
+            <label
+              className={classNames(
+                styles.deliveryCard,
+                fulfillmentMethod === "self_dropoff" && styles.selected,
+              )}
+              data-selected={fulfillmentMethod === "self_dropoff"}
+            >
+              <input
+                checked={fulfillmentMethod === "self_dropoff"}
+                name="fulfillmentMethod"
+                onChange={() => selectFulfillment("self_dropoff")}
+                required
+                type="radio"
+                value="self_dropoff"
+              />
+              <span className={styles.deliveryCardContent}>
+                <strong>Self Drop &amp; Pickup</strong>
+                <small>Bring and collect your pair from our Hetauda studio.</small>
+              </span>
+              <span className={styles.deliveryPrice}>Free</span>
+            </label>
+            <label
+              className={classNames(
+                styles.deliveryCard,
+                fulfillmentMethod === "pickup_delivery" && styles.selected,
+              )}
+              data-selected={fulfillmentMethod === "pickup_delivery"}
+            >
+              <input
+                checked={fulfillmentMethod === "pickup_delivery"}
+                name="fulfillmentMethod"
+                onChange={() => selectFulfillment("pickup_delivery")}
+                required
+                type="radio"
+                value="pickup_delivery"
+              />
+              <span className={styles.deliveryCardContent}>
+                <strong>Pickup &amp; Return Delivery</strong>
+                <small>We collect and return the pair at your location.</small>
+              </span>
+              <span className={styles.deliveryPrice}>Area-based</span>
+            </label>
           </div>
-        ) : (
-          <label
-            className={classNames(styles.expressOption, expressRequested && styles.selected)}
-            data-selected={expressRequested}
-          >
-            <input
-              checked={expressRequested}
-              name="expressRequested"
-              onChange={() => {
-                setExpressRequested((current) => !current);
-                activateProgress(3);
-                clearSubmissionError();
-              }}
-              type="checkbox"
-            />
-            <span className={styles.expressOptionText}>
-              <strong>{expressService?.name ?? "Express Wash & Dry"}</strong>
-              <small>
-                {expressService?.description ??
-                  "Priority cleaning and drying when an express slot is available."}
-                {expressService?.turnaround
-                  ? " Usually " + expressService.turnaround + "."
-                  : ""} Availability must be confirmed by our team.
-              </small>
-            </span>
-            {expressService?.priceLabel && (
-              <span className={styles.deliveryPrice}>{expressService.priceLabel}</span>
-            )}
-            <span className={styles.selectionMark} aria-hidden="true">✓</span>
-          </label>
-        )}
-      </section>
+        </fieldset>
 
-      <section
-        aria-labelledby="condition-heading"
-        className={styles.formSection}
-        onFocusCapture={() => activateProgress(4)}
-      >
-        <div className={styles.sectionHeading}>
-          <h4 className={styles.sectionTitle} id="condition-heading">
-            07 — Condition &amp; request
-          </h4>
-          <p className={styles.sectionCopy}>
-            Helpful details include stains, loose soles, tears, colour fading,
-            odour or previous repair work.
+        <div
+          aria-hidden={fulfillmentMethod !== "pickup_delivery"}
+          className={classNames(styles.pickupDetails, styles.compactFull)}
+          data-open={fulfillmentMethod === "pickup_delivery"}
+        >
+          <label className={classNames(styles.field, styles.fieldWide)}>
+            <span>Pickup and drop-off address <b aria-hidden="true">*</b></span>
+            <textarea
+              aria-describedby={fieldErrors.pickupAddress ? "pickupAddress-error" : undefined}
+              aria-invalid={Boolean(fieldErrors.pickupAddress)}
+              autoComplete="street-address"
+              className={classNames(styles.input, fieldErrors.pickupAddress && styles.invalid)}
+              id="pickupAddress"
+              maxLength={300}
+              name="pickupAddress"
+              onBlur={() => validateField("pickupAddress")}
+              onChange={handleTextChange}
+              placeholder="Area, street or tole, building and a nearby landmark"
+              required={fulfillmentMethod === "pickup_delivery"}
+              rows={3}
+              disabled={fulfillmentMethod !== "pickup_delivery"}
+              value={formValues.pickupAddress}
+            />
+            {fieldErrors.pickupAddress && (
+              <span className={styles.fieldError} id="pickupAddress-error" role="alert">
+                {fieldErrors.pickupAddress}
+              </span>
+            )}
+          </label>
+
+          <label className={classNames(styles.field, styles.fieldWide)}>
+            <span>Map location link <em className={styles.optional}>Optional</em></span>
+            <span className={styles.locationControl}>
+              <input
+                aria-describedby={[
+                  fieldErrors.locationUrl ? "locationUrl-error" : "",
+                  locationStatus ? "location-status" : "",
+                ].filter(Boolean).join(" ") || undefined}
+                aria-invalid={Boolean(fieldErrors.locationUrl)}
+                className={classNames(styles.input, fieldErrors.locationUrl && styles.invalid)}
+                id="locationUrl"
+                maxLength={500}
+                name="locationUrl"
+                onBlur={() => validateField("locationUrl")}
+                onChange={handleTextChange}
+                placeholder="Paste a Google Maps link"
+                type="url"
+                disabled={fulfillmentMethod !== "pickup_delivery"}
+                value={formValues.locationUrl}
+              />
+              <button
+                disabled={fulfillmentMethod !== "pickup_delivery"}
+                onClick={useCurrentLocation}
+                type="button"
+              >
+                Use my location
+              </button>
+            </span>
+            {fieldErrors.locationUrl && (
+              <span className={styles.fieldError} id="locationUrl-error" role="alert">
+                {fieldErrors.locationUrl}
+              </span>
+            )}
+            {locationStatus && (
+              <small className={styles.locationStatus} id="location-status">
+                {locationStatus}
+              </small>
+            )}
+          </label>
+          <p>
+            Pickup and delivery charges are confirmed according to your area
+            before the booking is accepted.
           </p>
         </div>
-        <label className={classNames(styles.field, styles.fieldWide)}>
+
+        <label className={classNames(styles.field, styles.compactFull, styles.compactNotes)}>
           <span>Condition or special request <em className={styles.optional}>Optional</em></span>
           <textarea
             className={styles.input}
@@ -887,18 +728,14 @@ export default function BookingForm({
             name="notes"
             onChange={handleTextChange}
             placeholder="Tell us about stains, damage, material concerns or anything else we should know."
-            rows={5}
+            rows={3}
             value={formValues.notes}
           />
         </label>
-      </section>
+      </div>
 
       {selected && (
-        <section
-          aria-labelledby="booking-summary-heading"
-          className={styles.summary}
-          onFocusCapture={() => activateProgress(4)}
-        >
+        <section aria-labelledby="booking-summary-heading" className={styles.summary}>
           <div className={styles.summaryHeading}>
             <h4 id="booking-summary-heading">Your Booking Summary</h4>
             <span aria-hidden="true">✓</span>
@@ -948,12 +785,17 @@ export default function BookingForm({
             </div>
           </dl>
           <div className={styles.summaryTotal}>
-            <span>Final price</span>
-            <strong>Confirmed after diagnosis</strong>
+            <span>{hasFixedServicePrice ? "Total price" : "Final price"}</span>
+            <strong>
+              {hasFixedServicePrice
+                ? selected.priceLabel
+                : "Confirmed after diagnosis"}
+            </strong>
           </div>
           <p className={styles.summaryNotice}>
-            Final treatment, price and turnaround time are confirmed after Shoe
-            Doctor diagnoses your footwear.
+            {hasFixedServicePrice
+              ? "Standard self drop-off price. Local-brand eligibility is confirmed by our team."
+              : "Final treatment, price and turnaround time are confirmed after Shoe Doctor diagnoses your footwear."}
           </p>
         </section>
       )}
@@ -976,7 +818,7 @@ export default function BookingForm({
         type="submit"
       >
         {state.type === "sending" && <span aria-hidden="true" className={styles.spinner} />}
-        {state.type === "sending" ? "Sending Your Request…" : "Request My Booking"}
+        {state.type === "sending" ? "Sending Your Request..." : "Request My Booking"}
       </button>
       {hasInteracted && !isReadyToSubmit && state.type !== "sending" && (
         <p className={styles.summaryNotice}>
