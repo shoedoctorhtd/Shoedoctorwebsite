@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import BookingForm from "./components/BookingForm";
 import Image from "next/image";
+import bookingStyles from "./components/BookingExperience.module.css";
 import SiteMotion from "./components/SiteMotion";
 import SteamBrushHomeSection from "./components/SteamBrushHomeSection";
 import {
@@ -146,6 +147,7 @@ export default async function Home({
   )
     ? params.service
     : services[0]?.id;
+  const publicWhatsAppUrl = "https://wa.me/9779761716743";
 
   return (
     <main className="public-site">
@@ -478,29 +480,97 @@ export default async function Home({
         </div>
       </section>
 
-      <section className="booking-section sd-booking" id="book" data-reveal>
-        <div className="booking-copy">
-          <p className="sd-kicker">Book online</p>
-          <h2>
+      <section
+        aria-labelledby="booking-intro-heading"
+        className={bookingStyles.bookingSection}
+        id="book"
+      >
+        <aside className={bookingStyles.infoPanel} data-reveal>
+          <p className={bookingStyles.introKicker}>Booking your pair</p>
+          <h2 className={bookingStyles.infoTitle} id="booking-intro-heading">
             START THE
             <br />
-            <span>COMEBACK.</span>
+            <span className={bookingStyles.infoAccent}>COMEBACK.</span>
           </h2>
-          <p>
-            No payment now. Send your request and we’ll call or message after
-            reviewing the service and footwear condition.
+          <p className={bookingStyles.introCopy}>
+            Book your shoe cleaning, repair or restoration in less than two
+            minutes.
           </p>
-          <div className="booking-trust">
-            <span>✓ Final quote before work</span>
-            <span>✓ All footwear welcome</span>
-            <span>✓ Booking reference instantly</span>
-            <span>✓ Self drop-off or pickup & delivery</span>
+
+          <ol className={bookingStyles.processList}>
+            <li className={bookingStyles.processItem}>
+              <span className={bookingStyles.processNumber}>01</span>
+              <div className={bookingStyles.processContent}>
+                <strong>Send Your Request</strong>
+                <p>Tell us about your pair and choose the service you need.</p>
+              </div>
+            </li>
+            <li className={bookingStyles.processItem}>
+              <span className={bookingStyles.processNumber}>02</span>
+              <div className={bookingStyles.processContent}>
+                <strong>We Diagnose</strong>
+                <p>We inspect the material, condition and required treatment.</p>
+              </div>
+            </li>
+            <li className={bookingStyles.processItem}>
+              <span className={bookingStyles.processNumber}>03</span>
+              <div className={bookingStyles.processContent}>
+                <strong>We Confirm</strong>
+                <p>
+                  You receive the final treatment, price and timing before work
+                  begins.
+                </p>
+              </div>
+            </li>
+            <li className={bookingStyles.processItem}>
+              <span className={bookingStyles.processNumber}>04</span>
+              <div className={bookingStyles.processContent}>
+                <strong>We Restore</strong>
+                <p>
+                  Your pair is cleaned, repaired or restored and returned as
+                  selected.
+                </p>
+              </div>
+            </li>
+          </ol>
+
+          <ul className={bookingStyles.trustList}>
+            <li>No payment required now</li>
+            <li>Final price confirmed before work</li>
+            <li>All footwear types welcome</li>
+            <li>Booking reference provided instantly</li>
+          </ul>
+
+          <div className={bookingStyles.helpBlock}>
+            <span>Need help choosing a service?</span>
+            <a
+              className={bookingStyles.whatsappLink}
+              href={publicWhatsAppUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              WhatsApp the Doctor <span aria-hidden="true">↗</span>
+            </a>
           </div>
-        </div>
+
+          <svg
+            aria-hidden="true"
+            className={bookingStyles.shoeArt}
+            fill="none"
+            focusable="false"
+            viewBox="0 0 360 210"
+          >
+            <path d="M38 151c29-7 54-25 76-55l30-42 38 31c21 17 48 29 82 35l40 8c14 3 25 13 25 28H38v-5Z" />
+            <path d="M38 156h261c13 0 23 9 23 20H38v-20Z" />
+            <path d="M110 92c25 5 47 17 64 35M137 77c27 7 49 20 67 40M202 116l34-43M220 126l43-31" />
+            <path d="M76 177h225M102 188h173" />
+          </svg>
+        </aside>
         <BookingForm
           key={requestedService}
           services={services}
           initialServiceId={requestedService}
+          whatsappUrl={publicWhatsAppUrl}
         />
       </section>
 
