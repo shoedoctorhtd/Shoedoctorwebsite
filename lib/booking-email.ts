@@ -58,6 +58,11 @@ function bookingEmailContent(booking: Booking) {
     booking.fulfillmentMethod === "pickup_delivery"
       ? "Pickup & drop-off"
       : "Self drop & pickup";
+  const pickupArea = booking.pickupArea
+    ? booking.pickupArea === "hetauda_city"
+      ? "Hetauda City"
+      : "Other city"
+    : "Not applicable";
   const fields: Array<[string, string]> = [
     ["Reference", booking.reference],
     ["Customer", booking.customerName],
@@ -68,6 +73,8 @@ function bookingEmailContent(booking: Booking) {
     ["Brand", booking.shoeBrand ?? "Not provided"],
     ["Preferred date", booking.preferredDate ?? "Not specified"],
     ["Collection", fulfillment],
+    ["Pickup area", pickupArea],
+    ["Pickup & return fee", booking.deliveryFee ? `Rs ${booking.deliveryFee}` : "Free"],
     ["Address", booking.pickupAddress ?? "Not applicable"],
     ["Map location", booking.locationUrl ?? "Not provided"],
     ["Express service", booking.expressRequested ? "Yes" : "No"],

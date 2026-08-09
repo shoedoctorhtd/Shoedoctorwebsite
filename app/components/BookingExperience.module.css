@@ -1,20 +1,20 @@
 .bookingSection {
-  --booking-navy: #0b2347;
-  --booking-navy-deep: #071a36;
-  --booking-ink: #10213d;
-  --booking-ivory: #fff9f2;
+  --booking-navy: #7b1738;
+  --booking-navy-deep: #571027;
+  --booking-ink: #381421;
+  --booking-ivory: #fff8ef;
   --booking-surface: #fffdf9;
-  --booking-blush: #f3d7dd;
+  --booking-blush: #ffd4ca;
   --booking-burgundy: #7b1738;
   --booking-green: #749a42;
   --booking-green-soft: #edf4e5;
-  --booking-muted: #62708a;
-  --booking-line: rgba(16, 33, 61, 0.16);
-  --booking-line-light: rgba(255, 255, 255, 0.2);
+  --booking-muted: #765b62;
+  --booking-line: rgba(87, 16, 39, 0.16);
+  --booking-line-light: rgba(255, 248, 239, 0.28);
   --booking-error: #ab3b3b;
   background:
-    radial-gradient(circle at 9% 2%, rgba(92, 122, 182, 0.25), transparent 27rem),
-    linear-gradient(125deg, var(--booking-navy-deep), var(--booking-navy) 42%, #133467);
+    radial-gradient(circle at 9% 2%, rgba(255, 212, 202, 0.24), transparent 27rem),
+    linear-gradient(125deg, #571027 0%, #7b1738 48%, #9b3658 100%);
   color: var(--booking-ivory);
   display: grid;
   gap: clamp(2rem, 4vw, 4.5rem);
@@ -294,7 +294,7 @@
 
 .progressIndex {
   align-items: center;
-  background: rgba(16, 33, 61, 0.08);
+  background: rgba(87, 16, 39, 0.08);
   border-radius: 50%;
   color: inherit;
   display: inline-flex;
@@ -432,7 +432,7 @@
 .input {
   appearance: none;
   background: var(--booking-surface);
-  border: 1px solid rgba(16, 33, 61, 0.25);
+  border: 1px solid rgba(87, 16, 39, 0.25);
   border-radius: 0.7rem;
   box-shadow: none;
   color: var(--booking-navy-deep);
@@ -461,12 +461,12 @@ select.input {
 }
 
 .input::placeholder {
-  color: #788398;
+  color: #886d75;
   opacity: 1;
 }
 
 .input:hover {
-  border-color: rgba(16, 33, 61, 0.42);
+  border-color: rgba(87, 16, 39, 0.42);
 }
 
 .input:focus-visible,
@@ -517,7 +517,7 @@ select.input {
 .serviceCard {
   align-items: stretch;
   background: var(--booking-surface);
-  border: 1px solid rgba(16, 33, 61, 0.21);
+  border: 1px solid rgba(87, 16, 39, 0.21);
   border-radius: 0.92rem;
   color: var(--booking-ink);
   cursor: pointer;
@@ -530,7 +530,7 @@ select.input {
 }
 
 .serviceCard:hover {
-  border-color: rgba(16, 33, 61, 0.48);
+  border-color: rgba(87, 16, 39, 0.48);
 }
 
 .selected {
@@ -597,7 +597,7 @@ select.input {
 }
 
 .serviceMeta > span:first-child {
-  color: #56647d;
+  color: #70555f;
   font-size: 0.82rem;
 }
 
@@ -634,7 +634,7 @@ select.input {
 .deliveryCard {
   align-items: start;
   background: var(--booking-surface);
-  border: 1px solid rgba(16, 33, 61, 0.21);
+  border: 1px solid rgba(87, 16, 39, 0.21);
   border-radius: 0.92rem;
   cursor: pointer;
   display: grid;
@@ -677,7 +677,7 @@ select.input {
 }
 
 .pickupDetails {
-  background: rgba(229, 236, 247, 0.5);
+  background: rgba(255, 212, 202, 0.42);
   border: 1px solid transparent;
   border-radius: 0.92rem;
   display: grid;
@@ -694,7 +694,7 @@ select.input {
 }
 
 .pickupDetails[data-open="true"] {
-  border-color: rgba(16, 33, 61, 0.14);
+  border-color: rgba(87, 16, 39, 0.14);
   margin-top: 0.9rem;
   max-height: 50rem;
   opacity: 1;
@@ -717,6 +717,10 @@ select.input {
   margin: 0;
 }
 
+.pickupDetails textarea.input {
+  min-height: 5.5rem;
+}
+
 .locationControl {
   display: grid;
   gap: 0.55rem;
@@ -725,7 +729,7 @@ select.input {
 
 .locationControl button {
   background: transparent;
-  border: 1px solid rgba(16, 33, 61, 0.33);
+  border: 1px solid rgba(87, 16, 39, 0.33);
   border-radius: 0.68rem;
   color: var(--booking-navy-deep);
   cursor: pointer;
@@ -738,7 +742,7 @@ select.input {
 }
 
 .locationControl button:hover {
-  background: rgba(16, 33, 61, 0.06);
+  background: rgba(87, 16, 39, 0.06);
   border-color: var(--booking-navy-deep);
 }
 
@@ -751,7 +755,7 @@ select.input {
 .expressOption {
   align-items: start;
   background: var(--booking-surface);
-  border: 1px solid rgba(16, 33, 61, 0.21);
+  border: 1px solid rgba(87, 16, 39, 0.21);
   border-radius: 0.92rem;
   cursor: pointer;
   display: grid;
@@ -792,7 +796,7 @@ select.input {
 
 .summary {
   background: #f9f2e9;
-  border: 1px solid rgba(16, 33, 61, 0.18);
+  border: 1px solid rgba(87, 16, 39, 0.18);
   border-radius: clamp(1rem, 1.6vw, 1.35rem);
   display: grid;
   gap: 1rem;
@@ -836,7 +840,7 @@ select.input {
 
 .summaryTotal {
   align-items: center;
-  border-top: 1px solid rgba(16, 33, 61, 0.16);
+  border-top: 1px solid rgba(87, 16, 39, 0.16);
   display: grid;
   gap: 0.8rem;
   grid-template-columns: minmax(0, 1fr) auto;

@@ -88,6 +88,9 @@ function bookingTemplateParameters(booking: Booking) {
     booking.fulfillmentMethod === "pickup_delivery"
       ? "Pickup & drop-off"
       : "Self drop & pickup";
+  const pickupDetails = booking.pickupArea
+    ? `${booking.pickupArea === "hetauda_city" ? "Hetauda City" : "Other city"} (Rs ${booking.deliveryFee}) - ${booking.pickupAddress ?? "Address not provided"}`
+    : booking.pickupAddress ?? "Not applicable";
 
   return [
     booking.reference,
@@ -98,7 +101,7 @@ function bookingTemplateParameters(booking: Booking) {
     booking.shoeBrand ?? "Not provided",
     booking.preferredDate ?? "Not specified",
     fulfillment,
-    booking.pickupAddress ?? "Not applicable",
+    pickupDetails,
     booking.locationUrl ?? "Not provided",
     booking.expressRequested ? "Yes" : "No",
     booking.notes ?? "None",

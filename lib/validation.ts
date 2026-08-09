@@ -6,6 +6,7 @@ import {
   type BookingStatus,
   type ServiceInput,
 } from "./data";
+import { isPickupArea } from "./booking-pricing";
 
 function cleanText(value: unknown, maxLength: number) {
   return String(value ?? "").trim().slice(0, maxLength);
@@ -93,6 +94,7 @@ export function parsePublicBooking(value: unknown) {
   const shoeBrand = optionalText(input.shoeBrand, 80);
   const preferredDate = optionalText(input.preferredDate, 20);
   const fulfillmentMethod = cleanText(input.fulfillmentMethod, 30);
+  const pickupArea = cleanText(input.pickupArea, 30);
   const pickupAddress = optionalText(input.pickupAddress, 300);
   const locationUrl = optionalText(input.locationUrl, 500);
   const notes = optionalText(input.notes, 800);
@@ -130,6 +132,9 @@ export function parsePublicBooking(value: unknown) {
   if (fulfillmentMethod === "pickup_delivery" && !pickupAddress) {
     throw new Error("Please enter the pickup and drop-off address.");
   }
+  if (fulfillmentMethod === "pickup_delivery" && !isPickupArea(pickupArea)) {
+    throw new Error("Please choose Hetauda City or Other city for pickup.");
+  }
   if (locationUrl && !/^https?:\/\//i.test(locationUrl)) {
     throw new Error("Please enter a valid map location link.");
   }
@@ -145,6 +150,10 @@ export function parsePublicBooking(value: unknown) {
     fulfillmentMethod: fulfillmentMethod as
       | "self_dropoff"
       | "pickup_delivery",
+    pickupArea:
+      fulfillmentMethod === "pickup_delivery" && isPickupArea(pickupArea)
+        ? pickupArea
+        : null,
     pickupAddress:
       fulfillmentMethod === "pickup_delivery" ? pickupAddress : null,
     locationUrl:

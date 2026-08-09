@@ -536,6 +536,14 @@ export default function AdminDashboard({
                           ? "Pickup & drop-off"
                           : "Self drop & pickup"}
                       </strong>
+                      {booking.pickupArea && (
+                        <span>
+                          {booking.pickupArea === "hetauda_city"
+                            ? "Hetauda City"
+                            : "Other city"}
+                          {` - Rs ${booking.deliveryFee} pickup & return`}
+                        </span>
+                      )}
                       {booking.pickupAddress && <span>{booking.pickupAddress}</span>}
                       {booking.locationUrl && (
                         <a

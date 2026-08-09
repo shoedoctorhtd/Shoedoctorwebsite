@@ -10,6 +10,14 @@ import {
 } from "react";
 import Link from "next/link";
 import type { Service } from "@/lib/data";
+import {
+  FIXED_PRICE_SERVICE_IDS,
+  formatNprPrice,
+  getExactNprPrice,
+  PICKUP_DELIVERY_FEES,
+  pickupAreaLabel,
+  type PickupArea,
+} from "@/lib/booking-pricing";
 import styles from "./BookingExperience.module.css";
 
 type BookingFormProps = {
@@ -36,7 +44,10 @@ type FormValues = {
   notes: string;
 };
 
-type FieldName = keyof Omit<FormValues, "shoeBrand" | "notes"> | "serviceId";
+type FieldName =
+  | keyof Omit<FormValues, "shoeBrand" | "notes">
+  | "pickupArea"
+  | "serviceId";
 type FieldErrors = Partial<Record<FieldName, string>>;
 
 const emptyFormValues: FormValues = {
@@ -50,12 +61,6 @@ const emptyFormValues: FormValues = {
   locationUrl: "",
   notes: "",
 };
-
-const fixedPriceServiceIds = new Set([
-  "basic-clean",
-  "deep-clean",
-  "premium-care",
-]);
 
 function getNepalCalendarDate() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -76,6 +81,7 @@ function getValidationErrors(
   values: FormValues,
   selectedService: string,
   fulfillmentMethod: "self_dropoff" | "pickup_delivery",
+  pickupArea: PickupArea | "",
   minimumDate: string,
 ): FieldErrors {
   const errors: FieldErrors = {};
@@ -109,6 +115,9 @@ function getValidationErrors(
   if (fulfillmentMethod === "pickup_delivery" && !values.pickupAddress.trim()) {
     errors.pickupAddress = "Enter the pickup and drop-off address.";
   }
+  if (fulfillmentMethod === "pickup_delivery" && !pickupArea) {
+    errors.pickupArea = "Choose Hetauda City or Other city.";
+  }
   if (
     values.locationUrl.trim() &&
     !/^https?:\/\//i.test(values.locationUrl.trim())
@@ -129,6 +138,9 @@ function fieldForServerMessage(message: string): FieldName | undefined {
   if (normalized.includes("footwear")) return "shoeType";
   if (normalized.includes("service")) return "serviceId";
   if (normalized.includes("preferred date")) return "preferredDate";
+  if (normalized.includes("pickup area") || normalized.includes("hetauda")) {
+    return "pickupArea";
+  }
   if (normalized.includes("pickup") || normalized.includes("drop-off address")) {
     return "pickupAddress";
   }
@@ -156,6 +168,7 @@ export default function BookingForm({
   const [fulfillmentMethod, setFulfillmentMethod] = useState<
     "self_dropoff" | "pickup_delivery"
   >("self_dropoff");
+  const [pickupArea, setPickupArea] = useState<PickupArea | "">("");
   const [expressRequested, setExpressRequested] = useState(false);
   const [locationStatus, setLocationStatus] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -167,16 +180,29 @@ export default function BookingForm({
   const expressService = services.find(
     (service) => service.id === "express-wash-dry",
   );
-  const hasFixedServicePrice = Boolean(
-    selected &&
-      fixedPriceServiceIds.has(selected.id) &&
-      fulfillmentMethod === "self_dropoff" &&
-      !expressRequested,
-  );
+  const pickupDeliveryFee =
+    fulfillmentMethod === "pickup_delivery"
+      ? pickupArea
+        ? PICKUP_DELIVERY_FEES[pickupArea]
+        : null
+      : 0;
+  const fixedServicePrice =
+    selected && FIXED_PRICE_SERVICE_IDS.has(selected.id)
+      ? getExactNprPrice(selected.priceLabel)
+      : null;
+  const totalPrice =
+    !expressRequested &&
+    fixedServicePrice !== null &&
+    pickupDeliveryFee !== null
+      ? fixedServicePrice + pickupDeliveryFee
+      : null;
+  const hasTotalPrice = totalPrice !== null;
+  const pickupAreaName = pickupArea ? pickupAreaLabel(pickupArea) : null;
   const validationErrors = getValidationErrors(
     formValues,
     selectedService,
     fulfillmentMethod,
+    pickupArea,
     minimumDate,
   );
   const isReadyToSubmit =
@@ -206,7 +232,9 @@ export default function BookingForm({
   }
 
   function handleTextChange(
-    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    event: ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
   ) {
     const key = event.target.name as keyof FormValues;
     updateValue(key, event.target.value);
@@ -217,6 +245,7 @@ export default function BookingForm({
       formValues,
       selectedService,
       fulfillmentMethod,
+      pickupArea,
       minimumDate,
     )[field];
     setFieldErrors((current) => {
@@ -258,11 +287,23 @@ export default function BookingForm({
     if (method === "self_dropoff") {
       setFieldErrors((current) => {
         const next = { ...current };
+        delete next.pickupArea;
         delete next.pickupAddress;
         delete next.locationUrl;
         return next;
       });
     }
+  }
+
+  function selectPickupArea(area: PickupArea | "") {
+    setPickupArea(area);
+    setHasInteracted(true);
+    clearSubmissionError();
+    setFieldErrors((current) => {
+      const next = { ...current };
+      delete next.pickupArea;
+      return next;
+    });
   }
 
   function useCurrentLocation() {
@@ -292,6 +333,7 @@ export default function BookingForm({
       formValues,
       selectedService,
       fulfillmentMethod,
+      pickupArea,
       minimumDate,
     );
 
@@ -313,6 +355,7 @@ export default function BookingForm({
       shoeBrand: formValues.shoeBrand,
       preferredDate: formValues.preferredDate,
       fulfillmentMethod,
+      pickupArea,
       pickupAddress: formValues.pickupAddress,
       locationUrl: formValues.locationUrl,
       notes: formValues.notes,
@@ -342,6 +385,7 @@ export default function BookingForm({
       setFormValues(emptyFormValues);
       setSelectedService(services[0]?.id ?? "");
       setFulfillmentMethod("self_dropoff");
+      setPickupArea("");
       setExpressRequested(false);
       setLocationStatus("");
       setFieldErrors({});
@@ -371,8 +415,8 @@ export default function BookingForm({
           Your reference is <strong>{state.reference}</strong>.
         </p>
         <p>
-          We will review your request and contact you to confirm the treatment,
-          final price and service time.
+          We will review your request and contact you about any treatment
+          details and service time.
         </p>
         <div className={styles.successActions}>
           <Link href="/">Return home</Link>
@@ -390,8 +434,8 @@ export default function BookingForm({
         <span className={styles.formKicker}>Booking request</span>
         <h3 className={styles.formTitle}>Tell Us About Your Pair.</h3>
         <p className={styles.formIntro}>
-          Send us the details below. We will review your pair and contact you to
-          confirm the treatment, final price and pickup or drop-off time.
+          Send us the details below. We will review your pair and contact you
+          about any treatment details and pickup or drop-off time.
         </p>
       </header>
 
@@ -639,7 +683,7 @@ export default function BookingForm({
                 <strong>Pickup &amp; Return Delivery</strong>
                 <small>We collect and return the pair at your location.</small>
               </span>
-              <span className={styles.deliveryPrice}>Area-based</span>
+              <span className={styles.deliveryPrice}>Rs 200–300</span>
             </label>
           </div>
         </fieldset>
@@ -649,7 +693,34 @@ export default function BookingForm({
           className={classNames(styles.pickupDetails, styles.compactFull)}
           data-open={fulfillmentMethod === "pickup_delivery"}
         >
-          <label className={classNames(styles.field, styles.fieldWide)}>
+          <label className={styles.field}>
+            <span>Pickup area <b aria-hidden="true">*</b></span>
+            <select
+              aria-describedby={fieldErrors.pickupArea ? "pickupArea-error" : undefined}
+              aria-invalid={Boolean(fieldErrors.pickupArea)}
+              className={classNames(styles.input, fieldErrors.pickupArea && styles.invalid)}
+              disabled={fulfillmentMethod !== "pickup_delivery"}
+              id="pickupArea"
+              name="pickupArea"
+              onBlur={() => validateField("pickupArea")}
+              onChange={(event) =>
+                selectPickupArea(event.target.value as PickupArea | "")
+              }
+              required={fulfillmentMethod === "pickup_delivery"}
+              value={pickupArea}
+            >
+              <option value="">Choose an area</option>
+              <option value="hetauda_city">Hetauda City — Rs 200</option>
+              <option value="other_city">Other city — Rs 300</option>
+            </select>
+            {fieldErrors.pickupArea && (
+              <span className={styles.fieldError} id="pickupArea-error" role="alert">
+                {fieldErrors.pickupArea}
+              </span>
+            )}
+          </label>
+
+          <label className={styles.field}>
             <span>Pickup and drop-off address <b aria-hidden="true">*</b></span>
             <textarea
               aria-describedby={fieldErrors.pickupAddress ? "pickupAddress-error" : undefined}
@@ -714,8 +785,8 @@ export default function BookingForm({
             )}
           </label>
           <p>
-            Pickup and delivery charges are confirmed according to your area
-            before the booking is accepted.
+            Pickup &amp; return is Rs 200 within Hetauda City and Rs 300 for
+            other cities.
           </p>
         </div>
 
@@ -763,11 +834,19 @@ export default function BookingForm({
                   : "Self Drop & Pickup"}
               </dd>
             </div>
+            {fulfillmentMethod === "pickup_delivery" && (
+              <div className={styles.summaryRow}>
+                <dt>Pickup area</dt>
+                <dd>{pickupAreaName ?? "Choose an area"}</dd>
+              </div>
+            )}
             <div className={styles.summaryRow}>
               <dt>Delivery fee</dt>
               <dd>
                 {fulfillmentMethod === "pickup_delivery"
-                  ? "Confirmed after area review"
+                  ? pickupDeliveryFee === null
+                    ? "Choose an area"
+                    : formatNprPrice(pickupDeliveryFee)
                   : "Free"}
               </dd>
             </div>
@@ -785,17 +864,17 @@ export default function BookingForm({
             </div>
           </dl>
           <div className={styles.summaryTotal}>
-            <span>{hasFixedServicePrice ? "Total price" : "Final price"}</span>
+            <span>{hasTotalPrice ? "Total price" : "Price status"}</span>
             <strong>
-              {hasFixedServicePrice
-                ? selected.priceLabel
-                : "Confirmed after diagnosis"}
+              {hasTotalPrice ? formatNprPrice(totalPrice) : "Quote after review"}
             </strong>
           </div>
           <p className={styles.summaryNotice}>
-            {hasFixedServicePrice
-              ? "Standard self drop-off price. Local-brand eligibility is confirmed by our team."
-              : "Final treatment, price and turnaround time are confirmed after Shoe Doctor diagnoses your footwear."}
+            {hasTotalPrice
+              ? fulfillmentMethod === "pickup_delivery"
+                ? "Includes pickup and return delivery. Local-brand eligibility may adjust the service price."
+                : "Standard service price. Local-brand eligibility may adjust the service price."
+              : "We will review your footwear and share the suitable treatment, quote and turnaround time."}
           </p>
         </section>
       )}
@@ -826,7 +905,7 @@ export default function BookingForm({
         </p>
       )}
       <p className={styles.summaryNotice}>
-        No payment is required now. Your request does not confirm a final price.
+        No payment is required now.
       </p>
     </form>
   );

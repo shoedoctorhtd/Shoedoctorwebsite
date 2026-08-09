@@ -2,6 +2,11 @@ import {
   STEAM_ASSISTED_DEEP_CLEAN_ID,
   steamCleaningContent,
 } from "./steam-cleaning";
+import {
+  isPickupArea,
+  PICKUP_DELIVERY_FEES,
+  type PickupArea,
+} from "./booking-pricing";
 
 export const SERVICE_CATEGORIES = ["Cleaning", "Repairs", "Add-ons"] as const;
 export const SERVICE_TONES = ["lime", "coral", "violet", "blue", "cream"] as const;
@@ -55,6 +60,8 @@ export type Booking = {
   shoeBrand: string | null;
   preferredDate: string | null;
   fulfillmentMethod: FulfillmentMethod;
+  pickupArea: PickupArea | null;
+  deliveryFee: number;
   pickupAddress: string | null;
   locationUrl: string | null;
   notes: string | null;
@@ -73,6 +80,7 @@ export type BookingInput = {
   shoeBrand?: string | null;
   preferredDate?: string | null;
   fulfillmentMethod: FulfillmentMethod;
+  pickupArea?: PickupArea | null;
   pickupAddress?: string | null;
   locationUrl?: string | null;
   notes?: string | null;
@@ -384,6 +392,8 @@ async function initialiseDatabase() {
         shoe_brand TEXT,
         preferred_date TEXT,
         fulfillment_method TEXT NOT NULL DEFAULT 'self_dropoff',
+        pickup_area TEXT,
+        delivery_fee INTEGER NOT NULL DEFAULT 0,
         pickup_address TEXT,
         location_url TEXT,
         notes TEXT,
@@ -398,6 +408,23 @@ async function initialiseDatabase() {
       ON bookings(status, created_at)
     `),
   ]);
+
+  const bookingColumns = await db
+    .prepare("PRAGMA table_info(bookings)")
+    .all<{ name: string }>();
+  const bookingColumnNames = new Set(
+    bookingColumns.results.map((column) => column.name),
+  );
+  if (!bookingColumnNames.has("pickup_area")) {
+    await db.prepare("ALTER TABLE bookings ADD COLUMN pickup_area TEXT").run();
+  }
+  if (!bookingColumnNames.has("delivery_fee")) {
+    await db
+      .prepare(
+        "ALTER TABLE bookings ADD COLUMN delivery_fee INTEGER NOT NULL DEFAULT 0",
+      )
+      .run();
+  }
 
   const row = await db
     .prepare("SELECT COUNT(*) AS count FROM services")
@@ -478,6 +505,9 @@ function parseService(row: Record<string, unknown>): Service {
 }
 
 function parseBooking(row: Record<string, unknown>): Booking {
+  const pickupArea = row.pickup_area ? String(row.pickup_area) : "";
+  const deliveryFee = Number(row.delivery_fee ?? 0);
+
   return {
     id: String(row.id),
     reference: String(row.reference),
@@ -493,6 +523,8 @@ function parseBooking(row: Record<string, unknown>): Booking {
       row.fulfillment_method === "pickup_delivery"
         ? "pickup_delivery"
         : "self_dropoff",
+    pickupArea: isPickupArea(pickupArea) ? pickupArea : null,
+    deliveryFee: Number.isFinite(deliveryFee) ? deliveryFee : 0,
     pickupAddress: row.pickup_address ? String(row.pickup_address) : null,
     locationUrl: row.location_url ? String(row.location_url) : null,
     notes: row.notes ? String(row.notes) : null,
@@ -634,6 +666,21 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
     throw new Error("The selected service is no longer available.");
   }
 
+  const requestedPickupArea = input.pickupArea ?? "";
+  if (
+    input.fulfillmentMethod === "pickup_delivery" &&
+    !isPickupArea(requestedPickupArea)
+  ) {
+    throw new Error("Please choose a pickup area.");
+  }
+
+  const pickupArea =
+    input.fulfillmentMethod === "pickup_delivery" &&
+    isPickupArea(requestedPickupArea)
+      ? requestedPickupArea
+      : null;
+  const deliveryFee = pickupArea ? PICKUP_DELIVERY_FEES[pickupArea] : 0;
+
   const id = crypto.randomUUID();
   const reference = `SD-${Date.now().toString(36).toUpperCase()}-${id
     .slice(0, 4)
@@ -645,9 +692,9 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
       INSERT INTO bookings (
         id, reference, customer_name, phone, email, service_id,
         service_name, shoe_type, shoe_brand, preferred_date,
-        fulfillment_method, pickup_address, location_url, notes,
+        fulfillment_method, pickup_area, delivery_fee, pickup_address, location_url, notes,
         express_requested, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?)
     `)
     .bind(
       id,
@@ -661,6 +708,8 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
       input.shoeBrand ?? null,
       input.preferredDate ?? null,
       input.fulfillmentMethod,
+      pickupArea,
+      deliveryFee,
       input.pickupAddress ?? null,
       input.locationUrl ?? null,
       input.notes ?? null,
@@ -682,6 +731,8 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
     shoeBrand: input.shoeBrand ?? null,
     preferredDate: input.preferredDate ?? null,
     fulfillmentMethod: input.fulfillmentMethod,
+    pickupArea,
+    deliveryFee,
     pickupAddress: input.pickupAddress ?? null,
     locationUrl: input.locationUrl ?? null,
     notes: input.notes ?? null,

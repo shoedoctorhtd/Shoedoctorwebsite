@@ -43,6 +43,8 @@ export const bookings = sqliteTable(
     fulfillmentMethod: text("fulfillment_method")
       .notNull()
       .default("self_dropoff"),
+    pickupArea: text("pickup_area"),
+    deliveryFee: integer("delivery_fee").notNull().default(0),
     pickupAddress: text("pickup_address"),
     locationUrl: text("location_url"),
     notes: text("notes"),

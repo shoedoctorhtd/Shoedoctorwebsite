@@ -30,7 +30,7 @@ export async function POST(request: Request) {
         ok: true,
         reference: created.reference,
         message:
-          "Your booking request has been received. Shoe Doctor will contact you to confirm the service and final quote.",
+          "Your booking request has been received. Shoe Doctor will contact you about the service details.",
       },
       { status: 201 },
     );

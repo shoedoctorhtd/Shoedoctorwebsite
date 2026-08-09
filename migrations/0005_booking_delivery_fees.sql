@@ -1,0 +1,2 @@
+ALTER TABLE bookings ADD COLUMN pickup_area TEXT;
+ALTER TABLE bookings ADD COLUMN delivery_fee INTEGER NOT NULL DEFAULT 0;
