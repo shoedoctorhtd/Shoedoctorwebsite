@@ -949,8 +949,8 @@ select.input {
     transition: opacity 360ms ease, transform 460ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
-  :global(.motion-ready) .infoPanel[data-reveal].is-revealed,
-  :global(.motion-ready) .formShell[data-reveal].is-revealed {
+  :global(.motion-ready) .infoPanel[data-reveal]:global(.is-revealed),
+  :global(.motion-ready) .formShell[data-reveal]:global(.is-revealed) {
     opacity: 1;
     transform: translateY(0);
   }
