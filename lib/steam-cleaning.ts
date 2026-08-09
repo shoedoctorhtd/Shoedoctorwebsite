@@ -22,13 +22,6 @@ export const steamCleaningContent = {
   },
 } as const;
 
-export const steamCleaningBenefits = [
-  "Helps loosen stubborn surface dirt and grime",
-  "Reaches grooves, stitching and difficult corners",
-  "Reduces the need for aggressive scrubbing",
-  "Applied carefully by trained shoe-care technicians",
-] as const;
-
 export const steamCleaningBestUsedFor = [
   "Textured rubber outsoles",
   "Deep outsole grooves",

@@ -1,7 +1,5 @@
 import type { Booking } from "./data";
 
-const BOOKING_RECIPIENT = "shoedoctorhtd@gmail.com";
-
 type EmailBinding = {
   send(message: {
     from: string;
