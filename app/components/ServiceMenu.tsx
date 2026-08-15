@@ -119,6 +119,7 @@ export default function ServiceMenu({
                   <article
                     className={`menu-card ${service.tone}`}
                     data-service-card
+                    data-service-id={service.id}
                     key={service.id}
                   >
                     <div className="menu-card-top">
@@ -152,7 +153,7 @@ export default function ServiceMenu({
                         )}#book`}
                         aria-label={`Book ${service.name}`}
                       >
-                        Book <ArrowUpRight />
+                        Book now <ArrowUpRight />
                       </a>
                     </div>
                   </article>
