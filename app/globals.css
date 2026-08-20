@@ -5792,6 +5792,12 @@ body {
   color: var(--ink);
 }
 
+.public-site .menu-card.blue .menu-badge,
+.public-site .menu-card.blue .menu-price > a {
+  background: var(--coral);
+  color: var(--white);
+}
+
 .public-site .menu-card.blue li,
 .public-site .menu-card.blue .menu-price {
   border-color: rgba(255, 255, 255, 0.65);

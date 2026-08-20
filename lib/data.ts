@@ -141,7 +141,7 @@ const seedServices: Array<
       "Material-safe cleaning and drying",
       "Price confirmed after diagnosis",
     ],
-    badge: null,
+    badge: "First time in Nepal",
     tone: "blue",
     icon: "≋",
     active: true,
