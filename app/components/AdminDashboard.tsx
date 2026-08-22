@@ -4,17 +4,20 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type {
   Booking,
+  BookingNotification,
   BookingStatus,
+  BookingStatusHistory,
   Service,
   ServiceInput,
 } from "@/lib/data";
 
 const statusOptions: Array<{ value: BookingStatus; label: string }> = [
-  { value: "new", label: "New" },
-  { value: "confirmed", label: "Confirmed" },
-  { value: "in_progress", label: "In progress" },
-  { value: "ready", label: "Ready" },
-  { value: "completed", label: "Completed" },
+  { value: "new", label: "Booking received" },
+  { value: "confirmed", label: "Order accepted" },
+  { value: "received", label: "Shoes received" },
+  { value: "in_progress", label: "Cleaning" },
+  { value: "completed", label: "Care completed" },
+  { value: "ready", label: "Ready to go" },
   { value: "cancelled", label: "Cancelled" },
 ];
 
@@ -108,6 +111,62 @@ function formatDate(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function statusLabel(status: BookingStatus) {
+  return (
+    statusOptions.find((option) => option.value === status)?.label ?? status
+  );
+}
+
+function latestStatusNotification(booking: Booking) {
+  return booking.statusHistory[booking.statusHistory.length - 1]?.notification ?? null;
+}
+
+function notificationCopy(notification: BookingNotification | null) {
+  if (!notification) return "No customer email is needed for this status.";
+  if (notification.status === "sent") return "Email sent";
+  if (notification.status === "pending") return "Email sending";
+  if (notification.status === "failed") return "Email failed";
+  if (notification.lastError === "customer_email_missing") {
+    return "No email address available";
+  }
+  if (notification.lastError === "customer_email_invalid") {
+    return "Customer email address is invalid";
+  }
+  if (notification.lastError === "status_not_customer_notifiable") {
+    return "No customer email for this internal status";
+  }
+  return "Email skipped";
+}
+
+function mergeStatusUpdate(
+  current: Booking,
+  booking: Booking,
+  history?: BookingStatusHistory,
+  notification?: BookingNotification,
+) {
+  const nextHistory = history
+    ? [
+        ...current.statusHistory,
+        { ...history, notification: notification ?? history.notification },
+      ]
+    : current.statusHistory;
+  return { ...current, ...booking, statusHistory: nextHistory };
+}
+
+function mergeNotification(
+  current: Booking,
+  notification: BookingNotification,
+) {
+  return {
+    ...current,
+    statusHistory: current.statusHistory.map((history) =>
+      history.id === notification.statusHistoryId
+        ? { ...history, notification }
+        : history,
+    ),
+  };
 }
 
 export default function AdminDashboard({
@@ -311,19 +370,75 @@ export default function AdminDashboard({
           body: JSON.stringify({ status }),
         },
       );
-      const result = (await response.json()) as { message?: string };
-      if (!response.ok) {
+      const result = (await response.json()) as {
+        booking?: Booking;
+        history?: BookingStatusHistory;
+        message?: string;
+        notification?: BookingNotification;
+        unchanged?: boolean;
+      };
+      if (!response.ok || !result.booking) {
         throw new Error(result.message || "Unable to update booking.");
       }
       setBookings((current) =>
         current.map((item) =>
-          item.id === booking.id ? { ...item, status } : item,
+          item.id === booking.id
+            ? mergeStatusUpdate(
+                item,
+                result.booking as Booking,
+                result.history,
+                result.notification,
+              )
+            : item,
         ),
       );
-      setNotice(`${booking.reference} marked ${status.replace("_", " ")}.`);
+      setNotice(
+        result.unchanged
+          ? `${booking.reference} is already ${statusLabel(status)}.`
+          : `${booking.reference} marked ${statusLabel(status)}. ${notificationCopy(result.notification ?? null)}`,
+      );
     } catch (error) {
       setNotice(
         error instanceof Error ? error.message : "Unable to update booking.",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function retryStatusEmail(
+    booking: Booking,
+    notification: BookingNotification,
+  ) {
+    setBusy(`notification:${notification.id}`);
+    setNotice(null);
+    try {
+      const response = await fetch(
+        `/api/admin/bookings/${encodeURIComponent(booking.id)}/notifications/${encodeURIComponent(notification.id)}/retry`,
+        { method: "POST" },
+      );
+      const result = (await response.json()) as {
+        message?: string;
+        notification?: BookingNotification;
+      };
+      if (!response.ok || !result.notification) {
+        throw new Error(result.message || "Unable to retry customer email.");
+      }
+      setBookings((current) =>
+        current.map((item) =>
+          item.id === booking.id
+            ? mergeNotification(item, result.notification as BookingNotification)
+            : item,
+        ),
+      );
+      setNotice(
+        result.notification.status === "sent"
+          ? `Customer email sent for ${booking.reference}.`
+          : `Customer email retry finished: ${notificationCopy(result.notification)}.`,
+      );
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : "Unable to retry customer email.",
       );
     } finally {
       setBusy(null);
@@ -499,12 +614,14 @@ export default function AdminDashboard({
                 <p>New customer requests will appear automatically.</p>
               </div>
             ) : (
-              filteredBookings.map((booking) => (
+              filteredBookings.map((booking) => {
+                const notification = latestStatusNotification(booking);
+                return (
                 <article className="admin-booking-card" key={booking.id}>
                   <div className="booking-card-top">
                     <div>
                       <span className={`status-pill ${booking.status}`}>
-                        {booking.status.replace("_", " ")}
+                        {statusLabel(booking.status)}
                       </span>
                       <small>{formatDate(booking.createdAt)}</small>
                     </div>
@@ -562,6 +679,60 @@ export default function AdminDashboard({
                     </div>
                   </div>
 
+                  <div className="booking-status-meta">
+                    <section className="booking-status-history" aria-label="Booking status history">
+                      <div className="booking-status-history__heading">
+                        <small>Status timeline</small>
+                        <span>{booking.statusHistory.length} updates</span>
+                      </div>
+                      <ol>
+                        <li>
+                          <time>{formatDate(booking.createdAt)}</time>
+                          <div>
+                            <strong>Booking received</strong>
+                            <span>Customer request created</span>
+                          </div>
+                        </li>
+                        {booking.statusHistory.map((history) => (
+                          <li key={history.id}>
+                            <time>{formatDate(history.createdAt)}</time>
+                            <div>
+                              <strong>{statusLabel(history.newStatus)}</strong>
+                              <span>
+                                Changed from {statusLabel(history.previousStatus)}
+                                {history.changedBy ? ` by ${history.changedBy}` : ""}
+                              </span>
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
+                    </section>
+
+                    <section className="booking-notification" aria-live="polite">
+                      <div>
+                        <small>Customer notification</small>
+                        <strong className={`booking-notification__state ${notification?.status ?? "not-applicable"}`}>
+                          {notificationCopy(notification)}
+                        </strong>
+                        {notification?.sentAt && (
+                          <span>Sent {formatDate(notification.sentAt)}</span>
+                        )}
+                      </div>
+                      {notification?.status === "failed" && (
+                        <button
+                          className="admin-secondary booking-notification__retry"
+                          type="button"
+                          disabled={busy === `notification:${notification.id}`}
+                          onClick={() => retryStatusEmail(booking, notification)}
+                        >
+                          {busy === `notification:${notification.id}`
+                            ? "Retrying…"
+                            : "Retry Email"}
+                        </button>
+                      )}
+                    </section>
+                  </div>
+
                   <div className="booking-card-actions">
                     <label>
                       <span>Update status</span>
@@ -585,7 +756,8 @@ export default function AdminDashboard({
                     <a href={`tel:${booking.phone}`}>Call customer</a>
                   </div>
                 </article>
-              ))
+                );
+              })
             )}
           </div>
         </section>

@@ -7,6 +7,7 @@ import {
   type ServiceInput,
 } from "./data";
 import { isPickupArea } from "./booking-pricing";
+import { isEmailAddress } from "./email/address";
 
 function cleanText(value: unknown, maxLength: number) {
   return String(value ?? "").trim().slice(0, maxLength);
@@ -110,7 +111,7 @@ export function parsePublicBooking(value: unknown) {
   if (phoneDigits.length < 7 || phoneDigits.length > 15) {
     throw new Error("Please enter a valid phone or WhatsApp number.");
   }
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (email && !isEmailAddress(email)) {
     throw new Error("Please enter a valid email address.");
   }
   if (!serviceId || !shoeType) {

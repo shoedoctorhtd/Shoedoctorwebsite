@@ -1952,6 +1952,10 @@ footer > span {
   background: #75a9ff;
 }
 
+.status-pill.received {
+  background: #dceeff;
+}
+
 .status-pill.in_progress {
   background: var(--violet);
 }
@@ -2003,6 +2007,113 @@ footer > span {
   font-size: 10px;
   line-height: 1.5;
   margin: 4px 0 0;
+}
+
+.booking-status-meta {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 0.42fr);
+  padding: 18px 0;
+}
+
+.booking-status-history__heading,
+.booking-notification > div {
+  align-items: baseline;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.booking-status-history small,
+.booking-notification small {
+  color: var(--muted);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.booking-status-history__heading > span {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.booking-status-history ol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+}
+
+.booking-status-history li {
+  align-items: flex-start;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 112px minmax(0, 1fr);
+}
+
+.booking-status-history time,
+.booking-status-history li span,
+.booking-notification > div > span {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.booking-status-history li div {
+  border-left: 2px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 10px;
+}
+
+.booking-status-history li strong,
+.booking-notification__state {
+  font-size: 11px;
+}
+
+.booking-notification {
+  align-items: flex-start;
+  background: #f7f6f1;
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: space-between;
+  min-height: 104px;
+  padding: 14px;
+}
+
+.booking-notification > div {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.booking-notification__state.sent {
+  color: #267338;
+}
+
+.booking-notification__state.failed {
+  color: #b02a1b;
+}
+
+.booking-notification__state.pending {
+  color: #6351a6;
+}
+
+.booking-notification__state.skipped,
+.booking-notification__state.not-applicable {
+  color: var(--muted);
+}
+
+.booking-notification__retry {
+  align-self: flex-start;
+  font-size: 9px;
+  padding: 8px 10px;
 }
 
 .booking-card-actions {
@@ -2305,6 +2416,15 @@ footer > span a {
 
   .booking-customer {
     grid-template-columns: 1fr;
+  }
+
+  .booking-status-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-status-history li {
+    grid-template-columns: 1fr;
+    gap: 3px;
   }
 
   .booking-card-actions {

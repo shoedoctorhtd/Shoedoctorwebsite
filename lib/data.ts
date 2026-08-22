@@ -7,15 +7,22 @@ import {
   PICKUP_DELIVERY_FEES,
   type PickupArea,
 } from "./booking-pricing";
+import { isEmailAddress } from "./email/address";
+import { sendGmailStatusEmail } from "./email/gmail";
+import {
+  buildStatusEmail,
+  type StatusEmailContent,
+} from "./email/statusTemplates";
 
 export const SERVICE_CATEGORIES = ["Cleaning", "Repairs", "Add-ons"] as const;
 export const SERVICE_TONES = ["lime", "coral", "violet", "blue", "cream"] as const;
 export const BOOKING_STATUSES = [
   "new",
   "confirmed",
+  "received",
   "in_progress",
-  "ready",
   "completed",
+  "ready",
   "cancelled",
 ] as const;
 export const FULFILLMENT_METHODS = [
@@ -27,6 +34,58 @@ export type ServiceCategory = (typeof SERVICE_CATEGORIES)[number];
 export type ServiceTone = (typeof SERVICE_TONES)[number];
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
 export type FulfillmentMethod = (typeof FULFILLMENT_METHODS)[number];
+export type BookingNotificationStatus =
+  | "pending"
+  | "sent"
+  | "failed"
+  | "skipped";
+
+export type BookingNotification = {
+  id: string;
+  bookingId: string;
+  statusHistoryId: string;
+  channel: "email";
+  recipient: string | null;
+  notificationType: "status_update";
+  status: BookingNotificationStatus;
+  attemptCount: number;
+  lastError: string | null;
+  sentAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type BookingStatusHistory = {
+  id: string;
+  bookingId: string;
+  previousStatus: BookingStatus;
+  newStatus: BookingStatus;
+  changedBy: string | null;
+  createdAt: string;
+  notification: BookingNotification | null;
+};
+
+export type BookingStatusUpdateResult =
+  | { kind: "not_found" }
+  | { kind: "unchanged"; booking: Booking }
+  | { kind: "conflict"; booking: Booking }
+  | {
+      kind: "updated";
+      booking: Booking;
+      history: BookingStatusHistory;
+      notification: BookingNotification;
+    };
+
+export type BookingNotificationRetryResult =
+  | { kind: "not_found" }
+  | { kind: "not_retryable"; notification: BookingNotification }
+  | { kind: "in_progress"; notification: BookingNotification }
+  | { kind: "failed"; notification: BookingNotification }
+  | {
+      kind: "retried";
+      booking: Booking;
+      notification: BookingNotification;
+    };
 
 export type Service = {
   id: string;
@@ -69,6 +128,7 @@ export type Booking = {
   status: BookingStatus;
   createdAt: string;
   updatedAt: string;
+  statusHistory: BookingStatusHistory[];
 };
 
 export type BookingInput = {
@@ -399,6 +459,7 @@ async function initialiseDatabase() {
         notes TEXT,
         express_requested INTEGER NOT NULL DEFAULT 0,
         status TEXT NOT NULL DEFAULT 'new',
+        last_status_history_id TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
@@ -406,6 +467,48 @@ async function initialiseDatabase() {
     db.prepare(`
       CREATE INDEX IF NOT EXISTS bookings_status_created_idx
       ON bookings(status, created_at)
+    `),
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS booking_status_history (
+        id TEXT PRIMARY KEY,
+        booking_id TEXT NOT NULL,
+        previous_status TEXT NOT NULL,
+        new_status TEXT NOT NULL,
+        changed_by TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
+      )
+    `),
+    db.prepare(`
+      CREATE INDEX IF NOT EXISTS booking_status_history_booking_created_idx
+      ON booking_status_history(booking_id, created_at)
+    `),
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS booking_notifications (
+        id TEXT PRIMARY KEY,
+        booking_id TEXT NOT NULL,
+        status_history_id TEXT NOT NULL,
+        channel TEXT NOT NULL CHECK (channel IN ('email')),
+        recipient TEXT,
+        notification_type TEXT NOT NULL CHECK (notification_type IN ('status_update')),
+        status TEXT NOT NULL CHECK (status IN ('pending', 'sent', 'failed', 'skipped')),
+        attempt_count INTEGER NOT NULL DEFAULT 0 CHECK (attempt_count >= 0),
+        last_error TEXT,
+        sent_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
+        FOREIGN KEY (status_history_id) REFERENCES booking_status_history(id) ON DELETE CASCADE,
+        UNIQUE(status_history_id, channel, notification_type)
+      )
+    `),
+    db.prepare(`
+      CREATE INDEX IF NOT EXISTS booking_notifications_booking_status_idx
+      ON booking_notifications(booking_id, status, updated_at)
+    `),
+    db.prepare(`
+      CREATE INDEX IF NOT EXISTS booking_notifications_history_idx
+      ON booking_notifications(status_history_id)
     `),
   ]);
 
@@ -423,6 +526,11 @@ async function initialiseDatabase() {
       .prepare(
         "ALTER TABLE bookings ADD COLUMN delivery_fee INTEGER NOT NULL DEFAULT 0",
       )
+      .run();
+  }
+  if (!bookingColumnNames.has("last_status_history_id")) {
+    await db
+      .prepare("ALTER TABLE bookings ADD COLUMN last_status_history_id TEXT")
       .run();
   }
 
@@ -532,6 +640,42 @@ function parseBooking(row: Record<string, unknown>): Booking {
     status: row.status as BookingStatus,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
+    statusHistory: [],
+  };
+}
+
+function parseBookingNotification(
+  row: Record<string, unknown>,
+): BookingNotification {
+  const attemptCount = Number(row.attempt_count ?? 0);
+  return {
+    id: String(row.id),
+    bookingId: String(row.booking_id),
+    statusHistoryId: String(row.status_history_id),
+    channel: "email",
+    recipient: row.recipient ? String(row.recipient) : null,
+    notificationType: "status_update",
+    status: row.status as BookingNotificationStatus,
+    attemptCount: Number.isFinite(attemptCount) ? attemptCount : 0,
+    lastError: row.last_error ? String(row.last_error) : null,
+    sentAt: row.sent_at ? String(row.sent_at) : null,
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+function parseBookingStatusHistory(
+  row: Record<string, unknown>,
+  notification: BookingNotification | null = null,
+): BookingStatusHistory {
+  return {
+    id: String(row.id),
+    bookingId: String(row.booking_id),
+    previousStatus: row.previous_status as BookingStatus,
+    newStatus: row.new_status as BookingStatus,
+    changedBy: row.changed_by ? String(row.changed_by) : null,
+    createdAt: String(row.created_at),
+    notification,
   };
 }
 
@@ -740,6 +884,7 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
     status: "new",
     createdAt: now,
     updatedAt: now,
+    statusHistory: [],
   };
 }
 
@@ -749,18 +894,468 @@ export async function listBookings(): Promise<Booking[]> {
   const result = await db
     .prepare("SELECT * FROM bookings ORDER BY created_at DESC LIMIT 500")
     .all<Record<string, unknown>>();
-  return result.results.map(parseBooking);
+  const bookings = result.results.map(parseBooking);
+  await attachBookingStatusHistory(db, bookings);
+  return bookings;
 }
 
 export async function updateBookingStatus(
   id: string,
   status: BookingStatus,
-): Promise<boolean> {
+  changedBy?: string | null,
+): Promise<BookingStatusUpdateResult> {
   await ensureDatabase();
   const db = await getDatabase();
-  const result = await db
-    .prepare("UPDATE bookings SET status = ?, updated_at = ? WHERE id = ?")
-    .bind(status, new Date().toISOString(), id)
+  const booking = await findBookingById(db, id);
+  if (!booking) return { kind: "not_found" };
+  if (booking.status === status) return { kind: "unchanged", booking };
+
+  const now = new Date().toISOString();
+  const historyId = crypto.randomUUID();
+  const notificationId = crypto.randomUUID();
+  const plan = buildStatusNotificationPlan(booking, status);
+  const history: BookingStatusHistory = {
+    id: historyId,
+    bookingId: booking.id,
+    previousStatus: booking.status,
+    newStatus: status,
+    changedBy: cleanChangedBy(changedBy),
+    createdAt: now,
+    notification: null,
+  };
+  let notification = notificationFromPlan({
+    id: notificationId,
+    bookingId: booking.id,
+    statusHistoryId: historyId,
+    now,
+    plan,
+  });
+
+  // The last-history pointer is a per-request token. It lets the history and
+  // notification inserts prove that this exact conditional UPDATE won, so two
+  // simultaneous clicks cannot create two messages for one transition.
+  const batchResults = await db.batch([
+    db
+      .prepare(`
+        UPDATE bookings
+        SET status = ?, updated_at = ?, last_status_history_id = ?
+        WHERE id = ? AND status = ?
+      `)
+      .bind(status, now, historyId, booking.id, booking.status),
+    db
+      .prepare(`
+        INSERT INTO booking_status_history (
+          id, booking_id, previous_status, new_status, changed_by, created_at
+        )
+        SELECT ?, ?, ?, ?, ?, ?
+        WHERE EXISTS (
+          SELECT 1 FROM bookings
+          WHERE id = ? AND last_status_history_id = ?
+        )
+      `)
+      .bind(
+        history.id,
+        history.bookingId,
+        history.previousStatus,
+        history.newStatus,
+        history.changedBy,
+        history.createdAt,
+        booking.id,
+        history.id,
+      ),
+    db
+      .prepare(`
+        INSERT INTO booking_notifications (
+          id, booking_id, status_history_id, channel, recipient,
+          notification_type, status, attempt_count, last_error, sent_at,
+          created_at, updated_at
+        )
+        SELECT ?, ?, ?, 'email', ?, 'status_update', ?, ?, ?, ?, ?, ?
+        WHERE EXISTS (
+          SELECT 1 FROM booking_status_history
+          WHERE id = ? AND booking_id = ?
+        )
+      `)
+      .bind(
+        notification.id,
+        notification.bookingId,
+        notification.statusHistoryId,
+        notification.recipient,
+        notification.status,
+        notification.attemptCount,
+        notification.lastError,
+        notification.sentAt,
+        notification.createdAt,
+        notification.updatedAt,
+        history.id,
+        booking.id,
+      ),
+  ]);
+
+  if (!batchResults[0]?.meta.changes) {
+    const current = await findBookingById(db, id);
+    if (!current) return { kind: "not_found" };
+    return current.status === status
+      ? { kind: "unchanged", booking: current }
+      : { kind: "conflict", booking: current };
+  }
+  if (!batchResults[1]?.meta.changes || !batchResults[2]?.meta.changes) {
+    throw new Error("Unable to create the booking status notification record.");
+  }
+
+  const updatedBooking: Booking = {
+    ...booking,
+    status,
+    updatedAt: now,
+  };
+  if (notification.status === "pending" && plan.content && notification.recipient) {
+    notification = await deliverStatusNotification(
+      db,
+      updatedBooking,
+      notification,
+      plan.content,
+    );
+  }
+
+  history.notification = notification;
+  updatedBooking.statusHistory = [...booking.statusHistory, history];
+  return { kind: "updated", booking: updatedBooking, history, notification };
+}
+
+export async function retryBookingStatusNotification(
+  bookingId: string,
+  notificationId: string,
+): Promise<BookingNotificationRetryResult> {
+  await ensureDatabase();
+  const db = await getDatabase();
+  const notification = await findBookingNotification(db, bookingId, notificationId);
+  if (!notification) return { kind: "not_found" };
+  if (notification.status !== "failed") {
+    return { kind: "not_retryable", notification };
+  }
+
+  const now = new Date().toISOString();
+  const claim = await db
+    .prepare(`
+      UPDATE booking_notifications
+      SET status = 'pending', attempt_count = attempt_count + 1,
+          last_error = NULL, updated_at = ?
+      WHERE id = ? AND booking_id = ? AND status = 'failed'
+    `)
+    .bind(now, notificationId, bookingId)
     .run();
-  return Boolean(result.meta.changes);
+  if (!claim.meta.changes) {
+    const current = await findBookingNotification(db, bookingId, notificationId);
+    return { kind: "in_progress", notification: current ?? notification };
+  }
+
+  const claimedNotification: BookingNotification = {
+    ...notification,
+    status: "pending",
+    attemptCount: notification.attemptCount + 1,
+    lastError: null,
+    updatedAt: now,
+  };
+  const [booking, history] = await Promise.all([
+    findBookingById(db, bookingId),
+    findBookingStatusHistory(db, notification.statusHistoryId),
+  ]);
+
+  if (!booking || !history) {
+    const failed = await recordNotificationWithoutDelivery(
+      db,
+      claimedNotification,
+      "failed",
+      "notification_data_unavailable",
+    );
+    return { kind: "failed", notification: failed };
+  }
+
+  const content = buildStatusEmail(history.newStatus, {
+    bookingReference: booking.reference,
+    customerName: booking.customerName,
+    fulfillmentMethod: booking.fulfillmentMethod,
+    serviceName: booking.serviceName,
+  });
+  const recipient = claimedNotification.recipient?.trim() ?? "";
+  if (!content) {
+    const skipped = await recordNotificationWithoutDelivery(
+      db,
+      claimedNotification,
+      "skipped",
+      "status_not_customer_notifiable",
+    );
+    return { kind: "retried", booking, notification: skipped };
+  }
+  if (!recipient) {
+    const skipped = await recordNotificationWithoutDelivery(
+      db,
+      claimedNotification,
+      "skipped",
+      "customer_email_missing",
+    );
+    return { kind: "retried", booking, notification: skipped };
+  }
+  if (!isEmailAddress(recipient)) {
+    const skipped = await recordNotificationWithoutDelivery(
+      db,
+      claimedNotification,
+      "skipped",
+      "customer_email_invalid",
+    );
+    return { kind: "retried", booking, notification: skipped };
+  }
+
+  const delivered = await deliverStatusNotification(
+    db,
+    booking,
+    claimedNotification,
+    content,
+  );
+  return { kind: "retried", booking, notification: delivered };
+}
+
+type Database = Awaited<ReturnType<typeof getDatabase>>;
+
+type StatusNotificationPlan = {
+  attemptCount: number;
+  content: StatusEmailContent | null;
+  lastError: string | null;
+  recipient: string | null;
+  status: BookingNotificationStatus;
+};
+
+async function attachBookingStatusHistory(db: Database, bookings: Booking[]) {
+  if (!bookings.length) return;
+
+  const bookingIds = bookings.map((booking) => booking.id);
+  const placeholders = bookingIds.map(() => "?").join(", ");
+  const [historyResult, notificationResult] = await Promise.all([
+    db
+      .prepare(`
+        SELECT * FROM booking_status_history
+        WHERE booking_id IN (${placeholders})
+        ORDER BY created_at ASC
+      `)
+      .bind(...bookingIds)
+      .all<Record<string, unknown>>(),
+    db
+      .prepare(`
+        SELECT * FROM booking_notifications
+        WHERE booking_id IN (${placeholders})
+          AND channel = 'email'
+          AND notification_type = 'status_update'
+      `)
+      .bind(...bookingIds)
+      .all<Record<string, unknown>>(),
+  ]);
+  const notificationByHistoryId = new Map(
+    notificationResult.results.map((row) => {
+      const notification = parseBookingNotification(row);
+      return [notification.statusHistoryId, notification] as const;
+    }),
+  );
+  const bookingById = new Map(bookings.map((booking) => [booking.id, booking]));
+  historyResult.results.forEach((row) => {
+    const history = parseBookingStatusHistory(
+      row,
+      notificationByHistoryId.get(String(row.id)) ?? null,
+    );
+    bookingById.get(history.bookingId)?.statusHistory.push(history);
+  });
+}
+
+async function findBookingById(db: Database, id: string) {
+  const row = await db
+    .prepare("SELECT * FROM bookings WHERE id = ?")
+    .bind(id)
+    .first<Record<string, unknown>>();
+  return row ? parseBooking(row) : null;
+}
+
+async function findBookingNotification(
+  db: Database,
+  bookingId: string,
+  notificationId: string,
+) {
+  const row = await db
+    .prepare(`
+      SELECT * FROM booking_notifications
+      WHERE id = ? AND booking_id = ?
+        AND channel = 'email' AND notification_type = 'status_update'
+    `)
+    .bind(notificationId, bookingId)
+    .first<Record<string, unknown>>();
+  return row ? parseBookingNotification(row) : null;
+}
+
+async function findBookingStatusHistory(db: Database, id: string) {
+  const row = await db
+    .prepare("SELECT * FROM booking_status_history WHERE id = ?")
+    .bind(id)
+    .first<Record<string, unknown>>();
+  return row ? parseBookingStatusHistory(row) : null;
+}
+
+function buildStatusNotificationPlan(
+  booking: Booking,
+  status: BookingStatus,
+): StatusNotificationPlan {
+  const content = buildStatusEmail(status, {
+    bookingReference: booking.reference,
+    customerName: booking.customerName,
+    fulfillmentMethod: booking.fulfillmentMethod,
+    serviceName: booking.serviceName,
+  });
+  if (!content) {
+    return {
+      attemptCount: 0,
+      content: null,
+      lastError: "status_not_customer_notifiable",
+      recipient: null,
+      status: "skipped",
+    };
+  }
+
+  const recipient = booking.email?.trim() ?? "";
+  if (!recipient) {
+    return {
+      attemptCount: 0,
+      content,
+      lastError: "customer_email_missing",
+      recipient: null,
+      status: "skipped",
+    };
+  }
+  if (!isEmailAddress(recipient)) {
+    return {
+      attemptCount: 0,
+      content,
+      lastError: "customer_email_invalid",
+      recipient,
+      status: "skipped",
+    };
+  }
+  return {
+    attemptCount: 1,
+    content,
+    lastError: null,
+    recipient,
+    status: "pending",
+  };
+}
+
+function notificationFromPlan(input: {
+  bookingId: string;
+  id: string;
+  now: string;
+  plan: StatusNotificationPlan;
+  statusHistoryId: string;
+}): BookingNotification {
+  return {
+    id: input.id,
+    bookingId: input.bookingId,
+    statusHistoryId: input.statusHistoryId,
+    channel: "email",
+    recipient: input.plan.recipient,
+    notificationType: "status_update",
+    status: input.plan.status,
+    attemptCount: input.plan.attemptCount,
+    lastError: input.plan.lastError,
+    sentAt: null,
+    createdAt: input.now,
+    updatedAt: input.now,
+  };
+}
+
+async function deliverStatusNotification(
+  db: Database,
+  booking: Booking,
+  notification: BookingNotification,
+  content: StatusEmailContent,
+) {
+  const result = await sendGmailStatusEmail({
+    content,
+    to: notification.recipient ?? "",
+  });
+  const nextStatus: BookingNotificationStatus =
+    result.status === "sent" ? "sent" : "failed";
+  const lastError = result.status === "sent" ? null : result.errorCode;
+  const now = new Date().toISOString();
+  const next: BookingNotification = {
+    ...notification,
+    status: nextStatus,
+    lastError,
+    sentAt: result.status === "sent" ? now : null,
+    updatedAt: now,
+  };
+
+  if (result.status === "failed") {
+    console.error(
+      `Status email failed for booking ${booking.reference}; notification ${notification.id}; ${result.errorCode}.`,
+    );
+  }
+  try {
+    await db
+      .prepare(`
+        UPDATE booking_notifications
+        SET status = ?, last_error = ?, sent_at = ?, updated_at = ?
+        WHERE id = ? AND status = 'pending'
+      `)
+      .bind(next.status, next.lastError, next.sentAt, next.updatedAt, next.id)
+      .run();
+  } catch {
+    // Keeping the row pending is safer than permitting a blind retry after an
+    // email may already have reached Gmail.
+    console.error(
+      `Unable to record status email outcome for booking ${booking.reference}; notification ${notification.id}.`,
+    );
+    return {
+      ...notification,
+      lastError: "notification_result_persist_failed",
+      updatedAt: now,
+    };
+  }
+  return next;
+}
+
+async function recordNotificationWithoutDelivery(
+  db: Database,
+  notification: BookingNotification,
+  status: "failed" | "skipped",
+  lastError: string,
+) {
+  const now = new Date().toISOString();
+  const next: BookingNotification = {
+    ...notification,
+    status,
+    lastError,
+    sentAt: null,
+    updatedAt: now,
+  };
+  try {
+    await db
+      .prepare(`
+        UPDATE booking_notifications
+        SET status = ?, last_error = ?, sent_at = NULL, updated_at = ?
+        WHERE id = ? AND status = 'pending'
+      `)
+      .bind(next.status, next.lastError, next.updatedAt, next.id)
+      .run();
+  } catch {
+    console.error(
+      `Unable to record skipped status email for notification ${notification.id}.`,
+    );
+    return {
+      ...notification,
+      lastError: "notification_result_persist_failed",
+      updatedAt: now,
+    };
+  }
+  return next;
+}
+
+function cleanChangedBy(value: string | null | undefined) {
+  const cleaned = String(value ?? "").trim().slice(0, 160);
+  return cleaned || null;
 }

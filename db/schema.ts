@@ -1,4 +1,10 @@
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import {
+  index,
+  integer,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 export const services = sqliteTable(
   "services",
@@ -52,11 +58,69 @@ export const bookings = sqliteTable(
       .notNull()
       .default(false),
     status: text("status").notNull().default("new"),
+    lastStatusHistoryId: text("last_status_history_id"),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
   (table) => [
     index("bookings_status_created_idx").on(table.status, table.createdAt),
+  ],
+);
+
+export const bookingStatusHistory = sqliteTable(
+  "booking_status_history",
+  {
+    id: text("id").primaryKey(),
+    bookingId: text("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    previousStatus: text("previous_status").notNull(),
+    newStatus: text("new_status").notNull(),
+    changedBy: text("changed_by"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("booking_status_history_booking_created_idx").on(
+      table.bookingId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const bookingNotifications = sqliteTable(
+  "booking_notifications",
+  {
+    id: text("id").primaryKey(),
+    bookingId: text("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    statusHistoryId: text("status_history_id")
+      .notNull()
+      .references(() => bookingStatusHistory.id, { onDelete: "cascade" }),
+    channel: text("channel").notNull().default("email"),
+    recipient: text("recipient"),
+    notificationType: text("notification_type")
+      .notNull()
+      .default("status_update"),
+    status: text("status").notNull().default("pending"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    lastError: text("last_error"),
+    sentAt: text("sent_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("booking_notifications_history_channel_type_uniq").on(
+      table.statusHistoryId,
+      table.channel,
+      table.notificationType,
+    ),
+    index("booking_notifications_booking_status_idx").on(
+      table.bookingId,
+      table.status,
+      table.updatedAt,
+    ),
+    index("booking_notifications_history_idx").on(table.statusHistoryId),
   ],
 );
 
