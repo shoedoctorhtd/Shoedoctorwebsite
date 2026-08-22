@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -176,6 +177,10 @@ export default function BookingForm({
   const [hasInteracted, setHasInteracted] = useState(false);
   const successHeadingRef = useRef<HTMLHeadingElement>(null);
   const minimumDate = useMemo(() => getNepalCalendarDate(), []);
+  const startAnotherBooking = useCallback(() => {
+    setState({ type: "idle" });
+    setHasInteracted(false);
+  }, []);
 
   const selected = services.find((service) => service.id === selectedService);
   const expressService = services.find(
@@ -218,6 +223,40 @@ export default function BookingForm({
       successHeadingRef.current?.focus();
     }
   }, [state]);
+
+  useEffect(() => {
+    if (state.type !== "success") return;
+
+    function restartFromBookingLink(event: MouseEvent) {
+      if (
+        event.button !== 0 ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        !(event.target instanceof Element)
+      ) {
+        return;
+      }
+
+      const link = event.target.closest<HTMLAnchorElement>("a[href]");
+      if (!link || link.target === "_blank" || link.hasAttribute("download")) {
+        return;
+      }
+
+      const destination = new URL(link.href, window.location.href);
+      if (
+        destination.origin === window.location.origin &&
+        destination.pathname === "/" &&
+        destination.hash === "#book"
+      ) {
+        startAnotherBooking();
+      }
+    }
+
+    document.addEventListener("click", restartFromBookingLink);
+    return () => document.removeEventListener("click", restartFromBookingLink);
+  }, [startAnotherBooking, state.type]);
 
   function clearSubmissionError() {
     if (state.type === "error") setState({ type: "idle" });
@@ -424,7 +463,7 @@ export default function BookingForm({
           details and service time.
         </p>
         <div className={styles.successActions}>
-          <Link href="/">Return home</Link>
+          <Link href="/" onClick={startAnotherBooking}>Return home</Link>
           <a href={whatsappUrl} rel="noreferrer" target="_blank">
             WhatsApp the Doctor
           </a>
