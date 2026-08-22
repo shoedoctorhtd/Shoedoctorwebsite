@@ -5,14 +5,14 @@ const BOOKING_RECIPIENT = "shoedoctorhtd@gmail.com";
 type EmailBinding = {
   send(message: {
     from: string;
-    to?: string;
+    to: string;
     subject: string;
     text: string;
     html: string;
   }): Promise<unknown>;
 };
 
-type EmailEnvironment = {
+export type EmailEnvironment = {
   BOOKING_EMAIL?: EmailBinding;
   BOOKING_NOTIFICATION_FROM?: string;
 };
@@ -22,31 +22,50 @@ export type EmailNotificationResult =
   | { status: "not_configured" }
   | { status: "failed" };
 
+type EmailAction = {
+  href: string;
+  label: string;
+};
+
+type EmailField = {
+  label: string;
+  value: string;
+  action?: EmailAction;
+};
+
+type EmailSection = {
+  heading: string;
+  fields: EmailField[];
+};
+
 /**
- * Sends the owner a booking email through Cloudflare Email Service.
- * A booking remains in the admin portal even if email delivery is unavailable.
+ * Sends the owner one notification after a new booking has been persisted.
+ * The fixed recipient must match the BOOKING_EMAIL binding's destination.
+ * A delivery failure is intentionally isolated from the completed D1 booking.
  */
 export async function sendBookingEmailNotification(
   booking: Booking,
+  environment?: EmailEnvironment,
 ): Promise<EmailNotificationResult> {
-  const environment = await getRuntimeEnvironment();
-  const from = environment.BOOKING_NOTIFICATION_FROM?.trim();
-  if (!environment.BOOKING_EMAIL || !isEmailAddress(from)) {
-    return { status: "not_configured" };
-  }
-
-  const content = bookingEmailContent(booking);
   try {
-    await environment.BOOKING_EMAIL.send({
+    const runtime = environment ?? (await getRuntimeEnvironment());
+    const from = runtime.BOOKING_NOTIFICATION_FROM?.trim();
+    if (!runtime.BOOKING_EMAIL || !isEmailAddress(from)) {
+      return { status: "not_configured" };
+    }
+
+    const content = bookingEmailContent(booking);
+    await runtime.BOOKING_EMAIL.send({
       from,
-      subject: `New booking ${booking.reference} — ${booking.serviceName}`,
+      to: BOOKING_RECIPIENT,
+      subject: content.subject,
       text: content.text,
       html: content.html,
     });
     return { status: "sent" };
   } catch (error) {
     console.error(
-      `Email booking notification failed for ${booking.reference}:`,
+      `Booking ${booking.reference} was saved, but owner email notification failed:`,
       error,
     );
     return { status: "failed" };
@@ -56,46 +75,205 @@ export async function sendBookingEmailNotification(
 function bookingEmailContent(booking: Booking) {
   const fulfillment =
     booking.fulfillmentMethod === "pickup_delivery"
-      ? "Pickup & drop-off"
-      : "Self drop & pickup";
+      ? "Pickup & return delivery"
+      : "Self drop-off & pickup";
   const pickupArea = booking.pickupArea
     ? booking.pickupArea === "hetauda_city"
       ? "Hetauda City"
       : "Other city"
     : "Not applicable";
-  const fields: Array<[string, string]> = [
-    ["Reference", booking.reference],
-    ["Customer", booking.customerName],
-    ["Phone / WhatsApp", booking.phone],
-    ["Email", booking.email ?? "Not provided"],
-    ["Service", booking.serviceName],
-    ["Footwear", booking.shoeType],
-    ["Brand", booking.shoeBrand ?? "Not provided"],
-    ["Preferred date", booking.preferredDate ?? "Not specified"],
-    ["Collection", fulfillment],
-    ["Pickup area", pickupArea],
-    ["Pickup & return fee", booking.deliveryFee ? `Rs ${booking.deliveryFee}` : "Free"],
-    ["Address", booking.pickupAddress ?? "Not applicable"],
-    ["Map location", booking.locationUrl ?? "Not provided"],
-    ["Express service", booking.expressRequested ? "Yes" : "No"],
-    ["Special request", booking.notes ?? "None"],
+  const deliveryFee = booking.deliveryFee
+    ? formatNpr(booking.deliveryFee)
+    : "Free";
+  const whatsappUrl = whatsappUrlFor(booking.phone);
+  const mapUrl = safeHttpUrl(booking.locationUrl);
+  const sections: EmailSection[] = [
+    {
+      heading: "Booking",
+      fields: [
+        { label: "Booking ID", value: booking.reference },
+        { label: "Created", value: formatBookingDateTime(booking.createdAt) },
+        {
+          label: "Preferred service date",
+          value: booking.preferredDate ?? "Not specified",
+        },
+        {
+          label: "Status",
+          value: booking.status === "new" ? "New" : booking.status,
+        },
+      ],
+    },
+    {
+      heading: "Customer",
+      fields: [
+        { label: "Customer name", value: booking.customerName },
+        {
+          label: "Phone / WhatsApp",
+          value: booking.phone,
+          action: whatsappUrl
+            ? { href: whatsappUrl, label: "Open WhatsApp" }
+            : undefined,
+        },
+        { label: "Email", value: booking.email ?? "Not provided" },
+      ],
+    },
+    {
+      heading: "Shoe & service",
+      fields: [
+        { label: "Footwear type", value: booking.shoeType },
+        { label: "Brand", value: booking.shoeBrand ?? "Not provided" },
+        { label: "Selected service", value: booking.serviceName },
+        {
+          label: "Express service requested",
+          value: booking.expressRequested ? "Yes" : "No",
+        },
+      ],
+    },
+    {
+      heading: "Collection & delivery",
+      fields: [
+        { label: "Collection method", value: fulfillment },
+        { label: "Pickup area", value: pickupArea },
+        { label: "Pickup & return fee", value: deliveryFee },
+        {
+          label: "Pickup address",
+          value: booking.pickupAddress ?? "Not applicable",
+        },
+        {
+          label: "Map location",
+          value: booking.locationUrl ?? "Not provided",
+          action: mapUrl ? { href: mapUrl, label: "Open map" } : undefined,
+        },
+      ],
+    },
+    {
+      heading: "Customer requirements",
+      fields: [
+        { label: "Special request", value: booking.notes ?? "None" },
+      ],
+    },
+  ];
+  const highlights: EmailField[] = [
+    { label: "Booking ID", value: booking.reference },
+    { label: "Customer name", value: booking.customerName },
+    { label: "Phone / WhatsApp", value: booking.phone },
+    { label: "Service", value: booking.serviceName },
+    { label: "Collection method", value: fulfillment },
+    { label: "Special request", value: booking.notes ?? "None" },
   ];
   const text = [
-    "New Shoe Doctor booking",
+    "NEW BOOKING",
+    "Shoe Doctor",
     "",
-    ...fields.map(([label, value]) => `${label}: ${value}`),
+    ...sections.flatMap((section) => [
+      section.heading.toUpperCase(),
+      ...section.fields.flatMap((field) => [
+        `${field.label}: ${field.value}`,
+        ...(field.action ? [`${field.action.label}: ${field.action.href}`] : []),
+      ]),
+      "",
+    ]),
+    "Shoe Doctor",
+    "We Diagnose. We Clean. We Restore.",
+    "9761716743",
+    "shoedoctor.com.np",
   ].join("\n");
-  const rows = fields
+  const highlightRows = emailRows(highlights, true);
+  const sectionHtml = sections
     .map(
-      ([label, value]) =>
-        `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`,
+      (section) => `
+        <section style="margin:24px 0 0;">
+          <h2 style="color:#7b1738;font-size:13px;font-weight:700;letter-spacing:.1em;margin:0 0 8px;text-transform:uppercase;">${escapeHtml(section.heading)}</h2>
+          <table role="presentation" style="border-collapse:collapse;font-size:14px;line-height:1.5;width:100%;">
+            <tbody>${emailRows(section.fields)}</tbody>
+          </table>
+        </section>`,
     )
     .join("");
 
   return {
+    subject: `\u{1F534} New Shoe Doctor Booking \u2014 ${headerValue(booking.reference)} \u2014 ${headerValue(booking.customerName)}`,
     text,
-    html: `<h1>New Shoe Doctor booking</h1><table>${rows}</table>`,
+    html: `<!doctype html>
+<html lang="en">
+  <body style="margin:0;background:#f6f5f2;color:#171412;font-family:Arial,sans-serif;">
+    <main style="box-sizing:border-box;margin:0 auto;max-width:640px;padding:28px 16px;">
+      <section style="background:#ffffff;border:1px solid #dedbd4;border-radius:12px;overflow:hidden;">
+        <header style="background:#7b1738;color:#ffffff;padding:25px 28px;">
+          <p style="font-size:12px;font-weight:700;letter-spacing:.14em;margin:0 0 9px;text-transform:uppercase;">New booking</p>
+          <h1 style="font-size:25px;line-height:1.25;margin:0;">A new Shoe Doctor booking has arrived</h1>
+        </header>
+        <div style="padding:26px 28px;">
+          <p style="color:#7b1738;font-size:12px;font-weight:700;letter-spacing:.12em;margin:0 0 10px;text-transform:uppercase;">New booking</p>
+          <p style="font-size:16px;line-height:1.6;margin:0;">Review the saved booking details below and contact the customer to confirm the treatment and final quote.</p>
+          <table role="presentation" style="border-collapse:collapse;font-size:14px;line-height:1.45;margin:22px 0 0;width:100%;">
+            <tbody>${highlightRows}</tbody>
+          </table>${sectionHtml}
+        </div>
+        <footer style="border-top:1px solid #e7e4de;color:#5e5a55;font-size:13px;line-height:1.6;padding:20px 28px;">
+          <strong style="color:#171412;">Shoe Doctor</strong><br />
+          We Diagnose. We Clean. We Restore.<br />
+          9761716743<br />
+          shoedoctor.com.np
+        </footer>
+      </section>
+    </main>
+  </body>
+</html>`,
   };
+}
+
+function emailRows(fields: EmailField[], highlight = false) {
+  return fields
+    .map((field) => {
+      const action = field.action
+        ? `<br /><a href="${escapeHtml(field.action.href)}" style="color:#7b1738;font-weight:700;text-decoration:underline;">${escapeHtml(field.action.label)}</a>`
+        : "";
+      return `<tr>
+        <th scope="row" style="border:${highlight ? "1px solid #e7d5dc" : "0"};background:${highlight ? "#fbf5f7" : "transparent"};color:#5e5a55;font-size:12px;font-weight:700;padding:${highlight ? "11px 12px" : "8px 0"};text-align:left;vertical-align:top;width:42%;">${escapeHtml(field.label)}</th>
+        <td style="border:${highlight ? "1px solid #e7d5dc" : "0"};font-weight:${highlight ? "700" : "400"};padding:${highlight ? "11px 12px" : "8px 0"};vertical-align:top;white-space:pre-wrap;">${escapeHtml(field.value)}${action}</td>
+      </tr>`;
+    })
+    .join("");
+}
+
+function formatBookingDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return `${new Intl.DateTimeFormat("en-NP", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Kathmandu",
+  }).format(date)} NPT`;
+}
+
+function formatNpr(value: number) {
+  return `Rs ${new Intl.NumberFormat("en-NP", {
+    maximumFractionDigits: 0,
+  }).format(value)}`;
+}
+
+function headerValue(value: string) {
+  return value.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function safeHttpUrl(value: string | null) {
+  if (!value) return null;
+
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:"
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function whatsappUrlFor(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  return /^977\d{10}$/u.test(digits) ? `https://wa.me/${digits}` : null;
 }
 
 function escapeHtml(value: string) {
