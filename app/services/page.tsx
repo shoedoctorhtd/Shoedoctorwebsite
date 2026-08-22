@@ -40,7 +40,7 @@ const faqs = [
   {
     question: "Can I request express service?",
     answer:
-      "Yes. Express Wash & Dry is +Rs 199 and aims for 2–3 hours. Repair Priority is +Rs 150. Both depend on treatment and available capacity.",
+      "Yes. Express Wash & Dry is +Rs 149 and aims for 2–3 hours. Repair Priority is +Rs 150. Both depend on treatment and available capacity.",
   },
 ];
 

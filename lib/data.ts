@@ -359,7 +359,7 @@ const seedServices: Array<
     id: "express-wash-dry",
     name: "Express Wash & Dry",
     category: "Add-ons",
-    priceLabel: "+ Rs 199",
+    priceLabel: "+ Rs 149",
     specialPriceLabel: null,
     turnaround: "2–3 hours",
     description: "Fast-track washing and drying when a same-day slot is available.",

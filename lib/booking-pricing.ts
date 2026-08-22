@@ -11,6 +11,7 @@ export const FIXED_PRICE_SERVICE_IDS = new Set([
   "basic-clean",
   "deep-clean",
   "premium-care",
+  "express-wash-dry",
 ]);
 
 export function isPickupArea(value: string): value is PickupArea {
@@ -28,15 +29,32 @@ export function formatNprPrice(amount: number) {
 }
 
 /**
- * Only exact prices can safely be added to a delivery fee. Admin price labels
- * also support ranges and "from" wording, which must stay a quote instead.
+ * Only exact prices can safely be added to a delivery fee. A fixed add-on can
+ * use the same format with a leading "+". Ranges and "from" wording must
+ * stay a quote instead.
  */
 export function getExactNprPrice(priceLabel: string): number | null {
-  const match = /^Rs\.?\s*([1-9]\d{0,8})$/iu.exec(
+  const match = /^(?:\+\s*)?Rs\.?\s*([1-9]\d{0,8})$/iu.exec(
     priceLabel.trim().replace(/,/gu, ""),
   );
   if (!match) return null;
 
   const amount = Number(match[1]);
   return Number.isSafeInteger(amount) ? amount : null;
+}
+
+export function calculateBookingTotal(
+  servicePrice: number | null,
+  deliveryFee: number | null,
+  expressServicePrice: number | null,
+) {
+  if (
+    servicePrice === null ||
+    deliveryFee === null ||
+    expressServicePrice === null
+  ) {
+    return null;
+  }
+
+  return servicePrice + deliveryFee + expressServicePrice;
 }

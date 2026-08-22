@@ -11,6 +11,7 @@ import {
 import Link from "next/link";
 import type { Service } from "@/lib/data";
 import {
+  calculateBookingTotal,
   FIXED_PRICE_SERVICE_IDS,
   formatNprPrice,
   getExactNprPrice,
@@ -190,12 +191,16 @@ export default function BookingForm({
     selected && FIXED_PRICE_SERVICE_IDS.has(selected.id)
       ? getExactNprPrice(selected.priceLabel)
       : null;
-  const totalPrice =
-    !expressRequested &&
-    fixedServicePrice !== null &&
-    pickupDeliveryFee !== null
-      ? fixedServicePrice + pickupDeliveryFee
-      : null;
+  const expressServicePrice = expressRequested
+    ? expressService
+      ? getExactNprPrice(expressService.priceLabel)
+      : null
+    : 0;
+  const totalPrice = calculateBookingTotal(
+    fixedServicePrice,
+    pickupDeliveryFee,
+    expressServicePrice,
+  );
   const hasTotalPrice = totalPrice !== null;
   const pickupAreaName = pickupArea ? pickupAreaLabel(pickupArea) : null;
   const validationErrors = getValidationErrors(
@@ -864,7 +869,7 @@ export default function BookingForm({
             </div>
           </dl>
           <div className={styles.summaryTotal}>
-            <span>{hasTotalPrice ? "Total price" : "Price status"}</span>
+            <span>{hasTotalPrice ? "Final price" : "Price status"}</span>
             <strong>
               {hasTotalPrice ? formatNprPrice(totalPrice) : "Quote after review"}
             </strong>
