@@ -31,7 +31,10 @@ test("renders development preview metadata", async () => {
   );
   const html = await response.text();
   assert.match(html, developmentPreviewMeta);
-  assert.match(html, /Your shoes/i);
+  assert.match(html, /How many pairs\?/i);
+  assert.match(html, /Your shoes[\s\S]*?1 pair/i);
+  assert.match(html, /Add condition \/ special request/i);
   assert.match(html, /Add another pair/i);
+  assert.doesNotMatch(html, /Add each pair for this booking/i);
   assert.match(html, /Your Booking Summary/i);
 });

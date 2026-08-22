@@ -219,10 +219,14 @@ export default function BookingForm({
   >("self_dropoff");
   const [pickupArea, setPickupArea] = useState<PickupArea | "">("");
   const [expressRequested, setExpressRequested] = useState(false);
+  const [expandedSpecialRequests, setExpandedSpecialRequests] = useState<
+    Record<string, boolean>
+  >({});
   const [locationStatus, setLocationStatus] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [hasInteracted, setHasInteracted] = useState(false);
   const successHeadingRef = useRef<HTMLHeadingElement>(null);
+  const nextPairFocusRef = useRef<string | null>(null);
   const nextPairId = useRef(2);
   const minimumDate = useMemo(() => getNepalCalendarDate(), []);
   const startAnotherBooking = useCallback(() => {
@@ -284,6 +288,20 @@ export default function BookingForm({
       successHeadingRef.current?.focus();
     }
   }, [state]);
+
+  useEffect(() => {
+    const itemId = nextPairFocusRef.current;
+    if (!itemId) return;
+
+    nextPairFocusRef.current = null;
+    window.requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>(
+          `[data-booking-field="${itemFieldKey(itemId, "serviceId")}"]`,
+        )
+        ?.focus();
+    });
+  }, [items]);
 
   useEffect(() => {
     if (state.type !== "success") return;
@@ -403,19 +421,67 @@ export default function BookingForm({
     if (serviceId === expressService?.id) setExpressRequested(false);
   }
 
-  function addAnotherPair() {
-    if (items.length >= MAXIMUM_PAIR_COUNT) return;
+  function changePairCount(nextPairCount: number) {
+    const targetPairCount = Math.max(
+      1,
+      Math.min(MAXIMUM_PAIR_COUNT, Math.round(nextPairCount)),
+    );
+    if (targetPairCount === pairCount) return;
 
-    const itemId = `pair-${nextPairId.current++}`;
-    setItems((current) => [...current, createPairDraft(itemId)]);
+    const removedItemIds = new Set(
+      targetPairCount < pairCount
+        ? items.slice(targetPairCount).map((item) => item.id)
+        : [],
+    );
+    setItems((current) => {
+      if (targetPairCount < current.length) {
+        return current.slice(0, targetPairCount);
+      }
+
+      return [
+        ...current,
+        ...Array.from(
+          { length: targetPairCount - current.length },
+          () => createPairDraft(`pair-${nextPairId.current++}`),
+        ),
+      ];
+    });
+    if (removedItemIds.size) {
+      setFieldErrors((current) => {
+        const next = { ...current };
+        Object.keys(next).forEach((field) => {
+          if (
+            [...removedItemIds].some((itemId) =>
+              field.startsWith(`item:${itemId}:`),
+            )
+          ) {
+            delete next[field as FieldName];
+          }
+        });
+        return next;
+      });
+      setExpandedSpecialRequests((current) =>
+        Object.fromEntries(
+          Object.entries(current).filter(([itemId]) => !removedItemIds.has(itemId)),
+        ),
+      );
+    }
     setHasInteracted(true);
     clearSubmissionError();
     clearFieldError("items");
   }
 
+  function addAnotherPair() {
+    changePairCount(pairCount + 1);
+  }
+
   function removePair(itemId: string) {
     if (items.length <= 1) return;
 
+    const removedIndex = items.findIndex((item) => item.id === itemId);
+    const nextFocusItem =
+      items[removedIndex + 1] ?? items[removedIndex - 1] ?? null;
+    nextPairFocusRef.current = nextFocusItem?.id ?? null;
     setItems((current) => current.filter((item) => item.id !== itemId));
     setFieldErrors((current) => {
       const next = { ...current };
@@ -426,8 +492,21 @@ export default function BookingForm({
       });
       return next;
     });
+    setExpandedSpecialRequests((current) => {
+      const next = { ...current };
+      delete next[itemId];
+      return next;
+    });
     setHasInteracted(true);
     clearSubmissionError();
+    clearFieldError("items");
+  }
+
+  function toggleSpecialRequest(itemId: string) {
+    setExpandedSpecialRequests((current) => ({
+      ...current,
+      [itemId]: !current[itemId],
+    }));
   }
 
   function selectFulfillment(method: "self_dropoff" | "pickup_delivery") {
@@ -543,6 +622,7 @@ export default function BookingForm({
       setFulfillmentMethod("self_dropoff");
       setPickupArea("");
       setExpressRequested(false);
+      setExpandedSpecialRequests({});
       setLocationStatus("");
       setFieldErrors({});
     } catch (error) {
@@ -671,18 +751,43 @@ export default function BookingForm({
           )}
         </label>
 
+        <fieldset className={styles.pairQuantity}>
+          <legend>How many pairs? <b aria-hidden="true">*</b></legend>
+          <div className={styles.pairQuantityControl}>
+            <button
+              aria-label="Decrease number of pairs"
+              disabled={pairCount <= 1}
+              onClick={() => changePairCount(pairCount - 1)}
+              type="button"
+            >
+              <span aria-hidden="true">−</span>
+            </button>
+            <output
+              aria-atomic="true"
+              aria-label={pairCountLabel(pairCount)}
+              aria-live="polite"
+            >
+              {pairCount}
+            </output>
+            <button
+              aria-label="Increase number of pairs"
+              disabled={pairCount >= MAXIMUM_PAIR_COUNT}
+              onClick={() => changePairCount(pairCount + 1)}
+              type="button"
+            >
+              <span aria-hidden="true">+</span>
+            </button>
+          </div>
+        </fieldset>
+
         <section
           aria-labelledby="your-shoes-heading"
           className={classNames(styles.shoesSection, styles.compactFull)}
         >
           <header className={styles.shoesHeading}>
-            <div>
-              <span className={styles.formKicker}>Your shoes</span>
-              <h4 id="your-shoes-heading">Add each pair for this booking.</h4>
-            </div>
-            <span aria-live="polite" className={styles.pairCounter}>
-              {pairCountLabel(pairCount)}
-            </span>
+            <h4 id="your-shoes-heading">
+              Your shoes <span aria-live="polite">· {pairCount} {pairCount === 1 ? "pair" : "pairs"}</span>
+            </h4>
           </header>
 
           <div className={styles.pairList}>
@@ -690,6 +795,8 @@ export default function BookingForm({
               const serviceField = itemFieldKey(item.id, "serviceId");
               const footwearField = itemFieldKey(item.id, "footwearType");
               const pairId = `booking-${item.id}`;
+              const specialRequestId = `${pairId}-special-request`;
+              const specialRequestOpen = expandedSpecialRequests[item.id] === true;
 
               return (
                 <section
@@ -784,19 +891,37 @@ export default function BookingForm({
                       />
                     </label>
 
-                    <label className={classNames(styles.field, styles.fieldWide)}>
-                      <span>Condition / special request <em className={styles.optional}>Optional</em></span>
-                      <textarea
-                        className={styles.input}
-                        id={`${pairId}-special-request`}
-                        maxLength={800}
-                        name={`items.${index}.specialRequest`}
-                        onChange={(event) => updatePairValue(item.id, "specialRequest", event.target.value)}
-                        placeholder="Stains, damage, material concerns or care requests for this pair."
-                        rows={3}
-                        value={item.specialRequest}
-                      />
-                    </label>
+                  </div>
+
+                  <div className={styles.specialRequestControl}>
+                    <button
+                      aria-controls={specialRequestId}
+                      aria-expanded={specialRequestOpen}
+                      className={styles.specialRequestToggle}
+                      onClick={() => toggleSpecialRequest(item.id)}
+                      type="button"
+                    >
+                      {specialRequestOpen
+                        ? "Hide condition / special request"
+                        : item.specialRequest
+                          ? "Edit condition / special request"
+                          : "+ Add condition / special request"}
+                    </button>
+                    {specialRequestOpen && (
+                      <label className={styles.field}>
+                        <span>Condition / special request <em className={styles.optional}>Optional</em></span>
+                        <textarea
+                          className={styles.input}
+                          id={specialRequestId}
+                          maxLength={800}
+                          name={`items.${index}.specialRequest`}
+                          onChange={(event) => updatePairValue(item.id, "specialRequest", event.target.value)}
+                          placeholder="Stains, damage, material concerns or care requests for this pair."
+                          rows={3}
+                          value={item.specialRequest}
+                        />
+                      </label>
+                    )}
                   </div>
                 </section>
               );
@@ -815,9 +940,6 @@ export default function BookingForm({
               <span aria-hidden="true">+</span>
               Add another pair
             </button>
-            <p className={styles.pairLimit}>
-              Add up to {MAXIMUM_PAIR_COUNT} pairs in one booking.
-            </p>
           </div>
           {fieldErrors.items && (
             <p className={styles.fieldError} id="items-error" role="alert">
@@ -963,8 +1085,14 @@ export default function BookingForm({
                 </>
               ) : (
                 <>
-                  <strong>FREE pickup &amp; return for 4+ pairs within Hetauda.</strong>
-                  <span>Add more pairs to unlock the offer.</span>
+                  {pairCount === 3 ? (
+                    <strong>Add 1 more pair for FREE Pickup &amp; Return in Hetauda.</strong>
+                  ) : (
+                    <>
+                      <strong>FREE pickup &amp; return for 4+ pairs within Hetauda.</strong>
+                      <span>Add more pairs to unlock the offer.</span>
+                    </>
+                  )}
                 </>
               )}
             </p>
