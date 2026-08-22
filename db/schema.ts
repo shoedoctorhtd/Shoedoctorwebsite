@@ -51,6 +51,14 @@ export const bookings = sqliteTable(
       .default("self_dropoff"),
     pickupArea: text("pickup_area"),
     deliveryFee: integer("delivery_fee").notNull().default(0),
+    pairCount: integer("pair_count").notNull().default(1),
+    serviceSubtotal: integer("service_subtotal"),
+    expressFee: integer("express_fee").default(0),
+    totalAmount: integer("total_amount"),
+    freeDeliveryApplied: integer("free_delivery_applied", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    freeDeliveryReason: text("free_delivery_reason"),
     pickupAddress: text("pickup_address"),
     locationUrl: text("location_url"),
     notes: text("notes"),
@@ -64,6 +72,33 @@ export const bookings = sqliteTable(
   },
   (table) => [
     index("bookings_status_created_idx").on(table.status, table.createdAt),
+  ],
+);
+
+export const bookingItems = sqliteTable(
+  "booking_items",
+  {
+    id: text("id").primaryKey(),
+    bookingId: text("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    pairNumber: integer("pair_number").notNull(),
+    serviceId: text("service_id").notNull(),
+    serviceName: text("service_name").notNull(),
+    servicePriceLabel: text("service_price_label").notNull(),
+    servicePrice: integer("service_price"),
+    footwearType: text("footwear_type").notNull(),
+    brand: text("brand"),
+    specialRequest: text("special_request"),
+    status: text("status"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("booking_items_booking_pair_uniq").on(
+      table.bookingId,
+      table.pairNumber,
+    ),
+    index("booking_items_booking_pair_idx").on(table.bookingId, table.pairNumber),
   ],
 );
 

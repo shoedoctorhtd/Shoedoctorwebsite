@@ -369,6 +369,164 @@
   grid-column: 1 / -1;
 }
 
+.shoesSection {
+  border-top: 1px solid var(--booking-line);
+  display: grid;
+  gap: 1rem;
+  margin-top: 0.15rem;
+  padding-top: clamp(1.2rem, 2.3vw, 1.6rem);
+}
+
+.shoesHeading {
+  align-items: end;
+  display: flex;
+  gap: 0.8rem 1rem;
+  justify-content: space-between;
+}
+
+.shoesHeading > div {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.shoesHeading h4 {
+  color: var(--booking-navy-deep);
+  font-size: clamp(1.05rem, 1.6vw, 1.28rem);
+  letter-spacing: -0.024em;
+  line-height: 1.28;
+  margin: 0;
+}
+
+.pairCounter {
+  background: var(--booking-green-soft);
+  border: 1px solid rgba(116, 154, 66, 0.38);
+  border-radius: 999px;
+  color: #476825;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.3;
+  padding: 0.42rem 0.62rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pairList {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.pairCard {
+  background: rgba(255, 253, 249, 0.78);
+  border: 1px solid rgba(87, 16, 39, 0.19);
+  border-radius: 0.92rem;
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1rem, 2vw, 1.25rem);
+}
+
+.pairCardHeading {
+  align-items: center;
+  border-bottom: 1px solid rgba(87, 16, 39, 0.12);
+  display: flex;
+  gap: 0.8rem;
+  justify-content: space-between;
+  padding-bottom: 0.78rem;
+}
+
+.pairCardHeading h5 {
+  color: var(--booking-navy-deep);
+  font-size: 1rem;
+  font-weight: 780;
+  letter-spacing: -0.018em;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.pairFields {
+  display: grid;
+  gap: 1rem clamp(0.9rem, 2vw, 1.25rem);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pairFields textarea.input {
+  min-height: 6rem;
+}
+
+.pairActions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.62rem 0.9rem;
+}
+
+.addPairButton,
+.removePairButton {
+  cursor: pointer;
+  font: inherit;
+  font-weight: 760;
+  line-height: 1.25;
+}
+
+.addPairButton {
+  align-items: center;
+  background: rgba(123, 23, 56, 0.06);
+  border: 1px dashed rgba(87, 16, 39, 0.42);
+  border-radius: 0.78rem;
+  color: var(--booking-navy-deep);
+  display: inline-flex;
+  font-size: 0.94rem;
+  gap: 0.55rem;
+  justify-content: center;
+  min-height: 3.2rem;
+  padding: 0.72rem 1rem;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.addPairButton > span {
+  align-items: center;
+  background: var(--booking-burgundy);
+  border-radius: 50%;
+  color: #fff;
+  display: inline-flex;
+  font-size: 1rem;
+  height: 1.3rem;
+  justify-content: center;
+  line-height: 1;
+  width: 1.3rem;
+}
+
+.addPairButton:hover:not(:disabled) {
+  background: rgba(123, 23, 56, 0.11);
+  border-color: var(--booking-navy-deep);
+}
+
+.addPairButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.removePairButton {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  color: var(--booking-burgundy);
+  font-size: 0.85rem;
+  min-height: 2.35rem;
+  padding: 0.2rem 0;
+}
+
+.removePairButton:hover {
+  color: #5f102b;
+}
+
+.pairLimit {
+  color: var(--booking-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
 .field {
   display: grid;
   gap: 0.48rem;
@@ -471,6 +629,8 @@ select.input {
 
 .input:focus-visible,
 .locationControl button:focus-visible,
+.addPairButton:focus-visible,
+.removePairButton:focus-visible,
 .submitButton:focus-visible,
 .successActions a:focus-visible,
 .successActions button:focus-visible {
@@ -676,6 +836,33 @@ select.input {
   text-transform: uppercase;
 }
 
+.deliveryPromotion {
+  background: rgba(255, 212, 202, 0.4);
+  border: 1px solid rgba(87, 16, 39, 0.15);
+  border-radius: 0.72rem;
+  color: var(--booking-muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.84rem;
+  gap: 0.28rem 0.45rem;
+  line-height: 1.45;
+  margin: 0;
+  padding: 0.72rem 0.8rem;
+}
+
+.deliveryPromotion strong {
+  color: var(--booking-navy-deep);
+}
+
+.deliveryPromotionSuccess {
+  background: var(--booking-green-soft);
+  border-color: rgba(116, 154, 66, 0.42);
+}
+
+.deliveryPromotionSuccess strong {
+  color: #315720;
+}
+
 .pickupDetails {
   background: rgba(255, 212, 202, 0.42);
   border: 1px solid transparent;
@@ -816,6 +1003,24 @@ select.input {
   margin: 0;
 }
 
+.summaryHeading > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.summaryHeading h4 {
+  margin: 0;
+}
+
+.summaryHeading > div > span {
+  color: var(--booking-muted);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.7rem;
+  font-weight: 760;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
 .summaryRows {
   display: grid;
   gap: 0.55rem;
@@ -836,6 +1041,39 @@ select.input {
   font-weight: 680;
   overflow-wrap: anywhere;
   text-align: right;
+}
+
+.summaryPair {
+  align-items: start;
+  border-bottom: 1px solid rgba(87, 16, 39, 0.1);
+  color: var(--booking-muted);
+  display: grid;
+  font-size: 0.9rem;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr) minmax(8rem, auto);
+  line-height: 1.42;
+  padding-bottom: 0.62rem;
+}
+
+.summaryPair dt {
+  color: var(--booking-navy-deep);
+  font-weight: 760;
+}
+
+.summaryPair dd {
+  color: var(--booking-ink);
+  display: grid;
+  font-weight: 680;
+  gap: 0.12rem;
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.summaryPair dd strong {
+  color: var(--booking-burgundy);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.78rem;
 }
 
 .summaryTotal {
@@ -1140,6 +1378,7 @@ select.input {
 
   .fieldGrid,
   .compactFields,
+  .pairFields,
   .deliveryOptions,
   .pickupDetails {
     grid-template-columns: minmax(0, 1fr);
@@ -1160,6 +1399,32 @@ select.input {
   .expressOption {
     gap: 0.7rem;
     padding: 0.9rem;
+  }
+
+  .shoesHeading,
+  .pairCardHeading {
+    align-items: flex-start;
+  }
+
+  .shoesHeading {
+    flex-direction: column;
+  }
+
+  .pairCard {
+    padding: 1rem;
+  }
+
+  .pairActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .addPairButton {
+    width: 100%;
+  }
+
+  .removePairButton {
+    min-height: 2.75rem;
   }
 
   .serviceCard {
@@ -1199,6 +1464,11 @@ select.input {
     grid-template-columns: minmax(0, 1fr) minmax(6.5rem, auto);
   }
 
+  .summaryPair {
+    font-size: 0.86rem;
+    grid-template-columns: minmax(0, 1fr) minmax(6.5rem, auto);
+  }
+
   .submitButton {
     min-height: 3.35rem;
   }
@@ -1229,6 +1499,11 @@ select.input {
   }
 
   .summaryRow {
+    gap: 0.55rem;
+    grid-template-columns: minmax(0, 1fr) minmax(5.5rem, auto);
+  }
+
+  .summaryPair {
     gap: 0.55rem;
     grid-template-columns: minmax(0, 1fr) minmax(5.5rem, auto);
   }

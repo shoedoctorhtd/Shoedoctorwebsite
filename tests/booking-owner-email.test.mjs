@@ -18,14 +18,78 @@ const baseBooking = {
   preferredDate: "2026-08-25",
   fulfillmentMethod: "pickup_delivery",
   pickupArea: "hetauda_city",
-  deliveryFee: 200,
+  deliveryFee: 0,
+  pairCount: 4,
+  serviceSubtotal: 1746,
+  expressFee: 0,
+  totalAmount: 1746,
+  freeDeliveryApplied: true,
+  freeDeliveryReason: "4+ Pair Hetauda Offer",
   pickupAddress: "Ward 4 <b>Hetauda</b>",
   locationUrl: "https://maps.google.com/?q=Hetauda",
   notes: "Please treat the <strong>stain</strong>.",
-  expressRequested: true,
+  expressRequested: false,
   status: "new",
   createdAt: "2026-08-22T04:00:00.000Z",
   updatedAt: "2026-08-22T04:00:00.000Z",
+  items: [
+    {
+      id: "item-1",
+      bookingId: "booking-1",
+      pairNumber: 1,
+      serviceId: "deep-clean",
+      serviceName: "Deep Clean & Restore",
+      servicePriceLabel: "Rs 449",
+      servicePrice: 449,
+      footwearType: "Sneakers <script>alert('x')</script>",
+      brand: "Nike",
+      specialRequest: "Please treat the <strong>stain</strong>.",
+      status: null,
+      createdAt: "2026-08-22T04:00:00.000Z",
+    },
+    {
+      id: "item-2",
+      bookingId: "booking-1",
+      pairNumber: 2,
+      serviceId: "basic-clean",
+      serviceName: "Basic Clean",
+      servicePriceLabel: "Rs 299",
+      servicePrice: 299,
+      footwearType: "Running shoes",
+      brand: null,
+      specialRequest: null,
+      status: null,
+      createdAt: "2026-08-22T04:00:00.000Z",
+    },
+    {
+      id: "item-3",
+      bookingId: "booking-1",
+      pairNumber: 3,
+      serviceId: "premium-care",
+      serviceName: "Premium Care",
+      servicePriceLabel: "Rs 699",
+      servicePrice: 699,
+      footwearType: "Sneakers",
+      brand: "Goldstar",
+      specialRequest: null,
+      status: null,
+      createdAt: "2026-08-22T04:00:00.000Z",
+    },
+    {
+      id: "item-4",
+      bookingId: "booking-1",
+      pairNumber: 4,
+      serviceId: "repair-priority",
+      serviceName: "Repair Priority",
+      servicePriceLabel: "From Rs 299",
+      servicePrice: 299,
+      footwearType: "Boots",
+      brand: "Caliber",
+      specialRequest: "Scuff on the toe.",
+      status: null,
+      createdAt: "2026-08-22T04:00:00.000Z",
+    },
+  ],
   statusHistory: [],
 };
 
@@ -59,7 +123,13 @@ test("sends one complete, escaped owner email through the configured binding", a
   );
   assert.match(message.text, /^NEW BOOKING/m);
   assert.match(message.text, /Created:/);
-  assert.match(message.text, /Pickup & return fee: Rs 200/);
+  assert.match(message.text, /Total pairs: 4 pairs/);
+  assert.match(message.text, /PAIR 1/);
+  assert.match(message.text, /PAIR 4/);
+  assert.match(message.text, /Price: Rs 449/);
+  assert.match(message.text, /Free delivery offer: 4\+ Pair Hetauda Offer/);
+  assert.match(message.text, /Services subtotal: Rs 1,746/);
+  assert.match(message.text, /Pickup & return fee: FREE/);
   assert.match(message.text, /Open WhatsApp: https:\/\/wa\.me\/9779812345678/);
   assert.match(message.text, /Open map: https:\/\/maps\.google\.com\/\?q=Hetauda/);
   assert.match(message.text, /We Diagnose\. We Clean\. We Restore\./);

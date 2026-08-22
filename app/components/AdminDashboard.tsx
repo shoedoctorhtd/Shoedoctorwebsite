@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { getBookingItems } from "@/lib/booking-items.js";
 import type {
   Booking,
+  BookingItem,
   BookingNotification,
   BookingStatus,
   BookingStatusHistory,
@@ -117,6 +119,33 @@ function statusLabel(status: BookingStatus) {
   return (
     statusOptions.find((option) => option.value === status)?.label ?? status
   );
+}
+
+function formatNpr(value: number | null) {
+  if (value === null || !Number.isFinite(value)) return "Quote after review";
+  return `Rs ${new Intl.NumberFormat("en-NP", {
+    maximumFractionDigits: 0,
+  }).format(value)}`;
+}
+
+function itemPriceLabel(item: BookingItem) {
+  return item.servicePrice === null
+    ? item.servicePriceLabel
+    : formatNpr(item.servicePrice);
+}
+
+function pairCountLabel(pairCount: number) {
+  return `${pairCount} ${pairCount === 1 ? "pair" : "pairs"}`;
+}
+
+function deliverySummary(booking: Booking) {
+  if (booking.fulfillmentMethod !== "pickup_delivery") {
+    return "Free — Self drop & pickup";
+  }
+  if (booking.freeDeliveryApplied) {
+    return "FREE — 4+ Pair Hetauda Offer";
+  }
+  return formatNpr(booking.deliveryFee);
 }
 
 function latestStatusNotification(booking: Booking) {
@@ -615,6 +644,9 @@ export default function AdminDashboard({
               </div>
             ) : (
               filteredBookings.map((booking) => {
+                const items = getBookingItems(booking);
+                const pairCount = items.length;
+                const hasStoredItems = booking.items.length > 0;
                 const notification = latestStatusNotification(booking);
                 return (
                 <article className="admin-booking-card" key={booking.id}>
@@ -624,6 +656,7 @@ export default function AdminDashboard({
                         {statusLabel(booking.status)}
                       </span>
                       <small>{formatDate(booking.createdAt)}</small>
+                      <small>{pairCountLabel(pairCount)}</small>
                     </div>
                     <strong>{booking.reference}</strong>
                   </div>
@@ -638,15 +671,6 @@ export default function AdminDashboard({
                       )}
                     </div>
                     <div>
-                      <small>Requested service</small>
-                      <strong>{booking.serviceName}</strong>
-                      <span>
-                        {booking.shoeType}
-                        {booking.shoeBrand ? ` · ${booking.shoeBrand}` : ""}
-                      </span>
-                      {booking.expressRequested && <em>Express requested</em>}
-                    </div>
-                    <div>
                       <small>Pickup / drop-off</small>
                       <strong>
                         {booking.fulfillmentMethod === "pickup_delivery"
@@ -658,8 +682,11 @@ export default function AdminDashboard({
                           {booking.pickupArea === "hetauda_city"
                             ? "Hetauda City"
                             : "Other city"}
-                          {` - Rs ${booking.deliveryFee} pickup & return`}
+                          {` - ${deliverySummary(booking)} pickup & return`}
                         </span>
+                      )}
+                      {booking.freeDeliveryApplied && (
+                        <em>4+ Pair Hetauda Offer</em>
                       )}
                       {booking.pickupAddress && <span>{booking.pickupAddress}</span>}
                       {booking.locationUrl && (
@@ -675,9 +702,60 @@ export default function AdminDashboard({
                     <div>
                       <small>Preferred date</small>
                       <strong>{booking.preferredDate || "Not selected"}</strong>
-                      {booking.notes && <p>{booking.notes}</p>}
+                      {booking.notes && hasStoredItems && (
+                        <p>Booking note: {booking.notes}</p>
+                      )}
                     </div>
                   </div>
+
+                  <section
+                    className="booking-status-history"
+                    aria-label={`Shoes in booking ${booking.reference}`}
+                  >
+                    <div className="booking-status-history__heading">
+                      <small>Shoes</small>
+                      <span>{pairCountLabel(pairCount)}</span>
+                    </div>
+                    <ol>
+                      {items.map((item) => (
+                        <li key={item.id}>
+                          <small>Pair {item.pairNumber}</small>
+                          <div>
+                            <strong>
+                              {item.serviceName} · {itemPriceLabel(item)}
+                            </strong>
+                            <span>
+                              {item.footwearType}
+                              {item.brand ? ` · ${item.brand}` : ""}
+                            </span>
+                            {item.specialRequest && (
+                              <span>Request: {item.specialRequest}</span>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                  </section>
+
+                  <section
+                    className="booking-notification"
+                    aria-label={`Order summary for ${booking.reference}`}
+                  >
+                    <div>
+                      <small>Order summary</small>
+                      <strong>Total: {formatNpr(booking.totalAmount)}</strong>
+                      <span>Services: {formatNpr(booking.serviceSubtotal)}</span>
+                      <span>Delivery: {deliverySummary(booking)}</span>
+                      <span>
+                        Express: {booking.expressRequested ? formatNpr(booking.expressFee) : "Rs 0"}
+                      </span>
+                      {booking.freeDeliveryApplied && (
+                        <span>
+                          Free delivery: {booking.freeDeliveryReason ?? "4+ pairs within Hetauda"}
+                        </span>
+                      )}
+                    </div>
+                  </section>
 
                   <div className="booking-status-meta">
                     <section className="booking-status-history" aria-label="Booking status history">

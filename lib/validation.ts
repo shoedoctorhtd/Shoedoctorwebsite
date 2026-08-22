@@ -4,6 +4,8 @@ import {
   SERVICE_CATEGORIES,
   SERVICE_TONES,
   type BookingStatus,
+  type BookingInput,
+  type BookingItemInput,
   type ServiceInput,
 } from "./data";
 import { isPickupArea } from "./booking-pricing";
@@ -85,24 +87,114 @@ export function parseBookingStatus(value: unknown): BookingStatus {
   return status;
 }
 
-export function parsePublicBooking(value: unknown) {
+function bookingText(value: unknown, maxLength: number, fieldLabel: string) {
+  if (typeof value !== "string") {
+    if (value === null || value === undefined) return "";
+    throw new Error(`${fieldLabel} must be text.`);
+  }
+
+  const cleaned = value.trim();
+  if (cleaned.length > maxLength) {
+    throw new Error(`${fieldLabel} is too long.`);
+  }
+  return cleaned;
+}
+
+function optionalBookingText(
+  value: unknown,
+  maxLength: number,
+  fieldLabel: string,
+) {
+  return bookingText(value, maxLength, fieldLabel) || null;
+}
+
+const CLIENT_CALCULATED_FIELDS = [
+  "servicePrice",
+  "price",
+  "serviceSubtotal",
+  "subtotal",
+  "deliveryFee",
+  "expressFee",
+  "total",
+  "totalAmount",
+  "pairCount",
+  "pairNumber",
+  "freeDeliveryApplied",
+  "freeDeliveryReason",
+];
+
+function includesClientCalculatedField(input: Record<string, unknown>) {
+  return CLIENT_CALCULATED_FIELDS.some((field) =>
+    Object.prototype.hasOwnProperty.call(input, field),
+  );
+}
+
+function parseBookingItem(value: unknown, pairNumber: number): BookingItemInput {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`Pair ${pairNumber} must include a service and footwear type.`);
+  }
+
+  const input = value as Record<string, unknown>;
+  if (includesClientCalculatedField(input)) {
+    throw new Error(
+      `Pair ${pairNumber} prices are calculated securely by Shoe Doctor.`,
+    );
+  }
+  const serviceId = bookingText(input.serviceId, 80, `Pair ${pairNumber} service`);
+  const footwearType = bookingText(
+    input.footwearType,
+    80,
+    `Pair ${pairNumber} footwear type`,
+  );
+  if (!serviceId || !footwearType) {
+    throw new Error(`Pair ${pairNumber} needs a service and footwear type.`);
+  }
+
+  return {
+    serviceId,
+    footwearType,
+    brand: optionalBookingText(input.brand, 80, `Pair ${pairNumber} brand`),
+    specialRequest: optionalBookingText(
+      input.specialRequest,
+      800,
+      `Pair ${pairNumber} special request`,
+    ),
+  };
+}
+
+export function parsePublicBooking(value: unknown): BookingInput {
   const input = (value ?? {}) as Record<string, unknown>;
-  const customerName = cleanText(input.customerName, 80);
-  const phone = cleanText(input.phone, 30);
-  const email = optionalText(input.email, 120);
-  const serviceId = cleanText(input.serviceId, 80);
-  const shoeType = cleanText(input.shoeType, 80);
-  const shoeBrand = optionalText(input.shoeBrand, 80);
-  const preferredDate = optionalText(input.preferredDate, 20);
-  const fulfillmentMethod = cleanText(input.fulfillmentMethod, 30);
-  const pickupArea = cleanText(input.pickupArea, 30);
-  const pickupAddress = optionalText(input.pickupAddress, 300);
-  const locationUrl = optionalText(input.locationUrl, 500);
-  const notes = optionalText(input.notes, 800);
-  const website = cleanText(input.website, 120);
+  const customerName = bookingText(input.customerName, 80, "Full name");
+  const phone = bookingText(input.phone, 30, "Phone or WhatsApp number");
+  const email = optionalBookingText(input.email, 120, "Email address");
+  const preferredDate = optionalBookingText(
+    input.preferredDate,
+    20,
+    "Preferred date",
+  );
+  const fulfillmentMethod = bookingText(
+    input.fulfillmentMethod,
+    30,
+    "Collection method",
+  );
+  const pickupArea = bookingText(input.pickupArea, 30, "Pickup area");
+  const pickupAddress = optionalBookingText(
+    input.pickupAddress,
+    300,
+    "Pickup address",
+  );
+  const locationUrl = optionalBookingText(
+    input.locationUrl,
+    500,
+    "Map location link",
+  );
+  const website = bookingText(input.website, 120, "Website");
 
   if (website) {
     throw new Error("Unable to submit this booking.");
+  }
+  if (includesClientCalculatedField(input)) {
+    throw new Error("Booking totals are calculated securely by Shoe Doctor.");
   }
   if (customerName.length < 2) {
     throw new Error("Please enter your full name.");
@@ -113,9 +205,6 @@ export function parsePublicBooking(value: unknown) {
   }
   if (email && !isEmailAddress(email)) {
     throw new Error("Please enter a valid email address.");
-  }
-  if (!serviceId || !shoeType) {
-    throw new Error("Please choose a service and enter the footwear type.");
   }
   if (preferredDate && !/^\d{4}-\d{2}-\d{2}$/.test(preferredDate)) {
     throw new Error("Please choose a valid preferred date.");
@@ -139,14 +228,47 @@ export function parsePublicBooking(value: unknown) {
   if (locationUrl && !/^https?:\/\//i.test(locationUrl)) {
     throw new Error("Please enter a valid map location link.");
   }
+  if (
+    input.expressRequested !== undefined &&
+    typeof input.expressRequested !== "boolean"
+  ) {
+    throw new Error("Please choose a valid express service option.");
+  }
+
+  const hasItemArray = Object.prototype.hasOwnProperty.call(input, "items");
+  let items: BookingItemInput[];
+  let notes: string | null;
+  if (hasItemArray) {
+    if (!Array.isArray(input.items)) {
+      throw new Error("Please add at least one pair to your booking.");
+    }
+    if (input.items.length < 1 || input.items.length > 20) {
+      throw new Error("A booking can include between 1 and 20 pairs.");
+    }
+    items = input.items.map((item, index) => parseBookingItem(item, index + 1));
+    notes = optionalBookingText(input.notes, 800, "Additional booking notes");
+  } else {
+    // Keep existing single-pair clients/API consumers working. Their previous
+    // booking-level notes represented the pair's condition or request.
+    items = [
+      parseBookingItem(
+        {
+          brand: input.shoeBrand,
+          footwearType: input.shoeType,
+          serviceId: input.serviceId,
+          specialRequest: input.notes,
+        },
+        1,
+      ),
+    ];
+    notes = null;
+  }
 
   return {
     customerName,
     phone,
     email,
-    serviceId,
-    shoeType,
-    shoeBrand,
+    items,
     preferredDate,
     fulfillmentMethod: fulfillmentMethod as
       | "self_dropoff"

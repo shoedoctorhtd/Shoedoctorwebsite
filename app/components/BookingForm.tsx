@@ -12,15 +12,17 @@ import {
 import Link from "next/link";
 import type { Service } from "@/lib/data";
 import {
-  calculateBookingTotal,
-  FIXED_PRICE_SERVICE_IDS,
+  calculateBookingTotals,
+  calculatePickupDeliveryFee,
   formatNprPrice,
   getExactNprPrice,
-  PICKUP_DELIVERY_FEES,
   pickupAreaLabel,
+  qualifiesForFreeHetaudaDelivery,
   type PickupArea,
 } from "@/lib/booking-pricing";
 import styles from "./BookingExperience.module.css";
+
+const MAXIMUM_PAIR_COUNT = 20;
 
 type BookingFormProps = {
   services: Service[];
@@ -34,35 +36,56 @@ type SubmitState =
   | { type: "success"; reference: string; message: string }
   | { type: "error"; message: string };
 
-type FormValues = {
+type BookingLevelValues = {
   customerName: string;
   phone: string;
   email: string;
-  shoeType: string;
-  shoeBrand: string;
   preferredDate: string;
   pickupAddress: string;
   locationUrl: string;
   notes: string;
 };
 
-type FieldName =
-  | keyof Omit<FormValues, "shoeBrand" | "notes">
-  | "pickupArea"
-  | "serviceId";
+type PairDraft = {
+  id: string;
+  serviceId: string;
+  footwearType: string;
+  brand: string;
+  specialRequest: string;
+};
+
+type BookingFieldName =
+  | keyof Omit<BookingLevelValues, "notes">
+  | "items"
+  | "pickupArea";
+type PairFieldName = "serviceId" | "footwearType";
+type ItemFieldKey = `item:${string}:${PairFieldName}`;
+type FieldName = BookingFieldName | ItemFieldKey;
 type FieldErrors = Partial<Record<FieldName, string>>;
 
-const emptyFormValues: FormValues = {
+const emptyBookingLevelValues: BookingLevelValues = {
   customerName: "",
   phone: "",
   email: "",
-  shoeType: "",
-  shoeBrand: "",
   preferredDate: "",
   pickupAddress: "",
   locationUrl: "",
   notes: "",
 };
+
+function createPairDraft(id: string, serviceId = ""): PairDraft {
+  return {
+    id,
+    serviceId,
+    footwearType: "",
+    brand: "",
+    specialRequest: "",
+  };
+}
+
+function itemFieldKey(itemId: string, field: PairFieldName): ItemFieldKey {
+  return `item:${itemId}:${field}`;
+}
 
 function getNepalCalendarDate() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -80,8 +103,8 @@ function getNepalCalendarDate() {
 }
 
 function getValidationErrors(
-  values: FormValues,
-  selectedService: string,
+  values: BookingLevelValues,
+  items: PairDraft[],
   fulfillmentMethod: "self_dropoff" | "pickup_delivery",
   pickupArea: PickupArea | "",
   minimumDate: string,
@@ -101,12 +124,20 @@ function getValidationErrors(
   ) {
     errors.email = "Enter a valid email address.";
   }
-  if (!values.shoeType.trim()) {
-    errors.shoeType = "Choose a footwear type.";
+  if (items.length < 1) {
+    errors.items = "Add at least one pair.";
   }
-  if (!selectedService) {
-    errors.serviceId = "Select a service for your pair.";
+  if (items.length > MAXIMUM_PAIR_COUNT) {
+    errors.items = `You can book up to ${MAXIMUM_PAIR_COUNT} pairs at once.`;
   }
+  items.forEach((item, index) => {
+    if (!item.serviceId) {
+      errors[itemFieldKey(item.id, "serviceId")] = `Choose a service for Pair ${index + 1}.`;
+    }
+    if (!item.footwearType.trim()) {
+      errors[itemFieldKey(item.id, "footwearType")] = `Enter the footwear type for Pair ${index + 1}.`;
+    }
+  });
   if (
     values.preferredDate &&
     (!/^\d{4}-\d{2}-\d{2}$/.test(values.preferredDate) ||
@@ -130,15 +161,24 @@ function getValidationErrors(
   return errors;
 }
 
-function fieldForServerMessage(message: string): FieldName | undefined {
+function fieldForServerMessage(
+  message: string,
+  items: PairDraft[],
+): FieldName | undefined {
   const normalized = message.toLowerCase();
+  const firstItem = items[0];
   if (normalized.includes("full name")) return "customerName";
   if (normalized.includes("phone") || normalized.includes("whatsapp")) {
     return "phone";
   }
   if (normalized.includes("email")) return "email";
-  if (normalized.includes("footwear")) return "shoeType";
-  if (normalized.includes("service")) return "serviceId";
+  if (normalized.includes("footwear")) {
+    return firstItem ? itemFieldKey(firstItem.id, "footwearType") : "items";
+  }
+  if (normalized.includes("service")) {
+    return firstItem ? itemFieldKey(firstItem.id, "serviceId") : "items";
+  }
+  if (normalized.includes("pair") || normalized.includes("item")) return "items";
   if (normalized.includes("preferred date")) return "preferredDate";
   if (normalized.includes("pickup area") || normalized.includes("hetauda")) {
     return "pickupArea";
@@ -154,19 +194,26 @@ function classNames(...names: Array<string | false | undefined>) {
   return names.filter(Boolean).join(" ");
 }
 
+function pairCountLabel(pairCount: number) {
+  return `${pairCount} ${pairCount === 1 ? "pair" : "pairs"} selected`;
+}
+
 export default function BookingForm({
   services,
   initialServiceId,
   whatsappUrl,
 }: BookingFormProps) {
+  const defaultServiceId =
+    initialServiceId && services.some((service) => service.id === initialServiceId)
+      ? initialServiceId
+      : services[0]?.id ?? "";
   const [state, setState] = useState<SubmitState>({ type: "idle" });
-  const [formValues, setFormValues] = useState<FormValues>(emptyFormValues);
-  const [selectedService, setSelectedService] = useState(() => {
-    if (initialServiceId && services.some((service) => service.id === initialServiceId)) {
-      return initialServiceId;
-    }
-    return services[0]?.id ?? "";
-  });
+  const [formValues, setFormValues] = useState<BookingLevelValues>(
+    emptyBookingLevelValues,
+  );
+  const [items, setItems] = useState<PairDraft[]>(() => [
+    createPairDraft("pair-1", defaultServiceId),
+  ]);
   const [fulfillmentMethod, setFulfillmentMethod] = useState<
     "self_dropoff" | "pickup_delivery"
   >("self_dropoff");
@@ -176,41 +223,55 @@ export default function BookingForm({
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [hasInteracted, setHasInteracted] = useState(false);
   const successHeadingRef = useRef<HTMLHeadingElement>(null);
+  const nextPairId = useRef(2);
   const minimumDate = useMemo(() => getNepalCalendarDate(), []);
   const startAnotherBooking = useCallback(() => {
     setState({ type: "idle" });
     setHasInteracted(false);
   }, []);
 
-  const selected = services.find((service) => service.id === selectedService);
+  const selectedServices = useMemo(
+    () =>
+      items.map(
+        (item) => services.find((service) => service.id === item.serviceId) ?? null,
+      ),
+    [items, services],
+  );
   const expressService = services.find(
     (service) => service.id === "express-wash-dry",
   );
-  const pickupDeliveryFee =
-    fulfillmentMethod === "pickup_delivery"
-      ? pickupArea
-        ? PICKUP_DELIVERY_FEES[pickupArea]
+  const pairCount = items.length;
+  const hasExpressAsPrimaryService = Boolean(
+    expressService && items.some((item) => item.serviceId === expressService.id),
+  );
+  const servicePrices = selectedServices.map((service) =>
+    service ? getExactNprPrice(service.priceLabel) : null,
+  );
+  const pickupPricing = calculatePickupDeliveryFee(
+    fulfillmentMethod,
+    pickupArea,
+    pairCount,
+  );
+  const freeDeliveryEligible = qualifiesForFreeHetaudaDelivery(
+    pairCount,
+    pickupArea,
+  );
+  const expressServicePrice =
+    expressRequested && !hasExpressAsPrimaryService
+      ? expressService
+        ? getExactNprPrice(expressService.priceLabel)
         : null
       : 0;
-  const fixedServicePrice =
-    selected && FIXED_PRICE_SERVICE_IDS.has(selected.id)
-      ? getExactNprPrice(selected.priceLabel)
-      : null;
-  const expressServicePrice = expressRequested
-    ? expressService
-      ? getExactNprPrice(expressService.priceLabel)
-      : null
-    : 0;
-  const totalPrice = calculateBookingTotal(
-    fixedServicePrice,
-    pickupDeliveryFee,
+  const { serviceSubtotal, total } = calculateBookingTotals(
+    servicePrices,
+    pickupPricing.deliveryFee,
     expressServicePrice,
   );
-  const hasTotalPrice = totalPrice !== null;
+  const hasTotalPrice = total !== null;
   const pickupAreaName = pickupArea ? pickupAreaLabel(pickupArea) : null;
   const validationErrors = getValidationErrors(
     formValues,
-    selectedService,
+    items,
     fulfillmentMethod,
     pickupArea,
     minimumDate,
@@ -262,16 +323,39 @@ export default function BookingForm({
     if (state.type === "error") setState({ type: "idle" });
   }
 
-  function updateValue<K extends keyof FormValues>(key: K, value: FormValues[K]) {
+  function clearFieldError(field: FieldName) {
+    setFieldErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  }
+
+  function updateValue<K extends keyof BookingLevelValues>(
+    key: K,
+    value: BookingLevelValues[K],
+  ) {
     setFormValues((current) => ({ ...current, [key]: value }));
     setHasInteracted(true);
     clearSubmissionError();
-    if (key in fieldErrors) {
-      setFieldErrors((current) => {
-        const next = { ...current };
-        delete next[key as FieldName];
-        return next;
-      });
+    if (key !== "notes") clearFieldError(key);
+  }
+
+  function updatePairValue<K extends keyof Omit<PairDraft, "id">>(
+    itemId: string,
+    key: K,
+    value: PairDraft[K],
+  ) {
+    setItems((current) =>
+      current.map((item) =>
+        item.id === itemId ? { ...item, [key]: value } : item,
+      ),
+    );
+    setHasInteracted(true);
+    clearSubmissionError();
+    if (key === "serviceId" || key === "footwearType") {
+      clearFieldError(itemFieldKey(itemId, key));
     }
   }
 
@@ -280,14 +364,14 @@ export default function BookingForm({
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >,
   ) {
-    const key = event.target.name as keyof FormValues;
+    const key = event.target.name as keyof BookingLevelValues;
     updateValue(key, event.target.value);
   }
 
   function validateField(field: FieldName) {
     const error = getValidationErrors(
       formValues,
-      selectedService,
+      items,
       fulfillmentMethod,
       pickupArea,
       minimumDate,
@@ -308,20 +392,42 @@ export default function BookingForm({
     if (!field) return;
 
     window.requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>("[name='" + field + "']")?.focus();
+      document
+        .querySelector<HTMLElement>(`[data-booking-field="${field}"]`)
+        ?.focus();
     });
   }
 
-  function selectService(serviceId: string) {
-    setSelectedService(serviceId);
+  function selectPairService(itemId: string, serviceId: string) {
+    updatePairValue(itemId, "serviceId", serviceId);
     if (serviceId === expressService?.id) setExpressRequested(false);
+  }
+
+  function addAnotherPair() {
+    if (items.length >= MAXIMUM_PAIR_COUNT) return;
+
+    const itemId = `pair-${nextPairId.current++}`;
+    setItems((current) => [...current, createPairDraft(itemId)]);
     setHasInteracted(true);
     clearSubmissionError();
+    clearFieldError("items");
+  }
+
+  function removePair(itemId: string) {
+    if (items.length <= 1) return;
+
+    setItems((current) => current.filter((item) => item.id !== itemId));
     setFieldErrors((current) => {
       const next = { ...current };
-      delete next.serviceId;
+      Object.keys(next).forEach((field) => {
+        if (field.startsWith(`item:${itemId}:`)) {
+          delete next[field as FieldName];
+        }
+      });
       return next;
     });
+    setHasInteracted(true);
+    clearSubmissionError();
   }
 
   function selectFulfillment(method: "self_dropoff" | "pickup_delivery") {
@@ -343,11 +449,7 @@ export default function BookingForm({
     setPickupArea(area);
     setHasInteracted(true);
     clearSubmissionError();
-    setFieldErrors((current) => {
-      const next = { ...current };
-      delete next.pickupArea;
-      return next;
-    });
+    clearFieldError("pickupArea");
   }
 
   function useCurrentLocation() {
@@ -375,7 +477,7 @@ export default function BookingForm({
     setHasInteracted(true);
     const clientErrors = getValidationErrors(
       formValues,
-      selectedService,
+      items,
       fulfillmentMethod,
       pickupArea,
       minimumDate,
@@ -394,16 +496,19 @@ export default function BookingForm({
       customerName: formValues.customerName,
       phone: formValues.phone,
       email: formValues.email,
-      serviceId: selectedService,
-      shoeType: formValues.shoeType,
-      shoeBrand: formValues.shoeBrand,
       preferredDate: formValues.preferredDate,
       fulfillmentMethod,
       pickupArea,
       pickupAddress: formValues.pickupAddress,
       locationUrl: formValues.locationUrl,
       notes: formValues.notes,
-      expressRequested,
+      expressRequested: expressRequested && !hasExpressAsPrimaryService,
+      items: items.map(({ serviceId, footwearType, brand, specialRequest }) => ({
+        serviceId,
+        footwearType,
+        brand,
+        specialRequest,
+      })),
       website,
     };
 
@@ -416,6 +521,12 @@ export default function BookingForm({
       const result = (await response.json()) as {
         message?: string;
         reference?: string;
+        pairCount?: number;
+        serviceSubtotal?: number | null;
+        deliveryFee?: number;
+        freeDeliveryApplied?: boolean;
+        expressFee?: number | null;
+        total?: number | null;
       };
       if (!response.ok || !result.reference) {
         throw new Error(result.message || "Unable to send your booking.");
@@ -426,8 +537,9 @@ export default function BookingForm({
         reference: result.reference,
         message: result.message || "Your booking request has been received.",
       });
-      setFormValues(emptyFormValues);
-      setSelectedService(services[0]?.id ?? "");
+      setFormValues(emptyBookingLevelValues);
+      setItems([createPairDraft("pair-1", defaultServiceId)]);
+      nextPairId.current = 2;
       setFulfillmentMethod("self_dropoff");
       setPickupArea("");
       setExpressRequested(false);
@@ -438,7 +550,7 @@ export default function BookingForm({
         error instanceof Error
           ? error.message
           : "Unable to send your booking. Please try again.";
-      const serverField = fieldForServerMessage(message);
+      const serverField = fieldForServerMessage(message, items);
       if (serverField) {
         setFieldErrors((current) => ({ ...current, [serverField]: message }));
       }
@@ -452,7 +564,7 @@ export default function BookingForm({
         <span aria-hidden="true" className={styles.selectionMark}>✓</span>
         <p className={styles.formKicker}>Booking request received</p>
         <h3 className={styles.successHeading} ref={successHeadingRef} tabIndex={-1}>
-          Your pair is in good hands.
+          Your shoes are in good hands.
         </h3>
         <p>{state.message}</p>
         <p className={styles.successReference}>
@@ -460,7 +572,7 @@ export default function BookingForm({
         </p>
         <p>
           We will review your request and contact you about any treatment
-          details and service time.
+          details and pickup or drop-off time.
         </p>
         <div className={styles.successActions}>
           <Link href="/" onClick={startAnotherBooking}>Return home</Link>
@@ -476,9 +588,9 @@ export default function BookingForm({
     <form className={styles.formShell} data-reveal noValidate onSubmit={submitBooking}>
       <header className={styles.formHeading}>
         <span className={styles.formKicker}>Booking request</span>
-        <h3 className={styles.formTitle}>Tell Us About Your Pair.</h3>
+        <h3 className={styles.formTitle}>Tell Us About Your Shoes.</h3>
         <p className={styles.formIntro}>
-          Send us the details below. We will review your pair and contact you
+          Send us the details below. We will review your shoes and contact you
           about any treatment details and pickup or drop-off time.
         </p>
       </header>
@@ -491,6 +603,7 @@ export default function BookingForm({
             aria-invalid={Boolean(fieldErrors.customerName)}
             autoComplete="name"
             className={classNames(styles.input, fieldErrors.customerName && styles.invalid)}
+            data-booking-field="customerName"
             id="customerName"
             maxLength={80}
             name="customerName"
@@ -515,6 +628,7 @@ export default function BookingForm({
             aria-invalid={Boolean(fieldErrors.phone)}
             autoComplete="tel"
             className={classNames(styles.input, fieldErrors.phone && styles.invalid)}
+            data-booking-field="phone"
             id="phone"
             inputMode="tel"
             maxLength={30}
@@ -540,6 +654,7 @@ export default function BookingForm({
             aria-invalid={Boolean(fieldErrors.email)}
             autoComplete="email"
             className={classNames(styles.input, fieldErrors.email && styles.invalid)}
+            data-booking-field="email"
             id="email"
             maxLength={120}
             name="email"
@@ -556,75 +671,160 @@ export default function BookingForm({
           )}
         </label>
 
-        <label className={styles.field}>
-          <span>Service <b aria-hidden="true">*</b></span>
-          {services.length > 0 ? (
-            <select
-              aria-describedby={fieldErrors.serviceId ? "serviceId-error" : undefined}
-              aria-invalid={Boolean(fieldErrors.serviceId)}
-              className={classNames(styles.input, fieldErrors.serviceId && styles.invalid)}
-              id="serviceId"
-              name="serviceId"
-              onBlur={() => validateField("serviceId")}
-              onChange={(event) => selectService(event.target.value)}
-              required
-              value={selectedService}
+        <section
+          aria-labelledby="your-shoes-heading"
+          className={classNames(styles.shoesSection, styles.compactFull)}
+        >
+          <header className={styles.shoesHeading}>
+            <div>
+              <span className={styles.formKicker}>Your shoes</span>
+              <h4 id="your-shoes-heading">Add each pair for this booking.</h4>
+            </div>
+            <span aria-live="polite" className={styles.pairCounter}>
+              {pairCountLabel(pairCount)}
+            </span>
+          </header>
+
+          <div className={styles.pairList}>
+            {items.map((item, index) => {
+              const serviceField = itemFieldKey(item.id, "serviceId");
+              const footwearField = itemFieldKey(item.id, "footwearType");
+              const pairId = `booking-${item.id}`;
+
+              return (
+                <section
+                  aria-labelledby={`${pairId}-heading`}
+                  className={styles.pairCard}
+                  key={item.id}
+                >
+                  <header className={styles.pairCardHeading}>
+                    <h5 id={`${pairId}-heading`}>Pair {index + 1}</h5>
+                    {index > 0 && (
+                      <button
+                        aria-label={`Remove Pair ${index + 1}`}
+                        className={styles.removePairButton}
+                        onClick={() => removePair(item.id)}
+                        type="button"
+                      >
+                        Remove pair
+                      </button>
+                    )}
+                  </header>
+
+                  <div className={styles.pairFields}>
+                    <label className={styles.field}>
+                      <span>Service <b aria-hidden="true">*</b></span>
+                      {services.length > 0 ? (
+                        <select
+                          aria-describedby={fieldErrors[serviceField] ? `${pairId}-service-error` : undefined}
+                          aria-invalid={Boolean(fieldErrors[serviceField])}
+                          className={classNames(styles.input, fieldErrors[serviceField] && styles.invalid)}
+                          data-booking-field={serviceField}
+                          id={`${pairId}-service`}
+                          name={`items.${index}.serviceId`}
+                          onBlur={() => validateField(serviceField)}
+                          onChange={(event) => selectPairService(item.id, event.target.value)}
+                          required
+                          value={item.serviceId}
+                        >
+                          <option value="">Choose a service</option>
+                          {services.map((service) => (
+                            <option key={service.id} value={service.id}>
+                              {service.name} — {service.priceLabel}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className={styles.unavailableServices} role="status">
+                          Services are temporarily unavailable. Please use WhatsApp for help.
+                        </span>
+                      )}
+                      {fieldErrors[serviceField] && (
+                        <span className={styles.fieldError} id={`${pairId}-service-error`} role="alert">
+                          {fieldErrors[serviceField]}
+                        </span>
+                      )}
+                    </label>
+
+                    <label className={styles.field}>
+                      <span>Footwear type <b aria-hidden="true">*</b></span>
+                      <input
+                        aria-describedby={fieldErrors[footwearField] ? `${pairId}-footwear-error` : undefined}
+                        aria-invalid={Boolean(fieldErrors[footwearField])}
+                        className={classNames(styles.input, fieldErrors[footwearField] && styles.invalid)}
+                        data-booking-field={footwearField}
+                        id={`${pairId}-footwear`}
+                        maxLength={80}
+                        name={`items.${index}.footwearType`}
+                        onBlur={() => validateField(footwearField)}
+                        onChange={(event) => updatePairValue(item.id, "footwearType", event.target.value)}
+                        placeholder="Sneakers, boots, heels..."
+                        required
+                        type="text"
+                        value={item.footwearType}
+                      />
+                      {fieldErrors[footwearField] && (
+                        <span className={styles.fieldError} id={`${pairId}-footwear-error`} role="alert">
+                          {fieldErrors[footwearField]}
+                        </span>
+                      )}
+                    </label>
+
+                    <label className={styles.field}>
+                      <span>Brand <em className={styles.optional}>Optional</em></span>
+                      <input
+                        className={styles.input}
+                        id={`${pairId}-brand`}
+                        maxLength={80}
+                        name={`items.${index}.brand`}
+                        onChange={(event) => updatePairValue(item.id, "brand", event.target.value)}
+                        placeholder="Brand name"
+                        type="text"
+                        value={item.brand}
+                      />
+                    </label>
+
+                    <label className={classNames(styles.field, styles.fieldWide)}>
+                      <span>Condition / special request <em className={styles.optional}>Optional</em></span>
+                      <textarea
+                        className={styles.input}
+                        id={`${pairId}-special-request`}
+                        maxLength={800}
+                        name={`items.${index}.specialRequest`}
+                        onChange={(event) => updatePairValue(item.id, "specialRequest", event.target.value)}
+                        placeholder="Stains, damage, material concerns or care requests for this pair."
+                        rows={3}
+                        value={item.specialRequest}
+                      />
+                    </label>
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+
+          <div className={styles.pairActions}>
+            <button
+              aria-describedby={fieldErrors.items ? "items-error" : undefined}
+              className={styles.addPairButton}
+              data-booking-field="items"
+              disabled={pairCount >= MAXIMUM_PAIR_COUNT}
+              onClick={addAnotherPair}
+              type="button"
             >
-              <option value="">Choose a service</option>
-              {services.map((service) => (
-                <option key={service.id} value={service.id}>
-                  {service.name} — {service.priceLabel}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <span className={styles.unavailableServices} role="status">
-              Services are temporarily unavailable. Please use WhatsApp for help.
-            </span>
+              <span aria-hidden="true">+</span>
+              Add another pair
+            </button>
+            <p className={styles.pairLimit}>
+              Add up to {MAXIMUM_PAIR_COUNT} pairs in one booking.
+            </p>
+          </div>
+          {fieldErrors.items && (
+            <p className={styles.fieldError} id="items-error" role="alert">
+              {fieldErrors.items}
+            </p>
           )}
-          {fieldErrors.serviceId && (
-            <span className={styles.fieldError} id="serviceId-error" role="alert">
-              {fieldErrors.serviceId}
-            </span>
-          )}
-        </label>
-
-        <label className={styles.field}>
-          <span>Footwear type <b aria-hidden="true">*</b></span>
-          <input
-            aria-describedby={fieldErrors.shoeType ? "shoeType-error" : undefined}
-            aria-invalid={Boolean(fieldErrors.shoeType)}
-            className={classNames(styles.input, fieldErrors.shoeType && styles.invalid)}
-            id="shoeType"
-            maxLength={80}
-            name="shoeType"
-            onBlur={() => validateField("shoeType")}
-            onChange={handleTextChange}
-            placeholder="Sneakers, boots, heels..."
-            required
-            type="text"
-            value={formValues.shoeType}
-          />
-          {fieldErrors.shoeType && (
-            <span className={styles.fieldError} id="shoeType-error" role="alert">
-              {fieldErrors.shoeType}
-            </span>
-          )}
-        </label>
-
-        <label className={styles.field}>
-          <span>Brand <em className={styles.optional}>Optional</em></span>
-          <input
-            className={styles.input}
-            id="shoeBrand"
-            maxLength={80}
-            name="shoeBrand"
-            onChange={handleTextChange}
-            placeholder="Nike, Goldstar, Caliber..."
-            type="text"
-            value={formValues.shoeBrand}
-          />
-        </label>
+        </section>
 
         <label className={styles.field}>
           <span>Preferred service date <em className={styles.optional}>Optional</em></span>
@@ -632,6 +832,7 @@ export default function BookingForm({
             aria-describedby={fieldErrors.preferredDate ? "preferredDate-error" : undefined}
             aria-invalid={Boolean(fieldErrors.preferredDate)}
             className={classNames(styles.input, fieldErrors.preferredDate && styles.invalid)}
+            data-booking-field="preferredDate"
             id="preferredDate"
             min={minimumDate}
             name="preferredDate"
@@ -649,11 +850,11 @@ export default function BookingForm({
 
         <div className={classNames(styles.field, styles.compactExpressField)}>
           <span>Express service <em className={styles.optional}>Optional</em></span>
-          {selectedService === expressService?.id ? (
+          {hasExpressAsPrimaryService ? (
             <div className={classNames(styles.expressOption, styles.selected)}>
               <span className={styles.expressOptionText}>
-                <strong>{expressService.name}</strong>
-                <small>This is already your selected primary service.</small>
+                <strong>{expressService?.name ?? "Express service"}</strong>
+                <small>This is already selected as a service for one of your pairs.</small>
               </span>
               <span className={styles.deliveryPrice}>Selected</span>
             </div>
@@ -704,7 +905,7 @@ export default function BookingForm({
               />
               <span className={styles.deliveryCardContent}>
                 <strong>Self Drop &amp; Pickup</strong>
-                <small>Bring and collect your pair from our Hetauda studio.</small>
+                <small>Bring and collect your shoes from our Hetauda studio.</small>
               </span>
               <span className={styles.deliveryPrice}>Free</span>
             </label>
@@ -725,11 +926,49 @@ export default function BookingForm({
               />
               <span className={styles.deliveryCardContent}>
                 <strong>Pickup &amp; Return Delivery</strong>
-                <small>We collect and return the pair at your location.</small>
+                <small>
+                  {pickupPricing.freeDeliveryApplied
+                    ? "4+ pair Hetauda offer applied."
+                    : "FREE pickup & return for 4+ pairs within Hetauda."}
+                </small>
               </span>
-              <span className={styles.deliveryPrice}>Rs 200–300</span>
+              <span className={styles.deliveryPrice}>
+                {pickupPricing.freeDeliveryApplied ? "Free" : "Rs 200–300"}
+              </span>
             </label>
           </div>
+          {fulfillmentMethod === "pickup_delivery" && (
+            <p
+              aria-live="polite"
+              className={classNames(
+                styles.deliveryPromotion,
+                pickupPricing.freeDeliveryApplied && styles.deliveryPromotionSuccess,
+              )}
+            >
+              {pickupPricing.freeDeliveryApplied ? (
+                <>
+                  <span aria-hidden="true">🎉</span>
+                  <strong>FREE Pickup &amp; Return unlocked</strong>
+                  <span>4+ pairs within Hetauda qualify for free delivery.</span>
+                </>
+              ) : pairCount >= 4 && !pickupArea ? (
+                <>
+                  <strong>4+ pairs qualify for FREE Pickup &amp; Return within Hetauda.</strong>
+                  <span>Choose Hetauda City to apply the offer automatically.</span>
+                </>
+              ) : pairCount >= 4 && !freeDeliveryEligible ? (
+                <>
+                  <strong>FREE Pickup &amp; Return is available for 4+ pairs within Hetauda.</strong>
+                  <span>Other-city pickup keeps the regular delivery charge.</span>
+                </>
+              ) : (
+                <>
+                  <strong>FREE pickup &amp; return for 4+ pairs within Hetauda.</strong>
+                  <span>Add more pairs to unlock the offer.</span>
+                </>
+              )}
+            </p>
+          )}
         </fieldset>
 
         <div
@@ -743,6 +982,7 @@ export default function BookingForm({
               aria-describedby={fieldErrors.pickupArea ? "pickupArea-error" : undefined}
               aria-invalid={Boolean(fieldErrors.pickupArea)}
               className={classNames(styles.input, fieldErrors.pickupArea && styles.invalid)}
+              data-booking-field="pickupArea"
               disabled={fulfillmentMethod !== "pickup_delivery"}
               id="pickupArea"
               name="pickupArea"
@@ -771,6 +1011,7 @@ export default function BookingForm({
               aria-invalid={Boolean(fieldErrors.pickupAddress)}
               autoComplete="street-address"
               className={classNames(styles.input, fieldErrors.pickupAddress && styles.invalid)}
+              data-booking-field="pickupAddress"
               id="pickupAddress"
               maxLength={300}
               name="pickupAddress"
@@ -799,6 +1040,7 @@ export default function BookingForm({
                 ].filter(Boolean).join(" ") || undefined}
                 aria-invalid={Boolean(fieldErrors.locationUrl)}
                 className={classNames(styles.input, fieldErrors.locationUrl && styles.invalid)}
+                data-booking-field="locationUrl"
                 id="locationUrl"
                 maxLength={500}
                 name="locationUrl"
@@ -830,98 +1072,107 @@ export default function BookingForm({
           </label>
           <p>
             Pickup &amp; return is Rs 200 within Hetauda City and Rs 300 for
-            other cities.
+            other cities. Hetauda pickup &amp; return is free for 4 or more pairs.
           </p>
         </div>
 
         <label className={classNames(styles.field, styles.compactFull, styles.compactNotes)}>
-          <span>Condition or special request <em className={styles.optional}>Optional</em></span>
+          <span>Additional booking notes <em className={styles.optional}>Optional</em></span>
           <textarea
             className={styles.input}
             id="notes"
             maxLength={800}
             name="notes"
             onChange={handleTextChange}
-            placeholder="Tell us about stains, damage, material concerns or anything else we should know."
+            placeholder="Anything else we should know about this booking?"
             rows={3}
             value={formValues.notes}
           />
         </label>
       </div>
 
-      {selected && (
-        <section aria-labelledby="booking-summary-heading" className={styles.summary}>
-          <div className={styles.summaryHeading}>
+      <section aria-labelledby="booking-summary-heading" className={styles.summary}>
+        <div className={styles.summaryHeading}>
+          <div>
             <h4 id="booking-summary-heading">Your Booking Summary</h4>
-            <span aria-hidden="true">✓</span>
+            <span>{pairCountLabel(pairCount)}</span>
           </div>
-          <dl className={styles.summaryRows}>
-            <div className={styles.summaryRow}>
-              <dt>Selected service</dt>
-              <dd>{selected.name}</dd>
-            </div>
-            <div className={styles.summaryRow}>
-              <dt>Service price</dt>
-              <dd>{selected.priceLabel}</dd>
-            </div>
-            {selected.specialPriceLabel && (
-              <div className={styles.summaryRow}>
-                <dt>Eligible local-brand price</dt>
-                <dd>{selected.specialPriceLabel}</dd>
+          <span aria-hidden="true">✓</span>
+        </div>
+        <dl className={styles.summaryRows}>
+          {items.map((item, index) => {
+            const service = selectedServices[index];
+            return (
+              <div className={styles.summaryPair} key={item.id}>
+                <dt>Pair {index + 1}</dt>
+                <dd>
+                  <span>{service?.name ?? "Choose a service"}</span>
+                  <strong>{service?.priceLabel ?? "Not selected"}</strong>
+                </dd>
               </div>
-            )}
-            <div className={styles.summaryRow}>
-              <dt>Collection method</dt>
-              <dd>
-                {fulfillmentMethod === "pickup_delivery"
-                  ? "Pickup & Return Delivery"
-                  : "Self Drop & Pickup"}
-              </dd>
-            </div>
-            {fulfillmentMethod === "pickup_delivery" && (
-              <div className={styles.summaryRow}>
-                <dt>Pickup area</dt>
-                <dd>{pickupAreaName ?? "Choose an area"}</dd>
-              </div>
-            )}
-            <div className={styles.summaryRow}>
-              <dt>Delivery fee</dt>
-              <dd>
-                {fulfillmentMethod === "pickup_delivery"
-                  ? pickupDeliveryFee === null
-                    ? "Choose an area"
-                    : formatNprPrice(pickupDeliveryFee)
-                  : "Free"}
-              </dd>
-            </div>
-            <div className={styles.summaryRow}>
-              <dt>Express service</dt>
-              <dd>
-                {selectedService === expressService?.id
-                  ? "Selected as primary service"
-                  : expressRequested
-                    ? expressService?.priceLabel
-                      ? "Requested — " + expressService.priceLabel
-                      : "Requested — confirmed when available"
-                    : "Not selected"}
-              </dd>
-            </div>
-          </dl>
-          <div className={styles.summaryTotal}>
-            <span>{hasTotalPrice ? "Final price" : "Price status"}</span>
-            <strong>
-              {hasTotalPrice ? formatNprPrice(totalPrice) : "Quote after review"}
-            </strong>
+            );
+          })}
+          <div className={styles.summaryRow}>
+            <dt>Services subtotal</dt>
+            <dd>
+              {serviceSubtotal === null
+                ? "Quote after review"
+                : formatNprPrice(serviceSubtotal)}
+            </dd>
           </div>
-          <p className={styles.summaryNotice}>
-            {hasTotalPrice
-              ? fulfillmentMethod === "pickup_delivery"
+          <div className={styles.summaryRow}>
+            <dt>Collection method</dt>
+            <dd>
+              {fulfillmentMethod === "pickup_delivery"
+                ? "Pickup & Return Delivery"
+                : "Self Drop & Pickup"}
+            </dd>
+          </div>
+          {fulfillmentMethod === "pickup_delivery" && (
+            <div className={styles.summaryRow}>
+              <dt>Pickup area</dt>
+              <dd>{pickupAreaName ?? "Choose an area"}</dd>
+            </div>
+          )}
+          <div className={styles.summaryRow}>
+            <dt>Pickup &amp; return</dt>
+            <dd>
+              {fulfillmentMethod === "self_dropoff"
+                ? "Free"
+                : pickupPricing.deliveryFee === null
+                  ? "Choose an area"
+                  : pickupPricing.freeDeliveryApplied
+                    ? "FREE — 4+ pair Hetauda offer"
+                    : formatNprPrice(pickupPricing.deliveryFee)}
+            </dd>
+          </div>
+          <div className={styles.summaryRow}>
+            <dt>Express service</dt>
+            <dd>
+              {hasExpressAsPrimaryService
+                ? "Selected as a pair service"
+                : expressRequested
+                  ? expressService?.priceLabel
+                    ? "Requested — " + expressService.priceLabel
+                    : "Requested — confirmed when available"
+                  : "Not selected"}
+            </dd>
+          </div>
+        </dl>
+        <div className={styles.summaryTotal}>
+          <span>{hasTotalPrice ? "Total" : "Price status"}</span>
+          <strong>{hasTotalPrice ? formatNprPrice(total) : "Quote after review"}</strong>
+        </div>
+        <p className={styles.summaryNotice}>
+          {hasTotalPrice
+            ? pickupPricing.freeDeliveryApplied
+              ? "Pickup & return is free through the 4+ pair Hetauda offer. Local-brand eligibility may adjust the service price."
+              : fulfillmentMethod === "pickup_delivery"
                 ? "Includes pickup and return delivery. Local-brand eligibility may adjust the service price."
                 : "Standard service price. Local-brand eligibility may adjust the service price."
-              : "We will review your footwear and share the suitable treatment, quote and turnaround time."}
-          </p>
-        </section>
-      )}
+            : "We will review your footwear and share the suitable treatment, quote and turnaround time."}
+        </p>
+      </section>
 
       <label aria-hidden="true" className={styles.honeypot}>
         Website

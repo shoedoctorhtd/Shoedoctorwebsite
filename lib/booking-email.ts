@@ -1,4 +1,5 @@
 import type { Booking } from "./data";
+import { getBookingItems } from "./booking-items.js";
 
 const BOOKING_RECIPIENT = "shoedoctorhtd@gmail.com";
 
@@ -82,11 +83,35 @@ function bookingEmailContent(booking: Booking) {
       ? "Hetauda City"
       : "Other city"
     : "Not applicable";
-  const deliveryFee = booking.deliveryFee
-    ? formatNpr(booking.deliveryFee)
-    : "Free";
+  const items = getBookingItems(booking);
+  const pairCount = booking.pairCount || items.length;
+  const deliveryFee = booking.deliveryFee ? formatNpr(booking.deliveryFee) : "FREE";
+  const freeDeliveryReason = booking.freeDeliveryApplied
+    ? booking.freeDeliveryReason?.trim() ||
+      "4+ pairs within Hetauda qualify for free pickup & return."
+    : null;
+  const serviceSubtotal = formatAmount(booking.serviceSubtotal);
+  const expressFee = booking.expressRequested
+    ? booking.expressFee === null
+      ? "Requested — Quote after review"
+      : formatNpr(booking.expressFee)
+    : "No";
+  const totalAmount = formatAmount(booking.totalAmount);
   const whatsappUrl = whatsappUrlFor(booking.phone);
   const mapUrl = safeHttpUrl(booking.locationUrl);
+  const pairSections: EmailSection[] = items.map((item) => ({
+    heading: "Pair " + item.pairNumber,
+    fields: [
+      { label: "Service", value: item.serviceName },
+      { label: "Footwear type", value: item.footwearType },
+      { label: "Brand", value: item.brand ?? "Not provided" },
+      { label: "Request", value: item.specialRequest ?? "None" },
+      {
+        label: "Price",
+        value: formatItemAmount(item.servicePrice, item.servicePriceLabel),
+      },
+    ],
+  }));
   const sections: EmailSection[] = [
     {
       heading: "Booking",
@@ -100,6 +125,10 @@ function bookingEmailContent(booking: Booking) {
         {
           label: "Status",
           value: booking.status === "new" ? "New" : booking.status,
+        },
+        {
+          label: "Total pairs",
+          value: pairCount + (pairCount === 1 ? " pair" : " pairs"),
         },
       ],
     },
@@ -117,24 +146,16 @@ function bookingEmailContent(booking: Booking) {
         { label: "Email", value: booking.email ?? "Not provided" },
       ],
     },
-    {
-      heading: "Shoe & service",
-      fields: [
-        { label: "Footwear type", value: booking.shoeType },
-        { label: "Brand", value: booking.shoeBrand ?? "Not provided" },
-        { label: "Selected service", value: booking.serviceName },
-        {
-          label: "Express service requested",
-          value: booking.expressRequested ? "Yes" : "No",
-        },
-      ],
-    },
+    ...pairSections,
     {
       heading: "Collection & delivery",
       fields: [
         { label: "Collection method", value: fulfillment },
         { label: "Pickup area", value: pickupArea },
         { label: "Pickup & return fee", value: deliveryFee },
+        ...(freeDeliveryReason
+          ? [{ label: "Free delivery offer", value: freeDeliveryReason }]
+          : []),
         {
           label: "Pickup address",
           value: booking.pickupAddress ?? "Not applicable",
@@ -144,6 +165,14 @@ function bookingEmailContent(booking: Booking) {
           value: booking.locationUrl ?? "Not provided",
           action: mapUrl ? { href: mapUrl, label: "Open map" } : undefined,
         },
+      ],
+    },
+    {
+      heading: "Order summary",
+      fields: [
+        { label: "Services subtotal", value: serviceSubtotal },
+        { label: "Express", value: expressFee },
+        { label: "Total", value: totalAmount },
       ],
     },
     {
@@ -157,9 +186,12 @@ function bookingEmailContent(booking: Booking) {
     { label: "Booking ID", value: booking.reference },
     { label: "Customer name", value: booking.customerName },
     { label: "Phone / WhatsApp", value: booking.phone },
-    { label: "Service", value: booking.serviceName },
+    {
+      label: "Pairs",
+      value: pairCount + (pairCount === 1 ? " pair" : " pairs"),
+    },
     { label: "Collection method", value: fulfillment },
-    { label: "Special request", value: booking.notes ?? "None" },
+    { label: "Total estimate", value: totalAmount },
   ];
   const text = [
     "NEW BOOKING",
@@ -252,6 +284,14 @@ function formatNpr(value: number) {
   return `Rs ${new Intl.NumberFormat("en-NP", {
     maximumFractionDigits: 0,
   }).format(value)}`;
+}
+
+function formatAmount(value: number | null) {
+  return value === null ? "Quote after review" : formatNpr(value);
+}
+
+function formatItemAmount(value: number | null, priceLabel: string) {
+  return value === null ? priceLabel || "Quote after review" : formatNpr(value);
 }
 
 function headerValue(value: string) {

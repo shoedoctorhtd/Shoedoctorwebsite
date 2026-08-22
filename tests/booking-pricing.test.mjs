@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  calculateBookingTotals,
   calculateBookingTotal,
+  calculatePickupDeliveryFee,
   getExactNprPrice,
+  qualifiesForFreeHetaudaDelivery,
 } from "../lib/booking-pricing.ts";
 
 test("adds the fixed Express surcharge to the booking total", () => {
@@ -16,4 +19,34 @@ test("adds the fixed Express surcharge to the booking total", () => {
 test("keeps variable service prices as a quote", () => {
   assert.equal(getExactNprPrice("From Rs 149"), null);
   assert.equal(calculateBookingTotal(null, 200, 149), null);
+});
+
+test("unlocks free Hetauda pickup and return only from the fourth pair", () => {
+  assert.equal(qualifiesForFreeHetaudaDelivery(3, "hetauda_city"), false);
+  assert.equal(qualifiesForFreeHetaudaDelivery(4, "other_city"), false);
+  assert.equal(qualifiesForFreeHetaudaDelivery(4, "hetauda_city"), true);
+
+  assert.deepEqual(
+    calculatePickupDeliveryFee("pickup_delivery", "hetauda_city", 3),
+    { deliveryFee: 200, freeDeliveryApplied: false },
+  );
+  assert.deepEqual(
+    calculatePickupDeliveryFee("pickup_delivery", "hetauda_city", 4),
+    { deliveryFee: 0, freeDeliveryApplied: true },
+  );
+  assert.deepEqual(
+    calculatePickupDeliveryFee("self_dropoff", null, 4),
+    { deliveryFee: 0, freeDeliveryApplied: false },
+  );
+});
+
+test("calculates all exact pair prices once and preserves quote-only totals", () => {
+  assert.deepEqual(calculateBookingTotals([299, 449, 699, 299], 0, 149), {
+    serviceSubtotal: 1746,
+    total: 1895,
+  });
+  assert.deepEqual(calculateBookingTotals([299, null], 200, 0), {
+    serviceSubtotal: null,
+    total: null,
+  });
 });

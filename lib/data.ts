@@ -3,8 +3,10 @@ import {
   steamCleaningContent,
 } from "./steam-cleaning";
 import {
+  calculateBookingTotals,
+  calculatePickupDeliveryFee,
+  getExactNprPrice,
   isPickupArea,
-  PICKUP_DELIVERY_FEES,
   type PickupArea,
 } from "./booking-pricing";
 import { isEmailAddress } from "./email/address";
@@ -121,6 +123,12 @@ export type Booking = {
   fulfillmentMethod: FulfillmentMethod;
   pickupArea: PickupArea | null;
   deliveryFee: number;
+  pairCount: number;
+  serviceSubtotal: number | null;
+  expressFee: number | null;
+  totalAmount: number | null;
+  freeDeliveryApplied: boolean;
+  freeDeliveryReason: string | null;
   pickupAddress: string | null;
   locationUrl: string | null;
   notes: string | null;
@@ -128,16 +136,37 @@ export type Booking = {
   status: BookingStatus;
   createdAt: string;
   updatedAt: string;
+  items: BookingItem[];
   statusHistory: BookingStatusHistory[];
+};
+
+export type BookingItem = {
+  id: string;
+  bookingId: string;
+  pairNumber: number;
+  serviceId: string;
+  serviceName: string;
+  servicePriceLabel: string;
+  servicePrice: number | null;
+  footwearType: string;
+  brand: string | null;
+  specialRequest: string | null;
+  status: BookingStatus | null;
+  createdAt: string;
+};
+
+export type BookingItemInput = {
+  serviceId: string;
+  footwearType: string;
+  brand?: string | null;
+  specialRequest?: string | null;
 };
 
 export type BookingInput = {
   customerName: string;
   phone: string;
   email?: string | null;
-  serviceId: string;
-  shoeType: string;
-  shoeBrand?: string | null;
+  items: BookingItemInput[];
   preferredDate?: string | null;
   fulfillmentMethod: FulfillmentMethod;
   pickupArea?: PickupArea | null;
@@ -454,6 +483,12 @@ async function initialiseDatabase() {
         fulfillment_method TEXT NOT NULL DEFAULT 'self_dropoff',
         pickup_area TEXT,
         delivery_fee INTEGER NOT NULL DEFAULT 0,
+        pair_count INTEGER NOT NULL DEFAULT 1,
+        service_subtotal INTEGER,
+        express_fee INTEGER DEFAULT 0,
+        total_amount INTEGER,
+        free_delivery_applied INTEGER NOT NULL DEFAULT 0,
+        free_delivery_reason TEXT,
         pickup_address TEXT,
         location_url TEXT,
         notes TEXT,
@@ -467,6 +502,28 @@ async function initialiseDatabase() {
     db.prepare(`
       CREATE INDEX IF NOT EXISTS bookings_status_created_idx
       ON bookings(status, created_at)
+    `),
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS booking_items (
+        id TEXT PRIMARY KEY,
+        booking_id TEXT NOT NULL,
+        pair_number INTEGER NOT NULL CHECK (pair_number >= 1),
+        service_id TEXT NOT NULL,
+        service_name TEXT NOT NULL,
+        service_price_label TEXT NOT NULL,
+        service_price INTEGER CHECK (service_price IS NULL OR service_price >= 0),
+        footwear_type TEXT NOT NULL,
+        brand TEXT,
+        special_request TEXT,
+        status TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
+        UNIQUE(booking_id, pair_number)
+      )
+    `),
+    db.prepare(`
+      CREATE INDEX IF NOT EXISTS booking_items_booking_pair_idx
+      ON booking_items(booking_id, pair_number)
     `),
     db.prepare(`
       CREATE TABLE IF NOT EXISTS booking_status_history (
@@ -526,6 +583,42 @@ async function initialiseDatabase() {
       .prepare(
         "ALTER TABLE bookings ADD COLUMN delivery_fee INTEGER NOT NULL DEFAULT 0",
       )
+      .run();
+  }
+  if (!bookingColumnNames.has("pair_count")) {
+    await db
+      .prepare(
+        "ALTER TABLE bookings ADD COLUMN pair_count INTEGER NOT NULL DEFAULT 1",
+      )
+      .run();
+  }
+  if (!bookingColumnNames.has("service_subtotal")) {
+    await db
+      .prepare("ALTER TABLE bookings ADD COLUMN service_subtotal INTEGER")
+      .run();
+  }
+  if (!bookingColumnNames.has("express_fee")) {
+    await db
+      .prepare(
+        "ALTER TABLE bookings ADD COLUMN express_fee INTEGER DEFAULT 0",
+      )
+      .run();
+  }
+  if (!bookingColumnNames.has("total_amount")) {
+    await db
+      .prepare("ALTER TABLE bookings ADD COLUMN total_amount INTEGER")
+      .run();
+  }
+  if (!bookingColumnNames.has("free_delivery_applied")) {
+    await db
+      .prepare(
+        "ALTER TABLE bookings ADD COLUMN free_delivery_applied INTEGER NOT NULL DEFAULT 0",
+      )
+      .run();
+  }
+  if (!bookingColumnNames.has("free_delivery_reason")) {
+    await db
+      .prepare("ALTER TABLE bookings ADD COLUMN free_delivery_reason TEXT")
       .run();
   }
   if (!bookingColumnNames.has("last_status_history_id")) {
@@ -614,7 +707,8 @@ function parseService(row: Record<string, unknown>): Service {
 
 function parseBooking(row: Record<string, unknown>): Booking {
   const pickupArea = row.pickup_area ? String(row.pickup_area) : "";
-  const deliveryFee = Number(row.delivery_fee ?? 0);
+  const deliveryFee = readNonNegativeAmount(row.delivery_fee, 0);
+  const pairCount = readPositiveInteger(row.pair_count, 1);
 
   return {
     id: String(row.id),
@@ -632,7 +726,15 @@ function parseBooking(row: Record<string, unknown>): Booking {
         ? "pickup_delivery"
         : "self_dropoff",
     pickupArea: isPickupArea(pickupArea) ? pickupArea : null,
-    deliveryFee: Number.isFinite(deliveryFee) ? deliveryFee : 0,
+    deliveryFee,
+    pairCount,
+    serviceSubtotal: readOptionalNonNegativeAmount(row.service_subtotal),
+    expressFee: readOptionalNonNegativeAmount(row.express_fee),
+    totalAmount: readOptionalNonNegativeAmount(row.total_amount),
+    freeDeliveryApplied: Number(row.free_delivery_applied ?? 0) === 1,
+    freeDeliveryReason: row.free_delivery_reason
+      ? String(row.free_delivery_reason)
+      : null,
     pickupAddress: row.pickup_address ? String(row.pickup_address) : null,
     locationUrl: row.location_url ? String(row.location_url) : null,
     notes: row.notes ? String(row.notes) : null,
@@ -640,8 +742,45 @@ function parseBooking(row: Record<string, unknown>): Booking {
     status: row.status as BookingStatus,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
+    items: [],
     statusHistory: [],
   };
+}
+
+function parseBookingItem(row: Record<string, unknown>): BookingItem {
+  const status = row.status ? String(row.status) : "";
+  return {
+    id: String(row.id),
+    bookingId: String(row.booking_id),
+    pairNumber: readPositiveInteger(row.pair_number, 1),
+    serviceId: String(row.service_id),
+    serviceName: String(row.service_name),
+    servicePriceLabel: String(row.service_price_label),
+    servicePrice: readOptionalNonNegativeAmount(row.service_price),
+    footwearType: String(row.footwear_type),
+    brand: row.brand ? String(row.brand) : null,
+    specialRequest: row.special_request ? String(row.special_request) : null,
+    status: BOOKING_STATUSES.includes(status as BookingStatus)
+      ? (status as BookingStatus)
+      : null,
+    createdAt: String(row.created_at),
+  };
+}
+
+function readPositiveInteger(value: unknown, fallback: number) {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 1 ? parsed : fallback;
+}
+
+function readNonNegativeAmount(value: unknown, fallback: number) {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function readOptionalNonNegativeAmount(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
 }
 
 function parseBookingNotification(
@@ -801,14 +940,47 @@ export async function deleteService(id: string): Promise<boolean> {
 export async function createBooking(input: BookingInput): Promise<Booking> {
   await ensureDatabase();
   const db = await getDatabase();
-  const serviceRow = await db
-    .prepare("SELECT id, name FROM services WHERE id = ? AND active = 1")
-    .bind(input.serviceId)
-    .first<{ id: string; name: string }>();
-
-  if (!serviceRow) {
-    throw new Error("The selected service is no longer available.");
+  if (!Array.isArray(input.items) || input.items.length < 1 || input.items.length > 20) {
+    throw new Error("A booking must include between 1 and 20 pairs.");
   }
+
+  const serviceIds = [...new Set(input.items.map((item) => item.serviceId))];
+  if (serviceIds.some((serviceId) => !serviceId)) {
+    throw new Error("Each pair must have a valid service.");
+  }
+  const servicePlaceholders = serviceIds.map(() => "?").join(", ");
+  const serviceResult = await db
+    .prepare(`
+      SELECT id, name, price_label
+      FROM services
+      WHERE active = 1 AND id IN (${servicePlaceholders})
+    `)
+    .bind(...serviceIds)
+    .all<{ id: string; name: string; price_label: string }>();
+  const serviceById = new Map(
+    serviceResult.results.map((service) => [service.id, service]),
+  );
+  if (serviceById.size !== serviceIds.length) {
+    throw new Error("One or more selected services are no longer available.");
+  }
+
+  const itemSnapshots = input.items.map((item, index) => {
+    const service = serviceById.get(item.serviceId);
+    if (!service) {
+      throw new Error("One or more selected services are no longer available.");
+    }
+    return {
+      id: crypto.randomUUID(),
+      pairNumber: index + 1,
+      serviceId: service.id,
+      serviceName: service.name,
+      servicePriceLabel: service.price_label,
+      servicePrice: getExactNprPrice(service.price_label),
+      footwearType: item.footwearType,
+      brand: item.brand ?? null,
+      specialRequest: item.specialRequest ?? null,
+    };
+  });
 
   const requestedPickupArea = input.pickupArea ?? "";
   if (
@@ -823,45 +995,121 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
     isPickupArea(requestedPickupArea)
       ? requestedPickupArea
       : null;
-  const deliveryFee = pickupArea ? PICKUP_DELIVERY_FEES[pickupArea] : 0;
+  const delivery = calculatePickupDeliveryFee(
+    input.fulfillmentMethod,
+    pickupArea,
+    itemSnapshots.length,
+  );
+  if (delivery.deliveryFee === null) {
+    throw new Error("Please choose a pickup area.");
+  }
+
+  let expressRequested = input.expressRequested;
+  let expressFee: number | null = 0;
+  if (
+    expressRequested &&
+    itemSnapshots.some((item) => item.serviceId === "express-wash-dry")
+  ) {
+    // The legacy form treats Express Wash & Dry as its own primary service,
+    // not an extra charge on top of itself.
+    expressRequested = false;
+  }
+  if (expressRequested) {
+    const expressService = await db
+      .prepare(
+        "SELECT price_label FROM services WHERE id = ? AND active = 1",
+      )
+      .bind("express-wash-dry")
+      .first<{ price_label: string }>();
+    // Older booking behavior accepted a request even when Express was not
+    // currently configured as an exact-priced public service. Keep that
+    // request compatible, but never invent an add-on fee.
+    expressFee = expressService
+      ? getExactNprPrice(expressService.price_label)
+      : null;
+  }
+
+  const { serviceSubtotal, total } = calculateBookingTotals(
+    itemSnapshots.map((item) => item.servicePrice),
+    delivery.deliveryFee,
+    expressFee,
+  );
+  const freeDeliveryReason = delivery.freeDeliveryApplied
+    ? "4+ pairs within Hetauda"
+    : null;
 
   const id = crypto.randomUUID();
   const reference = `SD-${Date.now().toString(36).toUpperCase()}-${id
     .slice(0, 4)
     .toUpperCase()}`;
   const now = new Date().toISOString();
+  const firstItem = itemSnapshots[0];
 
-  await db
-    .prepare(`
+  const batchResults = await db.batch([
+    db.prepare(`
       INSERT INTO bookings (
         id, reference, customer_name, phone, email, service_id,
         service_name, shoe_type, shoe_brand, preferred_date,
-        fulfillment_method, pickup_area, delivery_fee, pickup_address, location_url, notes,
+        fulfillment_method, pickup_area, delivery_fee, pair_count,
+        service_subtotal, express_fee, total_amount, free_delivery_applied,
+        free_delivery_reason, pickup_address, location_url, notes,
         express_requested, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?)
-    `)
-    .bind(
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
       id,
       reference,
       input.customerName,
       input.phone,
       input.email ?? null,
-      serviceRow.id,
-      serviceRow.name,
-      input.shoeType,
-      input.shoeBrand ?? null,
+      firstItem.serviceId,
+      firstItem.serviceName,
+      firstItem.footwearType,
+      firstItem.brand,
       input.preferredDate ?? null,
       input.fulfillmentMethod,
       pickupArea,
-      deliveryFee,
+      delivery.deliveryFee,
+      itemSnapshots.length,
+      serviceSubtotal,
+      expressFee,
+      total,
+      delivery.freeDeliveryApplied ? 1 : 0,
+      freeDeliveryReason,
       input.pickupAddress ?? null,
       input.locationUrl ?? null,
       input.notes ?? null,
-      input.expressRequested ? 1 : 0,
+      expressRequested ? 1 : 0,
+      "new",
       now,
       now,
-    )
-    .run();
+    ),
+    ...itemSnapshots.map((item) =>
+      db
+        .prepare(`
+          INSERT INTO booking_items (
+            id, booking_id, pair_number, service_id, service_name,
+            service_price_label, service_price, footwear_type, brand,
+            special_request, status, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
+        `)
+        .bind(
+          item.id,
+          id,
+          item.pairNumber,
+          item.serviceId,
+          item.serviceName,
+          item.servicePriceLabel,
+          item.servicePrice,
+          item.footwearType,
+          item.brand,
+          item.specialRequest,
+          now,
+        ),
+    ),
+  ]);
+  if (batchResults.some((result) => !result.meta.changes)) {
+    throw new Error("Unable to save every pair in this booking.");
+  }
 
   return {
     id,
@@ -869,21 +1117,33 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
     customerName: input.customerName,
     phone: input.phone,
     email: input.email ?? null,
-    serviceId: serviceRow.id,
-    serviceName: serviceRow.name,
-    shoeType: input.shoeType,
-    shoeBrand: input.shoeBrand ?? null,
+    serviceId: firstItem.serviceId,
+    serviceName: firstItem.serviceName,
+    shoeType: firstItem.footwearType,
+    shoeBrand: firstItem.brand,
     preferredDate: input.preferredDate ?? null,
     fulfillmentMethod: input.fulfillmentMethod,
     pickupArea,
-    deliveryFee,
+    deliveryFee: delivery.deliveryFee,
+    pairCount: itemSnapshots.length,
+    serviceSubtotal,
+    expressFee,
+    totalAmount: total,
+    freeDeliveryApplied: delivery.freeDeliveryApplied,
+    freeDeliveryReason,
     pickupAddress: input.pickupAddress ?? null,
     locationUrl: input.locationUrl ?? null,
     notes: input.notes ?? null,
-    expressRequested: input.expressRequested,
+    expressRequested,
     status: "new",
     createdAt: now,
     updatedAt: now,
+    items: itemSnapshots.map((item) => ({
+      ...item,
+      bookingId: id,
+      status: null,
+      createdAt: now,
+    })),
     statusHistory: [],
   };
 }
@@ -895,7 +1155,10 @@ export async function listBookings(): Promise<Booking[]> {
     .prepare("SELECT * FROM bookings ORDER BY created_at DESC LIMIT 500")
     .all<Record<string, unknown>>();
   const bookings = result.results.map(parseBooking);
-  await attachBookingStatusHistory(db, bookings);
+  await Promise.all([
+    attachBookingItems(db, bookings),
+    attachBookingStatusHistory(db, bookings),
+  ]);
   return bookings;
 }
 
@@ -1165,12 +1428,35 @@ async function attachBookingStatusHistory(db: Database, bookings: Booking[]) {
   });
 }
 
+async function attachBookingItems(db: Database, bookings: Booking[]) {
+  if (!bookings.length) return;
+
+  const bookingIds = bookings.map((booking) => booking.id);
+  const placeholders = bookingIds.map(() => "?").join(", ");
+  const result = await db
+    .prepare(`
+      SELECT * FROM booking_items
+      WHERE booking_id IN (${placeholders})
+      ORDER BY booking_id ASC, pair_number ASC
+    `)
+    .bind(...bookingIds)
+    .all<Record<string, unknown>>();
+  const bookingById = new Map(bookings.map((booking) => [booking.id, booking]));
+  result.results.forEach((row) => {
+    const item = parseBookingItem(row);
+    bookingById.get(item.bookingId)?.items.push(item);
+  });
+}
+
 async function findBookingById(db: Database, id: string) {
   const row = await db
     .prepare("SELECT * FROM bookings WHERE id = ?")
     .bind(id)
     .first<Record<string, unknown>>();
-  return row ? parseBooking(row) : null;
+  if (!row) return null;
+  const booking = parseBooking(row);
+  await attachBookingItems(db, [booking]);
+  return booking;
 }
 
 async function findBookingNotification(
