@@ -274,6 +274,16 @@ export const donationRequests = sqliteTable(
     preferredPickupDate: text("preferred_pickup_date"),
     donorNotes: text("donor_notes"),
     status: text("status").notNull().default("new"),
+    workflowStatus: text("workflow_status").notNull().default("submitted"),
+    lastWorkflowEventId: text("last_workflow_event_id"),
+    emailUpdatesConsent: integer("email_update_consent", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    distributionLocation: text("distribution_location"),
+    distributionCampaign: text("distribution_campaign"),
+    distributionDate: text("distribution_date"),
+    pairsDistributed: integer("pairs_distributed"),
+    impactNote: text("impact_note"),
     internalNotes: text("internal_notes"),
     submittedAt: text("submitted_at").notNull(),
     createdAt: text("created_at").notNull(),
@@ -288,6 +298,45 @@ export const donationRequests = sqliteTable(
     index("donation_requests_donor_name_idx").on(table.donorName),
     index("donation_requests_phone_idx").on(table.phone),
     index("donation_requests_location_idx").on(table.location),
+    index("donation_requests_workflow_status_submitted_idx").on(
+      table.workflowStatus,
+      table.submittedAt,
+    ),
+  ],
+);
+
+export const donationEmailEvents = sqliteTable(
+  "donation_email_events",
+  {
+    id: text("id").primaryKey(),
+    donationId: text("donation_id")
+      .notNull()
+      .references(() => donationRequests.id, { onDelete: "cascade" }),
+    donationReference: text("donation_reference").notNull(),
+    recipientEmail: text("recipient_email"),
+    emailType: text("email_type").notNull(),
+    workflowStatus: text("workflow_status").notNull(),
+    eventKey: text("event_key").notNull(),
+    deliveryStatus: text("delivery_status").notNull().default("pending"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    errorSummary: text("error_summary"),
+    sentAt: text("sent_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("donation_email_events_donation_event_key_uniq").on(
+      table.donationId,
+      table.eventKey,
+    ),
+    index("donation_email_events_donation_created_idx").on(
+      table.donationId,
+      table.createdAt,
+    ),
+    index("donation_email_events_delivery_updated_idx").on(
+      table.deliveryStatus,
+      table.updatedAt,
+    ),
   ],
 );
 

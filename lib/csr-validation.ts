@@ -64,6 +64,16 @@ function numberInRange(
   return parsed;
 }
 
+function optionalNumberInRange(
+  value: unknown,
+  label: string,
+  minimum: number,
+  maximum = 1_000_000_000,
+) {
+  if (value === null || value === undefined || value === "") return null;
+  return numberInRange(value, label, minimum, maximum);
+}
+
 function booleanValue(value: unknown) {
   return value === true || value === "true" || value === 1 || value === "1";
 }
@@ -122,6 +132,8 @@ export function parsePublicDonationRequest(value: unknown): DonationRequestInput
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email)) {
     throw new Error("Please enter a valid email address.");
   }
+  const emailUpdatesConsent =
+    Boolean(email) && booleanValue(input.emailUpdatesConsent ?? input.impactUpdatesConsent);
 
   const rawMethod = cleanText(input.donationMethod, 30);
   const donationMethod: DonationMethod =
@@ -156,6 +168,7 @@ export function parsePublicDonationRequest(value: unknown): DonationRequestInput
     donorName,
     phone,
     email,
+    emailUpdatesConsent,
     location:
       pickupAddress ||
       optionalText(input.location, 300) ||
@@ -183,13 +196,44 @@ export function parseDonationRequestUpdate(value: unknown): DonationRequestUpdat
   if (status && !DONATION_REQUEST_STATUSES.includes(status)) {
     throw new Error("Choose a valid donation request status.");
   }
-  if (!status && !("internalNotes" in input)) {
-    throw new Error("Choose a status or provide internal notes to update this request.");
+  const hasImpactUpdate = [
+    "distributionLocation",
+    "distributionCampaign",
+    "distributionDate",
+    "pairsDistributed",
+    "impactNote",
+  ].some((key) => key in input);
+  if (!status && !("internalNotes" in input) && !hasImpactUpdate) {
+    throw new Error("Choose a status or provide details to update this request.");
   }
   return {
     status: status ?? undefined,
+    notifyDonor: "notifyDonor" in input ? booleanValue(input.notifyDonor) : undefined,
     internalNotes:
       "internalNotes" in input ? optionalText(input.internalNotes, 2_000) : undefined,
+    distributionLocation:
+      "distributionLocation" in input
+        ? optionalText(input.distributionLocation, 180)
+        : undefined,
+    distributionCampaign:
+      "distributionCampaign" in input
+        ? optionalText(input.distributionCampaign, 180)
+        : undefined,
+    distributionDate:
+      "distributionDate" in input
+        ? optionalDate(input.distributionDate, "Distribution date")
+        : undefined,
+    pairsDistributed:
+      "pairsDistributed" in input
+        ? optionalNumberInRange(
+            input.pairsDistributed,
+            "Pairs distributed",
+            0,
+            1_000_000,
+          )
+        : undefined,
+    impactNote:
+      "impactNote" in input ? optionalText(input.impactNote, 1_200) : undefined,
   };
 }
 

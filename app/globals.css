@@ -11400,17 +11400,21 @@ body.shoe-cursor-active label {
 }
 
 .csr-status-pill.new { background: var(--coral); }
+.csr-status-pill.submitted { background: var(--coral); }
 .csr-status-pill.contacted,
 .csr-status-pill.upcoming { background: #b9d7ff; }
+.csr-status-pill.received { background: #dceeff; }
 .csr-status-pill.pickup_scheduled,
 .csr-status-pill.active { background: #dceeff; }
 .csr-status-pill.collected,
 .csr-status-pill.ready_for_donation,
 .csr-status-pill.completed,
 .csr-status-pill.published { background: var(--lime); }
-.csr-status-pill.under_restoration { background: #e5dcff; }
+.csr-status-pill.under_restoration,
+.csr-status-pill.cleaning_restoration { background: #e5dcff; }
 .csr-status-pill.donated { background: #dff5ee; }
 .csr-status-pill.rejected,
+.csr-status-pill.cancelled,
 .csr-status-pill.draft { background: #e4e2dc; }
 
 .csr-content-panel {
@@ -11687,6 +11691,27 @@ body.shoe-cursor-active label {
 .csr-request-details dt { color: var(--muted); font-family: var(--font-geist-mono), monospace; font-size: 8px; font-weight: 850; text-transform: uppercase; }
 .csr-request-details dd { font-size: 12px; line-height: 1.5; margin: 5px 0 0; overflow-wrap: anywhere; }
 .csr-request-details dd a { color: #2354c6; text-decoration: underline; }
+
+.csr-impact-editor {
+  border-top: 1px solid var(--line);
+  margin-top: 4px;
+  padding-top: 18px;
+}
+
+.csr-impact-editor > p {
+  font-size: 12px;
+  font-weight: 800;
+  margin: 0 0 14px;
+}
+
+.csr-impact-editor > p small {
+  color: var(--muted);
+  display: block;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.45;
+  margin-top: 4px;
+}
 
 .csr-impact-form {
   background: #fbfaf5;

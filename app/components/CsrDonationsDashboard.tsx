@@ -4,17 +4,13 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
+import {
+  DONATION_STATUSES,
+  DONATION_STATUS_LABELS,
+  type DonationStatus,
+} from "@/lib/donation-status";
 
-export const donationRequestStatuses = [
-  "new",
-  "contacted",
-  "pickup_scheduled",
-  "collected",
-  "under_restoration",
-  "ready_for_donation",
-  "donated",
-  "rejected",
-] as const;
+export const donationRequestStatuses = DONATION_STATUSES;
 
 export const donationDriveStatuses = [
   "draft",
@@ -30,7 +26,7 @@ export const restorationCategories = [
   "community_impact",
 ] as const;
 
-type DonationRequestStatus = (typeof donationRequestStatuses)[number];
+type DonationRequestStatus = DonationStatus;
 type DonationDriveStatus = (typeof donationDriveStatuses)[number];
 type RestorationCategory = (typeof restorationCategories)[number];
 
@@ -40,6 +36,7 @@ export type DonationRequest = {
   donorName: string;
   phone: string;
   email: string | null;
+  emailUpdatesConsent: boolean;
   location: string;
   numberOfPairs: number;
   shoeType: string | null;
@@ -50,9 +47,41 @@ export type DonationRequest = {
   donorNotes: string | null;
   status: DonationRequestStatus;
   internalNotes: string | null;
+  distributionLocation: string | null;
+  distributionCampaign: string | null;
+  distributionDate: string | null;
+  pairsDistributed: number | null;
+  impactNote: string | null;
+  lastEmailEvent: DonationEmailEvent | null;
+  lastEmailSentAt: string | null;
   submittedAt: string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type DonationEmailEvent = {
+  id: string;
+  deliveryStatus: "pending" | "sent" | "failed" | "skipped";
+  emailType: DonationRequestStatus;
+  errorSummary: string | null;
+  sentAt: string | null;
+};
+
+type DonationNotification = {
+  event: DonationEmailEvent | null;
+  reason?: "cancellation_email_not_requested";
+  status: "sent" | "failed" | "skipped" | "already_recorded" | "pending";
+};
+
+type DonationRequestEditorInput = {
+  distributionCampaign: string;
+  distributionDate: string;
+  distributionLocation: string;
+  impactNote: string;
+  internalNotes: string;
+  notifyDonor: boolean;
+  pairsDistributed: string;
+  status: DonationRequestStatus;
 };
 
 export type DonationDrive = {
@@ -155,16 +184,8 @@ type DeleteTarget =
   | { kind: "story"; item: RestorationStory }
   | { kind: "update"; item: CommunityUpdate };
 
-const requestStatusLabels: Record<DonationRequestStatus, string> = {
-  new: "New",
-  contacted: "Contacted",
-  pickup_scheduled: "Pickup Scheduled",
-  collected: "Collected",
-  under_restoration: "Under Restoration",
-  ready_for_donation: "Ready for Donation",
-  donated: "Donated",
-  rejected: "Rejected",
-};
+const requestStatusLabels: Record<DonationRequestStatus, string> =
+  DONATION_STATUS_LABELS;
 
 const driveStatusLabels: Record<DonationDriveStatus, string> = {
   draft: "Draft",
@@ -193,6 +214,50 @@ function formatDateTime(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function emailDeliveryLabel(event: DonationEmailEvent | null) {
+  if (!event) return "No email recorded";
+  switch (event.deliveryStatus) {
+    case "sent":
+      return "Email sent";
+    case "pending":
+      return "Email delivery pending";
+    case "failed":
+      return "Email could not be sent";
+    case "skipped":
+      return event.errorSummary === "email_updates_not_requested"
+        ? "Updates not requested"
+        : "No eligible email";
+  }
+  return "No email recorded";
+}
+
+function notificationNotice(
+  request: DonationRequest,
+  notification: DonationNotification | null,
+  statusChanged: boolean,
+) {
+  if (!statusChanged) return `${request.requestId} updated.`;
+  if (!notification) return "Status updated.";
+  switch (notification.status) {
+    case "sent":
+      return "Status updated · Email sent";
+    case "pending":
+      return "Status updated · Email delivery pending";
+    case "failed":
+      return "Status updated · Email could not be sent";
+    case "already_recorded":
+      return "Status updated · Email already recorded";
+    case "skipped":
+      if (notification.reason === "cancellation_email_not_requested") {
+        return "Status updated · Cancellation email not requested";
+      }
+      return notification.event?.errorSummary === "email_updates_not_requested"
+        ? "Status updated · Email updates not requested"
+        : "Status updated · No eligible email";
+  }
+  return "Status updated.";
 }
 
 function formatNumber(value: number) {
@@ -681,13 +746,17 @@ function CommunityUpdateEditor({
 function RequestDetailEditor({
   request,
   onClose,
+  onRetry,
   onSave,
 }: {
   request: DonationRequest;
   onClose: () => void;
-  onSave: (status: DonationRequestStatus, internalNotes: string) => Promise<void>;
+  onRetry: (emailEventId: string) => Promise<void>;
+  onSave: (input: DonationRequestEditorInput) => Promise<void>;
 }) {
+  const [selectedStatus, setSelectedStatus] = useState<DonationRequestStatus>(request.status);
   const [isSaving, setIsSaving] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -696,13 +765,32 @@ function RequestDetailEditor({
     setError(null);
     setIsSaving(true);
     try {
-      await onSave(
-        String(form.get("status")) as DonationRequestStatus,
-        String(form.get("internalNotes") ?? ""),
-      );
+      await onSave({
+        status: String(form.get("status")) as DonationRequestStatus,
+        notifyDonor: form.get("notifyDonor") === "on",
+        internalNotes: String(form.get("internalNotes") ?? ""),
+        distributionLocation: String(form.get("distributionLocation") ?? ""),
+        distributionCampaign: String(form.get("distributionCampaign") ?? ""),
+        distributionDate: String(form.get("distributionDate") ?? ""),
+        pairsDistributed: String(form.get("pairsDistributed") ?? ""),
+        impactNote: String(form.get("impactNote") ?? ""),
+      });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to update this request.");
       setIsSaving(false);
+    }
+  }
+
+  async function retryEmail() {
+    const event = request.lastEmailEvent;
+    if (!event || event.deliveryStatus !== "failed") return;
+    setError(null);
+    setIsRetrying(true);
+    try {
+      await onRetry(event.id);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to retry the donor email.");
+      setIsRetrying(false);
     }
   }
 
@@ -717,8 +805,12 @@ function RequestDetailEditor({
           <button type="button" className="modal-close" onClick={onClose} aria-label="Close donation request details">×</button>
         </div>
         <dl className="csr-request-details">
+          <div><dt>Donation reference</dt><dd>{request.requestId}</dd></div>
           <div><dt>Phone</dt><dd><a href={`tel:${request.phone}`}>{request.phone}</a></dd></div>
           <div><dt>Email</dt><dd>{request.email ? <a href={`mailto:${request.email}`}>{request.email}</a> : "Not provided"}</dd></div>
+          <div><dt>Email updates</dt><dd>{request.emailUpdatesConsent ? "Allowed by donor" : "Not requested"}</dd></div>
+          <div><dt>Last email sent</dt><dd>{request.lastEmailSentAt ? formatDateTime(request.lastEmailSentAt) : "—"}</dd></div>
+          <div><dt>Email delivery</dt><dd>{emailDeliveryLabel(request.lastEmailEvent)}</dd></div>
           <div><dt>Location</dt><dd>{request.location}</dd></div>
           <div><dt>Pairs</dt><dd>{formatNumber(request.numberOfPairs)}</dd></div>
           <div><dt>Shoe type</dt><dd>{request.shoeType || "Not provided"}</dd></div>
@@ -732,20 +824,60 @@ function RequestDetailEditor({
         <div className="admin-form-grid csr-form-grid">
           <label>
             <span>Status</span>
-            <select name="status" defaultValue={request.status}>
+            <select
+              name="status"
+              value={selectedStatus}
+              onChange={(event) => setSelectedStatus(event.target.value as DonationRequestStatus)}
+            >
               {donationRequestStatuses.map((status) => (
                 <option key={status} value={status}>{requestStatusLabels[status]}</option>
               ))}
             </select>
           </label>
+          {selectedStatus === "cancelled" && (
+            <label className="admin-check full-field">
+              <input name="notifyDonor" type="checkbox" />
+              <span>Send a cancellation email to the donor when it is appropriate.</span>
+            </label>
+          )}
           <label className="full-field">
             <span>Internal notes</span>
             <textarea name="internalNotes" rows={5} maxLength={2000} defaultValue={request.internalNotes ?? ""} placeholder="Only the Shoe Doctor team can see these notes." />
           </label>
+          <div className="full-field csr-impact-editor">
+            <p>Optional impact details <small>Included only in the final donated email.</small></p>
+            <div className="admin-form-grid csr-form-grid">
+              <label>
+                <span>Distribution location</span>
+                <input name="distributionLocation" maxLength={180} defaultValue={request.distributionLocation ?? ""} />
+              </label>
+              <label>
+                <span>Distribution campaign</span>
+                <input name="distributionCampaign" maxLength={180} defaultValue={request.distributionCampaign ?? ""} />
+              </label>
+              <label>
+                <span>Distribution date</span>
+                <input name="distributionDate" type="date" defaultValue={request.distributionDate ?? ""} />
+              </label>
+              <label>
+                <span>Pairs distributed</span>
+                <input name="pairsDistributed" type="number" min="0" max="1000000" defaultValue={request.pairsDistributed ?? ""} />
+              </label>
+              <label className="full-field">
+                <span>Donor-safe impact note</span>
+                <textarea name="impactNote" rows={4} maxLength={1200} defaultValue={request.impactNote ?? ""} placeholder="For example: Distributed to students during our local school donation program." />
+              </label>
+            </div>
+          </div>
         </div>
         {error && <p className="csr-form-error" role="alert">{error}</p>}
         <div className="modal-actions">
           <button className="admin-secondary" type="button" onClick={onClose}>Close</button>
+          {request.lastEmailEvent?.deliveryStatus === "failed" && (
+            <button className="admin-secondary" type="button" onClick={retryEmail} disabled={isRetrying || isSaving}>
+              {isRetrying ? "Retrying email…" : "Retry email"}
+            </button>
+          )}
           <button className="admin-primary" type="submit" disabled={isSaving}>{isSaving ? "Saving…" : "Save request"}</button>
         </div>
       </form>
@@ -992,7 +1124,7 @@ export default function CsrDonationsDashboard({
     }
   }
 
-  async function saveRequest(status: DonationRequestStatus, internalNotes: string) {
+  async function saveRequest(input: DonationRequestEditorInput) {
     if (!requestEditor) return;
     setBusy(`request-${requestEditor.id}`);
     try {
@@ -1001,16 +1133,54 @@ export default function CsrDonationsDashboard({
         {
           method: "PATCH",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ status, internalNotes }),
+          body: JSON.stringify(input),
         },
       );
-      const result = await responseJson<{ request: DonationRequest }>(response);
+      const result = await responseJson<{
+        notification: DonationNotification | null;
+        request: DonationRequest;
+        statusChanged: boolean;
+      }>(response);
       setRequests((current) =>
         current.map((request) => request.id === result.request.id ? result.request : request),
       );
       void loadDonationRequests(requestPage);
       setRequestEditor(null);
-      setNotice(`${result.request.requestId} updated.`);
+      setNotice(
+        notificationNotice(
+          result.request,
+          result.notification,
+          result.statusChanged,
+        ),
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function retryRequestEmail(request: DonationRequest, emailEventId: string) {
+    setBusy(`request-email-${emailEventId}`);
+    try {
+      const response = await fetch(
+        `/api/admin/csr-donations/requests/${encodeURIComponent(request.id)}/emails/${encodeURIComponent(emailEventId)}/retry`,
+        { method: "POST" },
+      );
+      const result = await responseJson<{
+        event: DonationEmailEvent;
+        request: DonationRequest;
+      }>(response);
+      setRequests((current) =>
+        current.map((item) => item.id === result.request.id ? result.request : item),
+      );
+      setRequestEditor(null);
+      void loadDonationRequests(requestPage);
+      setNotice(
+        result.event.deliveryStatus === "sent"
+          ? "Donor email retry sent."
+          : result.event.deliveryStatus === "pending"
+            ? "Donor email retry is still pending."
+            : "Donor email retry could not be sent.",
+      );
     } finally {
       setBusy(null);
     }
@@ -1337,7 +1507,7 @@ export default function CsrDonationsDashboard({
                   <table className="csr-request-table">
                     <thead>
                       <tr>
-                        <th>Request ID</th><th>Donor</th><th>Phone</th><th>Location</th><th>Pairs</th><th>Condition</th><th>Method</th><th>Pickup date</th><th>Status</th><th>Submitted</th><th>Actions</th>
+                        <th>Donation reference</th><th>Donor</th><th>Phone</th><th>Email</th><th>Location</th><th>Pairs</th><th>Condition</th><th>Method</th><th>Pickup date</th><th>Status</th><th>Updates</th><th>Last email</th><th>Delivery</th><th>Submitted</th><th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1346,12 +1516,16 @@ export default function CsrDonationsDashboard({
                           <td><strong>{request.requestId}</strong></td>
                           <td>{request.donorName}</td>
                           <td><a href={`tel:${request.phone}`}>{request.phone}</a></td>
+                          <td>{request.email ? <a href={`mailto:${request.email}`}>{request.email}</a> : "—"}</td>
                           <td>{request.location}</td>
                           <td>{request.numberOfPairs}</td>
                           <td>{request.shoeCondition.replaceAll("-", " ")}</td>
                           <td>{request.donationMethod === "pickup_support" ? "Pickup support" : "Self drop-off"}</td>
                           <td>{request.preferredPickupDate ? formatDate(request.preferredPickupDate) : "—"}</td>
                           <td><span className={`csr-status-pill ${request.status}`}>{requestStatusLabels[request.status]}</span></td>
+                          <td>{request.emailUpdatesConsent ? "Allowed" : "Not requested"}</td>
+                          <td>{request.lastEmailSentAt ? formatDateTime(request.lastEmailSentAt) : "—"}</td>
+                          <td>{emailDeliveryLabel(request.lastEmailEvent)}</td>
                           <td>{formatDate(request.submittedAt)}</td>
                           <td>
                             <div className="csr-table-actions">
@@ -1547,7 +1721,7 @@ export default function CsrDonationsDashboard({
       {driveEditor !== undefined && <DriveEditor key={driveEditor?.id ?? "new-drive"} drive={driveEditor} onClose={() => setDriveEditor(undefined)} onSave={saveDrive} />}
       {storyEditor !== undefined && <StoryEditor key={storyEditor?.id ?? "new-story"} story={storyEditor} onClose={() => setStoryEditor(undefined)} onSave={saveStory} />}
       {updateEditor !== undefined && <CommunityUpdateEditor key={updateEditor?.id ?? "new-update"} update={updateEditor} onClose={() => setUpdateEditor(undefined)} onSave={saveUpdate} />}
-      {requestEditor && <RequestDetailEditor request={requestEditor} onClose={() => setRequestEditor(null)} onSave={saveRequest} />}
+      {requestEditor && <RequestDetailEditor request={requestEditor} onClose={() => setRequestEditor(null)} onRetry={(emailEventId) => retryRequestEmail(requestEditor, emailEventId)} onSave={saveRequest} />}
       {deleteTarget && <ConfirmationDialog title={`Delete ${deleteTarget.kind === "story" ? "this restoration story" : deleteTarget.kind === "update" ? "this community update" : deleteTarget.kind === "drive" ? "this donation drive" : "this donation request"}?`} description="This permanently removes the record from the portal. This action cannot be undone." onCancel={() => setDeleteTarget(null)} onConfirm={deleteItem} busy={busy === `delete-${deleteTarget.kind}-${deleteTarget.item.id}`} />}
     </main>
   );

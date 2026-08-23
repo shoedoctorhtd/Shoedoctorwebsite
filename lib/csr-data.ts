@@ -1,3 +1,15 @@
+import {
+  DONATION_STATUSES,
+  canNotifyDonationStatus,
+  donationNotificationKey,
+  legacyDonationStatusFor,
+  normalizeDonationStatus,
+  type DonationStatus,
+} from "./donation-status";
+import { isEmailAddress } from "./email/address";
+import { buildDonationEmail } from "./email/donationTemplates";
+import { sendGmailEmail } from "./email/gmail";
+
 /**
  * Persistence helpers for Shoe Doctor's CSR and donations programme.
  *
@@ -7,16 +19,7 @@
  * migration.
  */
 
-export const DONATION_REQUEST_STATUSES = [
-  "new",
-  "contacted",
-  "pickup_scheduled",
-  "collected",
-  "under_restoration",
-  "ready_for_donation",
-  "donated",
-  "rejected",
-] as const;
+export const DONATION_REQUEST_STATUSES = DONATION_STATUSES;
 
 export const DONATION_METHODS = ["self_dropoff", "pickup_support"] as const;
 
@@ -34,11 +37,46 @@ export const RESTORATION_STORY_CATEGORIES = [
   "community_impact",
 ] as const;
 
-export type DonationRequestStatus = (typeof DONATION_REQUEST_STATUSES)[number];
+export type DonationRequestStatus = DonationStatus;
 export type DonationMethod = (typeof DONATION_METHODS)[number];
 export type DonationDriveStatus = (typeof DONATION_DRIVE_STATUSES)[number];
 export type RestorationStoryCategory =
   (typeof RESTORATION_STORY_CATEGORIES)[number];
+
+export type DonationEmailDeliveryStatus =
+  | "pending"
+  | "sent"
+  | "failed"
+  | "skipped";
+
+export type DonationEmailEvent = {
+  id: string;
+  donationId: string;
+  donationReference: string;
+  recipientEmail: string | null;
+  emailType: DonationStatus;
+  workflowStatus: DonationStatus;
+  eventKey: string;
+  deliveryStatus: DonationEmailDeliveryStatus;
+  attemptCount: number;
+  errorSummary: string | null;
+  sentAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DonationNotificationResult = {
+  event: DonationEmailEvent | null;
+  status: "sent" | "failed" | "skipped" | "already_recorded" | "pending";
+  reason?: "cancellation_email_not_requested";
+};
+
+export type DonationEmailRetryResult =
+  | { kind: "not_found" }
+  | { kind: "not_retryable"; event: DonationEmailEvent }
+  | { kind: "in_progress"; event: DonationEmailEvent }
+  | { kind: "failed"; event: DonationEmailEvent }
+  | { kind: "retried"; event: DonationEmailEvent; donation: DonationRequest };
 
 export type DonationRequest = {
   id: string;
@@ -46,6 +84,7 @@ export type DonationRequest = {
   donorName: string;
   phone: string;
   email: string | null;
+  emailUpdatesConsent: boolean;
   location: string;
   numberOfPairs: number;
   shoeType: string | null;
@@ -56,6 +95,13 @@ export type DonationRequest = {
   donorNotes: string | null;
   internalNotes: string | null;
   status: DonationRequestStatus;
+  distributionLocation: string | null;
+  distributionCampaign: string | null;
+  distributionDate: string | null;
+  pairsDistributed: number | null;
+  impactNote: string | null;
+  lastEmailEvent: DonationEmailEvent | null;
+  lastEmailSentAt: string | null;
   submittedAt: string;
   createdAt: string;
   updatedAt: string;
@@ -65,6 +111,7 @@ export type DonationRequestInput = {
   donorName: string;
   phone: string;
   email?: string | null;
+  emailUpdatesConsent: boolean;
   location: string;
   numberOfPairs: number;
   shoeType?: string | null;
@@ -77,7 +124,20 @@ export type DonationRequestInput = {
 
 export type DonationRequestUpdateInput = {
   status?: DonationRequestStatus;
+  /** Cancellation emails require an intentional admin choice. */
+  notifyDonor?: boolean;
   internalNotes?: string | null;
+  distributionLocation?: string | null;
+  distributionCampaign?: string | null;
+  distributionDate?: string | null;
+  pairsDistributed?: number | null;
+  impactNote?: string | null;
+};
+
+export type DonationRequestUpdateResult = {
+  request: DonationRequest;
+  statusChanged: boolean;
+  notification: DonationNotificationResult | null;
 };
 
 export type DonationDrive = {
@@ -254,10 +314,10 @@ async function getRawDatabase() {
 }
 
 /**
- * D1 migrations remain the canonical production schema, but the original
- * service/booking module also bootstraps its own tables at runtime. Do the
- * same for CSR so a newly deployed Worker never rejects public donations just
- * because its D1 migration has not been applied yet.
+ * D1 migrations are the canonical schema. This legacy runtime bootstrap is
+ * retained for the original CSR tables only; new schema changes must be
+ * migrated before deploying code that depends on them, otherwise a runtime
+ * ALTER could make the recorded migration fail later on duplicate columns.
  */
 async function initialiseCsrDatabase() {
   const db = await getRawDatabase();
@@ -441,6 +501,12 @@ function number(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function nullableNumber(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function bool(value: unknown) {
   return value === true || value === 1 || value === "1";
 }
@@ -507,6 +573,7 @@ function parseDonationRequest(row: RawRow): DonationRequest {
     donorName: text(row.donor_name),
     phone: text(row.phone),
     email: nullableText(row.email),
+    emailUpdatesConsent: bool(row.email_update_consent),
     location: text(row.location),
     numberOfPairs: number(row.number_of_pairs),
     shoeType: nullableText(row.shoe_type),
@@ -519,8 +586,44 @@ function parseDonationRequest(row: RawRow): DonationRequest {
     preferredPickupDate: nullableText(row.preferred_pickup_date),
     donorNotes: nullableText(row.donor_notes),
     internalNotes: nullableText(row.internal_notes),
-    status: text(row.status) as DonationRequestStatus,
+    status: normalizeDonationStatus(row.workflow_status, row.status),
+    distributionLocation: nullableText(row.distribution_location),
+    distributionCampaign: nullableText(row.distribution_campaign),
+    distributionDate: nullableText(row.distribution_date),
+    pairsDistributed: nullableNumber(row.pairs_distributed),
+    impactNote: nullableText(row.impact_note),
+    lastEmailEvent: null,
+    lastEmailSentAt: null,
     submittedAt: text(row.submitted_at),
+    createdAt: text(row.created_at),
+    updatedAt: text(row.updated_at),
+  };
+}
+
+function parseDonationEmailEvent(row: RawRow): DonationEmailEvent {
+  const deliveryStatus = text(row.delivery_status) as DonationEmailDeliveryStatus;
+  const parsedAttemptCount = nullableNumber(row.attempt_count);
+  return {
+    id: text(row.id),
+    donationId: text(row.donation_id),
+    donationReference: text(row.donation_reference),
+    recipientEmail: nullableText(row.recipient_email),
+    emailType: normalizeDonationStatus(row.email_type, row.workflow_status),
+    workflowStatus: normalizeDonationStatus(row.workflow_status, row.email_type),
+    eventKey: text(row.event_key),
+    deliveryStatus:
+      deliveryStatus === "sent" ||
+      deliveryStatus === "failed" ||
+      deliveryStatus === "skipped" ||
+      deliveryStatus === "pending"
+        ? deliveryStatus
+        : "failed",
+    attemptCount:
+      parsedAttemptCount !== null && parsedAttemptCount >= 0
+        ? Math.floor(parsedAttemptCount)
+        : 0,
+    errorSummary: nullableText(row.error_summary),
+    sentAt: nullableText(row.sent_at),
     createdAt: text(row.created_at),
     updatedAt: text(row.updated_at),
   };
@@ -665,6 +768,41 @@ async function runList<T>(query: string, values: unknown[], parse: (row: RawRow)
   return result.results.map(parse);
 }
 
+type Database = Awaited<ReturnType<typeof getDatabase>>;
+
+async function attachDonationEmailEvents(donations: DonationRequest[]) {
+  if (!donations.length) return;
+  const donationIds = donations.map((donation) => donation.id);
+  const placeholders = donationIds.map(() => "?").join(", ");
+  const db = await getDatabase();
+  const result = await db
+    .prepare(`
+      SELECT * FROM donation_email_events
+      WHERE donation_id IN (${placeholders})
+      ORDER BY created_at DESC, id DESC
+    `)
+    .bind(...donationIds)
+    .all<RawRow>();
+  const latestByDonationId = new Map<string, DonationEmailEvent>();
+  const latestSentAtByDonationId = new Map<string, string>();
+  result.results.forEach((row) => {
+    const event = parseDonationEmailEvent(row);
+    if (!latestByDonationId.has(event.donationId)) {
+      latestByDonationId.set(event.donationId, event);
+    }
+    if (
+      event.sentAt &&
+      (event.sentAt > (latestSentAtByDonationId.get(event.donationId) ?? ""))
+    ) {
+      latestSentAtByDonationId.set(event.donationId, event.sentAt);
+    }
+  });
+  donations.forEach((donation) => {
+    donation.lastEmailEvent = latestByDonationId.get(donation.id) ?? null;
+    donation.lastEmailSentAt = latestSentAtByDonationId.get(donation.id) ?? null;
+  });
+}
+
 export async function createDonationRequest(
   input: DonationRequestInput,
 ): Promise<DonationRequest> {
@@ -679,9 +817,11 @@ export async function createDonationRequest(
       `INSERT INTO donation_requests (
         id, request_id, donor_name, phone, email, location, number_of_pairs,
         shoe_type, shoe_condition, donation_method, pickup_address,
-        preferred_pickup_date, donor_notes, internal_notes, status,
+        preferred_pickup_date, donor_notes, status, workflow_status,
+        email_update_consent, internal_notes, distribution_location,
+        distribution_campaign, distribution_date, pairs_distributed, impact_note,
         submitted_at, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'new', ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', 'submitted', ?, NULL, NULL, NULL, NULL, NULL, NULL, ?, ?, ?)`,
     )
     .bind(
       id,
@@ -697,6 +837,7 @@ export async function createDonationRequest(
       input.pickupAddress ?? null,
       input.preferredPickupDate ?? null,
       input.donorNotes ?? null,
+      input.emailUpdatesConsent ? 1 : 0,
       now,
       now,
       now,
@@ -709,6 +850,7 @@ export async function createDonationRequest(
     donorName: input.donorName,
     phone: input.phone,
     email: input.email ?? null,
+    emailUpdatesConsent: input.emailUpdatesConsent,
     location: input.location,
     numberOfPairs: input.numberOfPairs,
     shoeType: input.shoeType ?? null,
@@ -718,7 +860,14 @@ export async function createDonationRequest(
     preferredPickupDate: input.preferredPickupDate ?? null,
     donorNotes: input.donorNotes ?? null,
     internalNotes: null,
-    status: "new",
+    status: "submitted",
+    distributionLocation: null,
+    distributionCampaign: null,
+    distributionDate: null,
+    pairsDistributed: null,
+    impactNote: null,
+    lastEmailEvent: null,
+    lastEmailSentAt: null,
     submittedAt: now,
     createdAt: now,
     updatedAt: now,
@@ -734,12 +883,12 @@ export async function listDonationRequests(
   if (search) {
     const term = `%${search.toLowerCase()}%`;
     clauses.push(
-      "(LOWER(donor_name) LIKE ? OR LOWER(phone) LIKE ? OR LOWER(location) LIKE ?)",
+      "(LOWER(request_id) LIKE ? OR LOWER(donor_name) LIKE ? OR LOWER(phone) LIKE ? OR LOWER(email) LIKE ? OR LOWER(location) LIKE ?)",
     );
-    values.push(term, term, term);
+    values.push(term, term, term, term, term);
   }
   if (options.status) {
-    clauses.push("status = ?");
+    clauses.push("workflow_status = ?");
     values.push(options.status);
   }
   if (options.dateFrom) {
@@ -751,12 +900,14 @@ export async function listDonationRequests(
     values.push(`${options.dateTo}T23:59:59.999Z`);
   }
   values.push(boundedLimit(options.limit), boundedOffset(options.offset));
-  return runList(
+  const requests = await runList(
     `SELECT * FROM donation_requests${clauses.length ? ` WHERE ${clauses.join(" AND ")}` : ""}
      ORDER BY submitted_at DESC LIMIT ? OFFSET ?`,
     values,
     parseDonationRequest,
   );
+  await attachDonationEmailEvents(requests);
+  return requests;
 }
 
 export async function countDonationRequests(
@@ -768,12 +919,12 @@ export async function countDonationRequests(
   if (search) {
     const term = `%${search.toLowerCase()}%`;
     clauses.push(
-      "(LOWER(donor_name) LIKE ? OR LOWER(phone) LIKE ? OR LOWER(location) LIKE ?)",
+      "(LOWER(request_id) LIKE ? OR LOWER(donor_name) LIKE ? OR LOWER(phone) LIKE ? OR LOWER(email) LIKE ? OR LOWER(location) LIKE ?)",
     );
-    values.push(term, term, term);
+    values.push(term, term, term, term, term);
   }
   if (options.status) {
-    clauses.push("status = ?");
+    clauses.push("workflow_status = ?");
     values.push(options.status);
   }
   if (options.dateFrom) {
@@ -800,36 +951,558 @@ export async function getDonationRequest(id: string) {
     .prepare("SELECT * FROM donation_requests WHERE id = ? LIMIT 1")
     .bind(id)
     .first<RawRow>();
-  return row ? parseDonationRequest(row) : null;
+  if (!row) return null;
+  const donation = parseDonationRequest(row);
+  await attachDonationEmailEvents([donation]);
+  return donation;
 }
 
 export async function updateDonationRequest(
   id: string,
   input: DonationRequestUpdateInput,
-) {
+): Promise<DonationRequestUpdateResult | null> {
   const current = await getDonationRequest(id);
   if (!current) return null;
+  const nextStatus = input.status ?? current.status;
+  const statusChanged = nextStatus !== current.status;
+  const nextInternalNotes =
+    input.internalNotes === undefined ? current.internalNotes : input.internalNotes;
+  const nextDistributionLocation =
+    input.distributionLocation === undefined
+      ? current.distributionLocation
+      : input.distributionLocation;
+  const nextDistributionCampaign =
+    input.distributionCampaign === undefined
+      ? current.distributionCampaign
+      : input.distributionCampaign;
+  const nextDistributionDate =
+    input.distributionDate === undefined
+      ? current.distributionDate
+      : input.distributionDate;
+  const nextPairsDistributed =
+    input.pairsDistributed === undefined
+      ? current.pairsDistributed
+      : input.pairsDistributed;
+  const nextImpactNote =
+    input.impactNote === undefined ? current.impactNote : input.impactNote;
   const now = new Date().toISOString();
   const db = await getDatabase();
-  await db
-    .prepare(
-      `UPDATE donation_requests SET status = ?, internal_notes = ?, updated_at = ?
-       WHERE id = ?`,
-    )
-    .bind(
-      input.status ?? current.status,
-      input.internalNotes === undefined ? current.internalNotes : input.internalNotes,
-      now,
-      id,
-    )
-    .run();
-  return {
+  const updated: DonationRequest = {
     ...current,
-    status: input.status ?? current.status,
-    internalNotes:
-      input.internalNotes === undefined ? current.internalNotes : input.internalNotes,
+    status: nextStatus,
+    internalNotes: nextInternalNotes,
+    distributionLocation: nextDistributionLocation,
+    distributionCampaign: nextDistributionCampaign,
+    distributionDate: nextDistributionDate,
+    pairsDistributed: nextPairsDistributed,
+    impactNote: nextImpactNote,
     updatedAt: now,
   };
+  const transitionId = statusChanged ? crypto.randomUUID() : null;
+  const notificationPlan = statusChanged
+    ? buildDonationEmailPlan(updated, nextStatus, {
+        notifyCancellation: input.notifyDonor === true,
+      })
+    : null;
+  const notificationEvent =
+    notificationPlan?.persistEvent && transitionId
+      ? donationEmailEventFromPlan(updated, nextStatus, notificationPlan, now)
+      : null;
+  const updateStatement = db
+    .prepare(
+      `UPDATE donation_requests SET
+        status = CASE WHEN ? THEN ? ELSE status END,
+        workflow_status = ?, internal_notes = ?,
+        distribution_location = ?, distribution_campaign = ?, distribution_date = ?,
+        pairs_distributed = ?, impact_note = ?, updated_at = ?,
+        last_workflow_event_id = CASE WHEN ? THEN ? ELSE last_workflow_event_id END
+       WHERE id = ?${statusChanged ? " AND workflow_status = ?" : ""}`,
+    )
+    .bind(
+      statusChanged ? 1 : 0,
+      legacyDonationStatusFor(nextStatus),
+      nextStatus,
+      nextInternalNotes,
+      nextDistributionLocation,
+      nextDistributionCampaign,
+      nextDistributionDate,
+      nextPairsDistributed,
+      nextImpactNote,
+      now,
+      statusChanged ? 1 : 0,
+      transitionId,
+      id,
+      ...(statusChanged ? [current.status] : []),
+    );
+  const statements = [updateStatement];
+  if (notificationEvent) {
+    statements.push(
+      prepareDonationEmailEventInsert(db, notificationEvent, transitionId),
+    );
+  }
+  // The event insert is guarded by the transition token written by this exact
+  // conditional UPDATE. D1 executes batch statements transactionally, so a
+  // failed event write cannot leave a successful status change without its
+  // durable delivery record.
+  const results = await db.batch(statements);
+
+  if (!results[0]?.meta.changes) {
+    const refreshed = await getDonationRequest(id);
+    return refreshed
+      ? { request: refreshed, statusChanged: false, notification: null }
+      : null;
+  }
+
+  let notification: DonationNotificationResult | null = null;
+  if (statusChanged && notificationPlan) {
+    if (!notificationEvent) {
+      notification = {
+        status: "skipped",
+        event: null,
+        reason: notificationPlan.reason,
+      };
+    } else if (!results[1]?.meta.changes) {
+      const existing = await findDonationEmailEvent(
+        db,
+        updated.id,
+        notificationEvent.eventKey,
+      );
+      if (!existing) {
+        throw new Error("Unable to create the donation email event.");
+      }
+      notification = { status: "already_recorded", event: existing };
+    } else if (
+      notificationEvent.deliveryStatus !== "pending" ||
+      !notificationPlan.content ||
+      !notificationEvent.recipientEmail
+    ) {
+      notification = { status: "skipped", event: notificationEvent };
+    } else {
+      const delivered = await deliverDonationEmail(
+        db,
+        updated,
+        notificationEvent,
+        notificationPlan.content,
+      );
+      notification = {
+        status:
+          delivered.deliveryStatus === "sent"
+            ? "sent"
+            : delivered.deliveryStatus === "pending"
+              ? "pending"
+              : "failed",
+        event: delivered,
+      };
+    }
+  }
+  if (notification?.event) {
+    updated.lastEmailEvent = notification.event;
+    if (notification.event.sentAt) {
+      updated.lastEmailSentAt = notification.event.sentAt;
+    }
+  }
+  return { request: updated, statusChanged, notification };
+}
+
+type DonationEmailPlan = {
+  attemptCount: number;
+  content: ReturnType<typeof buildDonationEmail> | null;
+  deliveryStatus: DonationEmailDeliveryStatus;
+  errorSummary: string | null;
+  persistEvent: boolean;
+  recipientEmail: string | null;
+  reason?: "cancellation_email_not_requested";
+};
+
+type DonationNotificationOptions = {
+  notifyCancellation?: boolean;
+};
+
+/**
+ * Persists a single durable email event before delivery. The unique event key
+ * is the server-side duplicate guard; frontend state never controls it.
+ */
+export async function sendDonationStatusNotification(
+  donation: DonationRequest,
+  status: DonationStatus = donation.status,
+  options: DonationNotificationOptions = {},
+): Promise<DonationNotificationResult> {
+  const plan = buildDonationEmailPlan(donation, status, options);
+  if (!plan.persistEvent) {
+    return {
+      status: "skipped",
+      event: null,
+      reason: plan.reason,
+    };
+  }
+  const now = new Date().toISOString();
+  const event = donationEmailEventFromPlan(donation, status, plan, now);
+  let db: Database;
+  try {
+    db = await getDatabase();
+    const created = await prepareDonationEmailEventInsert(db, event).run();
+    if (!created.meta.changes) {
+      const existing = await findDonationEmailEvent(
+        db,
+        donation.id,
+        event.eventKey,
+      );
+      return { status: "already_recorded", event: existing };
+    }
+  } catch {
+    // Do not send an email if we could not first create its idempotency record.
+    console.error(
+      `Unable to create donation email event for ${donation.requestId}.`,
+    );
+    return { status: "failed", event: null };
+  }
+
+  if (event.deliveryStatus !== "pending" || !plan.content || !event.recipientEmail) {
+    return { status: "skipped", event };
+  }
+
+  const delivered = await deliverDonationEmail(db, donation, event, plan.content);
+  return {
+    status:
+      delivered.deliveryStatus === "sent"
+        ? "sent"
+        : delivered.deliveryStatus === "pending"
+          ? "pending"
+          : "failed",
+    event: delivered,
+  };
+}
+
+/**
+ * Failed deliveries can be retried by an authenticated admin. A conditional
+ * claim makes one attempt active at a time and preserves the original event
+ * key, so retrying cannot create a second lifecycle email record.
+ */
+export async function retryDonationEmailEvent(
+  donationId: string,
+  eventId: string,
+): Promise<DonationEmailRetryResult> {
+  const db = await getDatabase();
+  const event = await findDonationEmailEventById(db, donationId, eventId);
+  if (!event) return { kind: "not_found" };
+  if (event.deliveryStatus !== "failed") {
+    return { kind: "not_retryable", event };
+  }
+
+  const now = new Date().toISOString();
+  const claim = await db
+    .prepare(`
+      UPDATE donation_email_events
+      SET delivery_status = 'pending', attempt_count = attempt_count + 1,
+          error_summary = NULL, updated_at = ?
+      WHERE id = ? AND donation_id = ? AND delivery_status = 'failed'
+    `)
+    .bind(now, eventId, donationId)
+    .run();
+  if (!claim.meta.changes) {
+    const current = await findDonationEmailEventById(db, donationId, eventId);
+    return current?.deliveryStatus === "pending"
+      ? { kind: "in_progress", event: current }
+      : { kind: "not_retryable", event: current ?? event };
+  }
+
+  const claimed: DonationEmailEvent = {
+    ...event,
+    deliveryStatus: "pending",
+    attemptCount: event.attemptCount + 1,
+    errorSummary: null,
+    sentAt: null,
+    updatedAt: now,
+  };
+  const donation = await getDonationRequest(donationId);
+  if (!donation) {
+    const failed = await recordDonationEmailWithoutDelivery(
+      db,
+      claimed,
+      "donation_data_unavailable",
+    );
+    return { kind: "failed", event: failed };
+  }
+
+  const recipient = claimed.recipientEmail?.trim() ?? "";
+  if (!recipient) {
+    const failed = await recordDonationEmailWithoutDelivery(
+      db,
+      claimed,
+      "donor_email_missing",
+    );
+    return { kind: "failed", event: failed };
+  }
+  if (!isEmailAddress(recipient)) {
+    const failed = await recordDonationEmailWithoutDelivery(
+      db,
+      claimed,
+      "donor_email_invalid",
+    );
+    return { kind: "failed", event: failed };
+  }
+
+  const delivered = await deliverDonationEmail(
+    db,
+    donation,
+    { ...claimed, recipientEmail: recipient },
+    buildDonationEmail(claimed.workflowStatus, donation),
+  );
+  donation.lastEmailEvent = delivered;
+  if (delivered.sentAt) donation.lastEmailSentAt = delivered.sentAt;
+  return { kind: "retried", event: delivered, donation };
+}
+
+function buildDonationEmailPlan(
+  donation: DonationRequest,
+  status: DonationStatus,
+  options: DonationNotificationOptions = {},
+): DonationEmailPlan {
+  if (status === "cancelled" && !options.notifyCancellation) {
+    return {
+      attemptCount: 0,
+      content: null,
+      deliveryStatus: "skipped",
+      errorSummary: "cancellation_email_not_requested",
+      persistEvent: false,
+      reason: "cancellation_email_not_requested",
+      recipientEmail: null,
+    };
+  }
+  const content = buildDonationEmail(status, donation);
+  if (
+    !canNotifyDonationStatus(
+      status,
+      donation.emailUpdatesConsent,
+      options.notifyCancellation,
+    )
+  ) {
+    return {
+      attemptCount: 0,
+      content,
+      deliveryStatus: "skipped",
+      errorSummary: "email_updates_not_requested",
+      persistEvent: true,
+      recipientEmail: null,
+    };
+  }
+  const recipientEmail = donation.email?.trim() ?? "";
+  if (!recipientEmail) {
+    return {
+      attemptCount: 0,
+      content,
+      deliveryStatus: "skipped",
+      errorSummary: "donor_email_missing",
+      persistEvent: true,
+      recipientEmail: null,
+    };
+  }
+  if (!isEmailAddress(recipientEmail)) {
+    return {
+      attemptCount: 0,
+      content,
+      deliveryStatus: "skipped",
+      errorSummary: "donor_email_invalid",
+      persistEvent: true,
+      recipientEmail,
+    };
+  }
+  return {
+    attemptCount: 1,
+    content,
+    deliveryStatus: "pending",
+    errorSummary: null,
+    persistEvent: true,
+    recipientEmail,
+  };
+}
+
+function donationEmailEventFromPlan(
+  donation: DonationRequest,
+  status: DonationStatus,
+  plan: DonationEmailPlan,
+  now: string,
+): DonationEmailEvent {
+  return {
+    id: crypto.randomUUID(),
+    donationId: donation.id,
+    donationReference: donation.requestId,
+    recipientEmail: plan.recipientEmail,
+    emailType: status,
+    workflowStatus: status,
+    eventKey: donationNotificationKey(status),
+    deliveryStatus: plan.deliveryStatus,
+    attemptCount: plan.attemptCount,
+    errorSummary: plan.errorSummary,
+    sentAt: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+function prepareDonationEmailEventInsert(
+  db: Database,
+  event: DonationEmailEvent,
+  transitionId?: string | null,
+) {
+  const transitionGuard = transitionId
+    ? `
+      WHERE EXISTS (
+        SELECT 1 FROM donation_requests
+        WHERE id = ? AND last_workflow_event_id = ?
+      )
+    `
+    : "";
+  return db
+    .prepare(`
+      INSERT OR IGNORE INTO donation_email_events (
+        id, donation_id, donation_reference, recipient_email, email_type,
+        workflow_status, event_key, delivery_status, attempt_count,
+        error_summary, sent_at, created_at, updated_at
+      )
+      SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?${transitionGuard}
+    `)
+    .bind(
+      event.id,
+      event.donationId,
+      event.donationReference,
+      event.recipientEmail,
+      event.emailType,
+      event.workflowStatus,
+      event.eventKey,
+      event.deliveryStatus,
+      event.attemptCount,
+      event.errorSummary,
+      event.createdAt,
+      event.updatedAt,
+      ...(transitionId ? [event.donationId, transitionId] : []),
+    );
+}
+
+async function findDonationEmailEvent(
+  db: Database,
+  donationId: string,
+  eventKey: string,
+) {
+  const row = await db
+    .prepare(
+      "SELECT * FROM donation_email_events WHERE donation_id = ? AND event_key = ? LIMIT 1",
+    )
+    .bind(donationId, eventKey)
+    .first<RawRow>();
+  return row ? parseDonationEmailEvent(row) : null;
+}
+
+async function findDonationEmailEventById(
+  db: Database,
+  donationId: string,
+  eventId: string,
+) {
+  const row = await db
+    .prepare(
+      "SELECT * FROM donation_email_events WHERE id = ? AND donation_id = ? LIMIT 1",
+    )
+    .bind(eventId, donationId)
+    .first<RawRow>();
+  return row ? parseDonationEmailEvent(row) : null;
+}
+
+async function recordDonationEmailWithoutDelivery(
+  db: Database,
+  event: DonationEmailEvent,
+  errorSummary: string,
+) {
+  const now = new Date().toISOString();
+  const next: DonationEmailEvent = {
+    ...event,
+    deliveryStatus: "failed",
+    errorSummary,
+    sentAt: null,
+    updatedAt: now,
+  };
+  try {
+    await db
+      .prepare(`
+        UPDATE donation_email_events
+        SET delivery_status = 'failed', error_summary = ?, sent_at = NULL, updated_at = ?
+        WHERE id = ? AND donation_id = ? AND delivery_status = 'pending'
+      `)
+      .bind(next.errorSummary, next.updatedAt, next.id, next.donationId)
+      .run();
+  } catch {
+    console.error(
+      `Unable to record donation email retry outcome for ${event.donationReference}; event ${event.id}.`,
+    );
+    return {
+      ...event,
+      errorSummary: "email_result_persist_failed",
+      updatedAt: now,
+    };
+  }
+  return next;
+}
+
+async function deliverDonationEmail(
+  db: Database,
+  donation: DonationRequest,
+  event: DonationEmailEvent,
+  content: ReturnType<typeof buildDonationEmail>,
+) {
+  let result:
+    | { status: "sent" }
+    | { status: "failed"; errorCode: string };
+  try {
+    result = await sendGmailEmail({
+      to: event.recipientEmail ?? "",
+      subject: content.subject,
+      text: content.text,
+      html: content.html,
+    });
+  } catch {
+    result = { status: "failed", errorCode: "donation_email_unavailable" };
+  }
+
+  const now = new Date().toISOString();
+  const next: DonationEmailEvent = {
+    ...event,
+    deliveryStatus: result.status === "sent" ? "sent" : "failed",
+    errorSummary: result.status === "sent" ? null : result.errorCode,
+    sentAt: result.status === "sent" ? now : null,
+    updatedAt: now,
+  };
+  if (result.status === "failed") {
+    console.error(
+      `Donation email failed for ${donation.requestId}; event ${event.id}; ${result.errorCode}.`,
+    );
+  }
+  try {
+    await db
+      .prepare(`
+        UPDATE donation_email_events
+        SET delivery_status = ?, error_summary = ?, sent_at = ?, updated_at = ?
+        WHERE id = ? AND delivery_status = 'pending'
+      `)
+      .bind(
+        next.deliveryStatus,
+        next.errorSummary,
+        next.sentAt,
+        next.updatedAt,
+        next.id,
+      )
+      .run();
+  } catch {
+    // The pre-send event remains pending, intentionally preventing a blind
+    // resend when Gmail may already have accepted the message.
+    console.error(
+      `Unable to record donation email outcome for ${donation.requestId}; event ${event.id}.`,
+    );
+    return {
+      ...event,
+      errorSummary: "email_result_persist_failed",
+      updatedAt: now,
+    };
+  }
+  return next;
 }
 
 export async function deleteDonationRequest(id: string) {

@@ -1,4 +1,7 @@
-import { createDonationRequest } from "@/lib/csr-data";
+import {
+  createDonationRequest,
+  sendDonationStatusNotification,
+} from "@/lib/csr-data";
 import { parsePublicDonationRequest } from "@/lib/csr-validation";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +49,15 @@ export async function POST(request: Request) {
 
   try {
     const donation = await createDonationRequest(input);
+    try {
+      // A donation is already durable at this point. A Gmail failure must
+      // never turn a successful submission into a failed public request.
+      await sendDonationStatusNotification(donation);
+    } catch {
+      console.error(
+        `Donation confirmation could not be started for ${donation.requestId}.`,
+      );
+    }
     return donationResponse(
       {
         ok: true,

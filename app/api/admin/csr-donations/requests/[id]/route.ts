@@ -34,7 +34,11 @@ export async function PATCH(request: Request, context: RouteContext) {
       parseDonationRequestUpdate(await request.json()),
     );
     return updated
-      ? csrAdminJson({ request: updated })
+      ? csrAdminJson({
+          request: updated.request,
+          statusChanged: updated.statusChanged,
+          notification: updated.notification,
+        })
       : csrAdminJson({ message: "Donation request not found." }, { status: 404 });
   } catch (error) {
     return csrApiError(error, "Unable to update donation request.");

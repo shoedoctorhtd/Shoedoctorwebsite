@@ -33,6 +33,7 @@ export default function DonationForm() {
           fullName: values.get("fullName"),
           phone: values.get("phone"),
           email: values.get("email"),
+          emailUpdatesConsent: values.get("emailUpdatesConsent") === "on",
           pairCount: values.get("pairCount"),
           shoeType: values.get("shoeType"),
           shoeCondition: values.get("shoeCondition"),
@@ -125,7 +126,7 @@ export default function DonationForm() {
         </label>
 
         <label className="donation-form__field" htmlFor="donation-email">
-          <span>Email <small>(optional)</small></span>
+          <span>Email <small>— for donation confirmation and impact updates</small></span>
           <input
             id="donation-email"
             name="email"
@@ -320,6 +321,18 @@ export default function DonationForm() {
             I confirm these shoes are safe and suitable for donation.
           </span>
         </label>
+
+        <label className="donation-form__confirmation donation-form__wide-field" htmlFor="donation-email-updates">
+          <input
+            id="donation-email-updates"
+            name="emailUpdatesConsent"
+            type="checkbox"
+            onChange={() => setSubmitted(false)}
+          />
+          <span>
+            Send me updates about my donated shoes and their impact.
+          </span>
+        </label>
       </div>
 
       {submitted && (
@@ -327,7 +340,7 @@ export default function DonationForm() {
           <strong>Thank you for giving your shoes a second journey.</strong>
           <span>
             Shoe Doctor will contact you soon.
-            {reference ? ` Your request ID is ${reference}.` : ""}
+            {reference ? ` Your Donation Reference is ${reference}.` : ""}
           </span>
         </div>
       )}

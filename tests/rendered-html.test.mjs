@@ -46,3 +46,34 @@ test("renders development preview metadata", async () => {
   assert.match(html, /autocomplete="email"/i);
   assert.match(html, /autocomplete="street-address"/i);
 });
+
+test("renders donation confirmation and opt-in fields without public donor data", async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("test", `donation-${process.pid}-${Date.now()}`);
+  const { default: worker } = await import(workerUrl.href);
+
+  const response = await worker.fetch(
+    new Request("http://localhost/shoe-donation", {
+      headers: { accept: "text/html" },
+    }),
+    {
+      ASSETS: {
+        fetch: async () => new Response("Not found", { status: 404 }),
+      },
+    },
+    {
+      waitUntil() {},
+      passThroughOnException() {},
+    },
+  );
+
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /Email[\s\S]{0,100}donation confirmation and impact updates/i);
+  assert.match(
+    html,
+    /Send me updates about my donated shoes and their impact\./i,
+  );
+  assert.match(html, /name="emailUpdatesConsent"/i);
+  assert.doesNotMatch(html, /GOOGLE_REFRESH_TOKEN|GOOGLE_CLIENT_SECRET/i);
+});
