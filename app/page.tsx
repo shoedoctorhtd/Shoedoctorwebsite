@@ -483,7 +483,6 @@ export default async function Home({
       <section
         aria-labelledby="booking-intro-heading"
         className={bookingStyles.bookingSection}
-        id="book"
       >
         <aside className={bookingStyles.infoPanel} data-reveal>
           <p className={bookingStyles.introKicker}>Booking your pair</p>

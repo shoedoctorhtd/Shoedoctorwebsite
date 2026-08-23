@@ -1020,7 +1020,10 @@ export default function BookingForm({
 
   if (state.type === "success") {
     return (
-      <section className={classNames(styles.formShell, styles.successMessage)}>
+      <section
+        className={classNames(styles.formShell, styles.successMessage)}
+        id="book"
+      >
         <span aria-hidden="true" className={styles.selectionMark}>✓</span>
         <p className={styles.formKicker}>Booking request received</p>
         <h3 className={styles.successHeading} ref={successHeadingRef} tabIndex={-1}>
@@ -1048,6 +1051,7 @@ export default function BookingForm({
     <form
       className={styles.formShell}
       data-reveal={hasCompletedBooking ? undefined : ""}
+      id="book"
       noValidate
       onSubmit={submitBooking}
     >

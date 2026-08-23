@@ -24,6 +24,10 @@
   position: relative;
 }
 
+.formShell {
+  scroll-margin-top: 118px;
+}
+
 .infoPanel {
   align-self: start;
   display: flex;
