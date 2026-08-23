@@ -12901,7 +12901,7 @@ video {
   font-family: var(--font-geist-mono), monospace;
   font-size: 7px;
   font-weight: 900;
-  left: -10px;
+  inset-inline-start: -10px;
   letter-spacing: 0.08em;
   line-height: 1;
   padding: 4px 5px;
@@ -13322,10 +13322,10 @@ video {
 
   .sd-mobile-nav .sd-steam-nav-trigger span {
     font-size: 5px;
-    bottom: calc(100% + 2px);
-    left: 3px;
+    bottom: auto;
+    inset-inline-start: 3px;
     padding: 2px 3px;
-    transform: none;
+    top: -8px;
   }
 
   .sd-mobile-nav > :nth-child(1) { grid-area: 1 / 1 / 2 / 4; }
