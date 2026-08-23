@@ -1,17 +1,3 @@
-.steamNavItem {
-  align-items: center;
-  display: inline-flex;
-  justify-content: center;
-  position: relative;
-}
-
-.newBadge {
-  position: absolute;
-  top: -10px;
-  left: 10px;
-  z-index: 2;
-}
-
 @media (min-width: 881px) {
   :global(.sd-desktop-nav) .steamNavTrigger {
     padding: 0 !important;

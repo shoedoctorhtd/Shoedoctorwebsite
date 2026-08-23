@@ -39,20 +39,14 @@ function NavigationItems({ isCurrentPage }: NavigationItemsProps) {
           {item.label}
         </a>
       ))}
-      <div
-        className={`sd-steam-nav-item ${styles.steamNavItem}`}
+      <a
+        aria-current={isCurrentPage("/steam-cleaning") ? "page" : undefined}
+        className={`sd-steam-nav-trigger ${styles.steamNavTrigger}`}
         data-current={isCurrentPage("/steam-cleaning")}
+        href="/steam-cleaning"
       >
-        <span className={`sd-new-badge ${styles.newBadge}`}>New</span>
-        <a
-          aria-current={isCurrentPage("/steam-cleaning") ? "page" : undefined}
-          className={`sd-steam-nav-trigger ${styles.steamNavTrigger}`}
-          data-current={isCurrentPage("/steam-cleaning")}
-          href="/steam-cleaning"
-        >
-          Steam Cleaning
-        </a>
-      </div>
+        Steam Cleaning <span>New</span>
+      </a>
       {navItems.slice(3).map((item) => (
         <a
           aria-current={isCurrentPage(item.href) ? "page" : undefined}
