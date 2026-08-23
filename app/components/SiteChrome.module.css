@@ -9,6 +9,7 @@
     font-size: inherit !important;
     letter-spacing: 0;
     padding: 6px 3px 4px !important;
-    white-space: normal !important;
+    font-weight: 800;
+    white-space: nowrap !important;
   }
 }

@@ -13307,6 +13307,8 @@ video {
   .sd-mobile-nav a[aria-current="page"],
   .sd-mobile-nav .sd-steam-nav-trigger[data-current="true"] {
     border-radius: 999px;
+    justify-self: center;
+    width: max-content;
   }
 
   .sd-mobile-nav .sd-steam-nav-trigger {
@@ -13320,7 +13322,7 @@ video {
     font-size: 5px;
     left: 2px;
     padding: 2px 3px;
-    top: -2px;
+    top: -4px;
   }
 
   .sd-mobile-nav > :nth-child(1) { grid-area: 1 / 1; }
@@ -13423,6 +13425,16 @@ video {
   .sd-contact-grid article > strong {
     font-size: clamp(1.55rem, 8vw, 2.4rem);
     margin-top: 42px;
+  }
+}
+
+@media (max-width: 400px) {
+  .sd-mobile-nav {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .sd-mobile-nav > * {
+    grid-area: auto;
   }
 }
 
