@@ -13305,11 +13305,14 @@ video {
     white-space: normal;
   }
 
-  .sd-mobile-nav a[aria-current="page"],
-  .sd-mobile-nav .sd-steam-nav-trigger[data-current="true"] {
+  .sd-mobile-nav a[aria-current="page"] {
     border-radius: 999px;
     justify-self: center;
     width: max-content;
+  }
+
+  .sd-mobile-nav .sd-steam-nav-trigger[data-current="true"] {
+    border-radius: 999px;
   }
 
   .sd-mobile-nav .sd-steam-nav-trigger {
@@ -13317,7 +13320,9 @@ video {
     min-height: 30px;
     padding: 6px 3px 4px;
     position: relative;
+    justify-self: center;
     white-space: normal;
+    width: max-content;
   }
 
   .sd-mobile-nav .sd-steam-nav-trigger span {
