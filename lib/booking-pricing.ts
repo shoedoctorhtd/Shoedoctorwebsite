@@ -31,11 +31,12 @@ export function formatNprPrice(amount: number) {
 
 /**
  * Only exact prices can safely be added to a delivery fee. Admins may enter a
- * fixed amount with or without an Rs prefix, and a fixed add-on can use a
- * leading "+". Ranges and "from" wording must stay a quote instead.
+ * fixed amount with or without an Rs prefix. The admin's "From Rs ..." label
+ * also has one configured amount, so it can be included. Ranges and
+ * inspection-only labels still need a quote.
  */
 export function getExactNprPrice(priceLabel: string): number | null {
-  const match = /^(?:\+\s*)?(?:Rs\.?\s*)?([1-9]\d{0,8})$/iu.exec(
+  const match = /^(?:\+\s*|From\s+)?(?:Rs\.?\s*)?([1-9]\d{0,8})$/iu.exec(
     priceLabel.trim().replace(/,/gu, ""),
   );
   if (!match) return null;
