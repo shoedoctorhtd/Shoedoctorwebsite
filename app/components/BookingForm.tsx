@@ -307,6 +307,7 @@ export default function BookingForm({
   const [customerAction, setCustomerAction] = useState<CustomerAction | null>(
     null,
   );
+  const [hasCompletedBooking, setHasCompletedBooking] = useState(false);
   const successHeadingRef = useRef<HTMLHeadingElement>(null);
   const customerNameInputRef = useRef<HTMLInputElement>(null);
   const nextPairFocusRef = useRef<string | null>(null);
@@ -981,6 +982,7 @@ export default function BookingForm({
         throw new Error(result.message || "Unable to send your booking.");
       }
 
+      setHasCompletedBooking(true);
       setState({
         type: "success",
         reference: result.reference,
@@ -1043,7 +1045,12 @@ export default function BookingForm({
   }
 
   return (
-    <form className={styles.formShell} data-reveal noValidate onSubmit={submitBooking}>
+    <form
+      className={styles.formShell}
+      data-reveal={hasCompletedBooking ? undefined : ""}
+      noValidate
+      onSubmit={submitBooking}
+    >
       <header className={styles.formHeading}>
         <span className={styles.formKicker}>Booking request</span>
         <h3 className={styles.formTitle}>Tell Us About Your Shoes.</h3>
