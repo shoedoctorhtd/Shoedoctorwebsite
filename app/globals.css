@@ -13294,6 +13294,7 @@ video {
     gap: 3px 5px;
     grid-template-columns: repeat(12, minmax(0, 1fr));
     justify-content: stretch;
+    margin-top: -8px;
     width: 100%;
   }
 
@@ -13320,7 +13321,7 @@ video {
 
   .sd-mobile-nav .sd-steam-nav-trigger span {
     font-size: 5px;
-    left: calc(50% - 43px);
+    left: calc(50% - 39px);
     padding: 2px 3px;
     top: -4px;
     transform: none;
