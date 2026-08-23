@@ -3,12 +3,7 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useId, useState } from "react";
 import { usePathname } from "next/navigation";
-import {
-  STEAM_ASSISTED_DEEP_CLEAN_ID,
-  steamCleaningContent,
-} from "@/lib/steam-cleaning";
 import styles from "./SiteChrome.module.css";
 
 const navItems = [
@@ -30,17 +25,9 @@ export function ArrowUpRight() {
 
 type NavigationItemsProps = {
   isCurrentPage: (href: string) => boolean;
-  isSteamPopupOpen: boolean;
-  onSteamPopupToggle: () => void;
-  popupId: string;
 };
 
-function NavigationItems({
-  isCurrentPage,
-  isSteamPopupOpen,
-  onSteamPopupToggle,
-  popupId,
-}: NavigationItemsProps) {
+function NavigationItems({ isCurrentPage }: NavigationItemsProps) {
   return (
     <>
       {navItems.slice(0, 3).map((item) => (
@@ -52,16 +39,14 @@ function NavigationItems({
           {item.label}
         </a>
       ))}
-      <button
-        aria-controls={popupId}
-        aria-expanded={isSteamPopupOpen}
+      <a
+        aria-current={isCurrentPage("/steam-cleaning") ? "page" : undefined}
         className={`sd-steam-nav-trigger ${styles.steamNavTrigger}`}
-        data-current={isCurrentPage("/steam-cleaning") || isSteamPopupOpen}
-        onClick={onSteamPopupToggle}
-        type="button"
+        data-current={isCurrentPage("/steam-cleaning")}
+        href="/steam-cleaning"
       >
         Steam Cleaning <span>New</span>
-      </button>
+      </a>
       {navItems.slice(3).map((item) => (
         <a
           aria-current={isCurrentPage(item.href) ? "page" : undefined}
@@ -100,29 +85,13 @@ export function Brand({ footer = false }: { footer?: boolean }) {
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const [isSteamPopupOpen, setIsSteamPopupOpen] = useState(false);
-  const steamPopupId = useId();
 
   function isCurrentPage(href: string) {
     return href === "/" ? pathname === "/" : pathname.startsWith(href);
   }
 
-  useEffect(() => {
-    if (!isSteamPopupOpen) return;
-
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setIsSteamPopupOpen(false);
-    }
-
-    document.addEventListener("keydown", closeOnEscape);
-    return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [isSteamPopupOpen]);
-
   const navigationProps = {
     isCurrentPage,
-    isSteamPopupOpen,
-    onSteamPopupToggle: () => setIsSteamPopupOpen((isOpen) => !isOpen),
-    popupId: steamPopupId,
   };
 
   return (
@@ -146,51 +115,6 @@ export function SiteHeader() {
           <NavigationItems {...navigationProps} />
         </nav>
       </header>
-      {isSteamPopupOpen && (
-        <div
-          className="sd-steam-popup-layer"
-          onMouseDown={() => setIsSteamPopupOpen(false)}
-          role="presentation"
-        >
-          <section
-            aria-labelledby={`${steamPopupId}-heading`}
-            className="sd-steam-popup"
-            id={steamPopupId}
-            onMouseDown={(event) => event.stopPropagation()}
-            role="dialog"
-          >
-            <button
-              aria-label="Close Steam Cleaning popup"
-              className="sd-steam-popup-close"
-              onClick={() => setIsSteamPopupOpen(false)}
-              type="button"
-            >
-              ×
-            </button>
-            <p className="sd-steam-popup-kicker">NEW AT SHOE DOCTOR</p>
-            <h2 id={`${steamPopupId}-heading`}>
-              {steamCleaningContent.serviceName}
-            </h2>
-            <span className="sd-steam-popup-title">
-              {steamCleaningContent.serviceTitle}
-            </span>
-            <p className="sd-steam-popup-copy">
-              {steamCleaningContent.serviceIntro}
-            </p>
-            <div className="sd-steam-popup-actions">
-              <a href="/steam-cleaning" onClick={() => setIsSteamPopupOpen(false)}>
-                Explore steam cleaning <ArrowUpRight />
-              </a>
-              <a
-                href={`/?service=${STEAM_ASSISTED_DEEP_CLEAN_ID}#book`}
-                onClick={() => setIsSteamPopupOpen(false)}
-              >
-                Book a steam clean <ArrowUpRight />
-              </a>
-            </div>
-          </section>
-        </div>
-      )}
       <nav className="sd-mobile-action-bar" aria-label="Quick actions">
         <a href="tel:+9779761716743">Call</a>
         <a href="https://wa.me/9779761716743">WhatsApp</a>
