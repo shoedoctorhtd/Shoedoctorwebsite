@@ -37,4 +37,12 @@ test("renders development preview metadata", async () => {
   assert.match(html, /Add another pair/i);
   assert.doesNotMatch(html, /Add each pair for this booking/i);
   assert.match(html, /Your Booking Summary/i);
+  assert.match(
+    html,
+    /Remember my details on this device for faster booking next time/i,
+  );
+  assert.match(html, /autocomplete="name"/i);
+  assert.match(html, /autocomplete="tel"/i);
+  assert.match(html, /autocomplete="email"/i);
+  assert.match(html, /autocomplete="street-address"/i);
 });

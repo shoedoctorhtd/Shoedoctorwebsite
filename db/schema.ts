@@ -41,6 +41,7 @@ export const bookings = sqliteTable(
     customerName: text("customer_name").notNull(),
     phone: text("phone").notNull(),
     email: text("email"),
+    customerId: text("customer_id"),
     serviceId: text("service_id").notNull(),
     serviceName: text("service_name").notNull(),
     shoeType: text("shoe_type").notNull(),
@@ -72,6 +73,101 @@ export const bookings = sqliteTable(
   },
   (table) => [
     index("bookings_status_created_idx").on(table.status, table.createdAt),
+    index("bookings_customer_id_idx").on(table.customerId),
+  ],
+);
+
+export const customers = sqliteTable(
+  "customers",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    phone: text("phone").notNull(),
+    phoneNormalized: text("phone_normalized").notNull(),
+    email: text("email"),
+    emailNormalized: text("email_normalized"),
+    recoveryEmail: text("recovery_email"),
+    defaultAddress: text("default_address"),
+    defaultPickupArea: text("default_pickup_area"),
+    recoveryEmailEnabledAt: text("recovery_email_enabled_at"),
+    emailVerifiedAt: text("email_verified_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("customers_phone_normalized_idx").on(table.phoneNormalized),
+    uniqueIndex("customers_phone_email_identity_uniq").on(
+      table.phoneNormalized,
+      table.emailNormalized,
+    ),
+  ],
+);
+
+export const customerSessions = sqliteTable(
+  "customer_sessions",
+  {
+    id: text("id").primaryKey(),
+    customerId: text("customer_id")
+      .notNull()
+      .references(() => customers.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    createdAt: text("created_at").notNull(),
+    expiresAt: text("expires_at").notNull(),
+    lastUsedAt: text("last_used_at"),
+    revokedAt: text("revoked_at"),
+  },
+  (table) => [
+    uniqueIndex("customer_sessions_token_hash_uniq").on(table.tokenHash),
+    index("customer_sessions_customer_active_idx").on(
+      table.customerId,
+      table.revokedAt,
+      table.expiresAt,
+    ),
+    index("customer_sessions_expires_at_idx").on(table.expiresAt),
+  ],
+);
+
+export const customerVerificationCodes = sqliteTable(
+  "customer_verification_codes",
+  {
+    id: text("id").primaryKey(),
+    customerId: text("customer_id")
+      .notNull()
+      .references(() => customers.id, { onDelete: "cascade" }),
+    codeHash: text("code_hash").notNull(),
+    createdAt: text("created_at").notNull(),
+    expiresAt: text("expires_at").notNull(),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    consumedAt: text("consumed_at"),
+  },
+  (table) => [
+    index("customer_verification_codes_customer_active_idx").on(
+      table.customerId,
+      table.consumedAt,
+      table.expiresAt,
+      table.createdAt,
+    ),
+    index("customer_verification_codes_expires_at_idx").on(table.expiresAt),
+  ],
+);
+
+export const customerRateLimits = sqliteTable(
+  "customer_rate_limits",
+  {
+    id: text("id").primaryKey(),
+    keyHash: text("key_hash").notNull(),
+    scope: text("scope").notNull(),
+    windowStartedAt: text("window_started_at").notNull(),
+    count: integer("count").notNull().default(0),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("customer_rate_limits_scope_key_uniq").on(
+      table.scope,
+      table.keyHash,
+    ),
+    index("customer_rate_limits_window_started_idx").on(table.windowStartedAt),
   ],
 );
 

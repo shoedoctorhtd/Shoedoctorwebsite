@@ -16,6 +16,7 @@ import {
   calculatePickupDeliveryFee,
   formatNprPrice,
   getExactNprPrice,
+  isPickupArea,
   pickupAreaLabel,
   qualifiesForFreeHetaudaDelivery,
   type PickupArea,
@@ -54,6 +55,22 @@ type PairDraft = {
   specialRequest: string;
 };
 
+type ReturningCustomer = {
+  name: string;
+  phone: string;
+  email: string;
+  defaultAddress: string;
+  defaultPickupArea: PickupArea | "";
+};
+
+type CustomerApiResponse = {
+  ok?: boolean;
+  customer?: unknown;
+  message?: unknown;
+};
+
+type CustomerAction = "logout" | "recovery-request" | "recovery-verify";
+
 type BookingFieldName =
   | keyof Omit<BookingLevelValues, "notes">
   | "items"
@@ -72,6 +89,55 @@ const emptyBookingLevelValues: BookingLevelValues = {
   locationUrl: "",
   notes: "",
 };
+
+function customerText(value: unknown, maxLength: number) {
+  return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+}
+
+function customerFromResponse(value: unknown): ReturningCustomer | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+
+  const customer = value as Record<string, unknown>;
+  const name = customerText(customer.name, 80);
+  const phone = customerText(customer.phone, 30);
+  if (!name || !phone) return null;
+
+  const pickupArea = customerText(customer.defaultPickupArea, 30);
+  return {
+    name,
+    phone,
+    email: customerText(customer.email, 120),
+    defaultAddress: customerText(customer.defaultAddress, 300),
+    defaultPickupArea: isPickupArea(pickupArea) ? pickupArea : "",
+  };
+}
+
+function responseMessage(value: unknown, fallback: string) {
+  const message = customerText(value, 240);
+  return message || fallback;
+}
+
+function customerFirstName(name: string) {
+  return name.trim().split(/\s+/u)[0] || "there";
+}
+
+function maskPhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 4) return "••••";
+
+  const localNumber = digits.length > 10 ? digits.slice(-10) : digits;
+  return `${localNumber.slice(0, 2)}${"•".repeat(
+    Math.max(4, localNumber.length - 4),
+  )}${localNumber.slice(-2)}`;
+}
+
+function maskEmail(email: string) {
+  const [localPart, domain] = email.split("@");
+  if (!localPart || !domain) return "••••";
+  return `${localPart.slice(0, 1)}${"•".repeat(
+    Math.max(4, localPart.length - 1),
+  )}@${domain}`;
+}
 
 function createPairDraft(id: string, serviceId = ""): PairDraft {
   return {
@@ -225,14 +291,105 @@ export default function BookingForm({
   const [locationStatus, setLocationStatus] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [returningCustomer, setReturningCustomer] =
+    useState<ReturningCustomer | null>(null);
+  const [customerSessionResolved, setCustomerSessionResolved] = useState(false);
+  const [rememberDetails, setRememberDetails] = useState(false);
+  const [saveCustomerDetails, setSaveCustomerDetails] = useState(false);
+  const [useDifferentDetails, setUseDifferentDetails] = useState(false);
+  const [customerNotice, setCustomerNotice] = useState<string | null>(null);
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [recoveryStep, setRecoveryStep] = useState<"phone" | "code">("phone");
+  const [recoveryPhone, setRecoveryPhone] = useState("");
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null);
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [customerAction, setCustomerAction] = useState<CustomerAction | null>(
+    null,
+  );
   const successHeadingRef = useRef<HTMLHeadingElement>(null);
+  const customerNameInputRef = useRef<HTMLInputElement>(null);
   const nextPairFocusRef = useRef<string | null>(null);
   const nextPairId = useRef(2);
+  const contactFieldsEditedRef = useRef(false);
+  const customerSessionRequestRef = useRef(0);
+  const logoutInProgressRef = useRef(false);
+  const useDifferentDetailsRef = useRef(false);
   const minimumDate = useMemo(() => getNepalCalendarDate(), []);
+
+  const applyReturningCustomer = useCallback(
+    (customer: ReturningCustomer, forcePrefill = false) => {
+      if (!forcePrefill && contactFieldsEditedRef.current) {
+        // A shared device can finish its session lookup after another person
+        // has already started typing. Keep that booking independent rather
+        // than silently attaching it to the cookie owner's profile.
+        useDifferentDetailsRef.current = true;
+        setUseDifferentDetails(true);
+        setReturningCustomer(null);
+        return;
+      }
+
+      setReturningCustomer(customer);
+      setRememberDetails(false);
+      setSaveCustomerDetails(false);
+      useDifferentDetailsRef.current = false;
+      setUseDifferentDetails(false);
+      contactFieldsEditedRef.current = false;
+      setFormValues((current) => ({
+        ...current,
+        customerName: customer.name,
+        phone: customer.phone,
+        email: customer.email,
+        pickupAddress: customer.defaultAddress,
+      }));
+      setPickupArea(customer.defaultPickupArea);
+      setFieldErrors((current) => {
+        const next = { ...current };
+        delete next.customerName;
+        delete next.phone;
+        delete next.email;
+        delete next.pickupAddress;
+        delete next.pickupArea;
+        return next;
+      });
+    },
+    [],
+  );
+
+  const loadCustomerSession = useCallback(
+    async (forcePrefill = false) => {
+      const requestId = ++customerSessionRequestRef.current;
+      try {
+        const response = await fetch("/api/customer/session");
+        const result = (await response.json()) as CustomerApiResponse;
+        if (requestId !== customerSessionRequestRef.current) return;
+        if (!response.ok || result.ok !== true) return;
+
+        if (result.customer === null) {
+          setReturningCustomer(null);
+          return;
+        }
+
+        const customer = customerFromResponse(result.customer);
+        if (customer) applyReturningCustomer(customer, forcePrefill);
+      } catch {
+        // A saved-details outage must never prevent a normal booking.
+      } finally {
+        if (requestId === customerSessionRequestRef.current) {
+          setCustomerSessionResolved(true);
+        }
+      }
+    },
+    [applyReturningCustomer],
+  );
+
   const startAnotherBooking = useCallback(() => {
     setState({ type: "idle" });
     setHasInteracted(false);
-  }, []);
+    if (returningCustomer) {
+      applyReturningCustomer(returningCustomer, true);
+    }
+  }, [applyReturningCustomer, returningCustomer]);
 
   const selectedServices = useMemo(
     () =>
@@ -282,12 +439,21 @@ export default function BookingForm({
   );
   const isReadyToSubmit =
     services.length > 0 && Object.keys(validationErrors).length === 0;
+  const bookingSubmissionBlocked = customerAction === "logout";
+  const canSubmitBooking = isReadyToSubmit && !bookingSubmissionBlocked;
 
   useEffect(() => {
     if (state.type === "success") {
       successHeadingRef.current?.focus();
     }
   }, [state]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      void loadCustomerSession();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [loadCustomerSession]);
 
   useEffect(() => {
     const itemId = nextPairFocusRef.current;
@@ -354,6 +520,15 @@ export default function BookingForm({
     key: K,
     value: BookingLevelValues[K],
   ) {
+    if (
+      key === "customerName" ||
+      key === "phone" ||
+      key === "email" ||
+      key === "pickupAddress" ||
+      key === "locationUrl"
+    ) {
+      contactFieldsEditedRef.current = true;
+    }
     setFormValues((current) => ({ ...current, [key]: value }));
     setHasInteracted(true);
     clearSubmissionError();
@@ -525,10 +700,189 @@ export default function BookingForm({
   }
 
   function selectPickupArea(area: PickupArea | "") {
+    contactFieldsEditedRef.current = true;
     setPickupArea(area);
     setHasInteracted(true);
     clearSubmissionError();
     clearFieldError("pickupArea");
+  }
+
+  function clearCustomerContactState() {
+    contactFieldsEditedRef.current = false;
+    setFormValues((current) => ({
+      ...current,
+      customerName: "",
+      phone: "",
+      email: "",
+      pickupAddress: "",
+      locationUrl: "",
+    }));
+    setPickupArea("");
+    setLocationStatus("");
+    setFieldErrors((current) => {
+      const next = { ...current };
+      delete next.customerName;
+      delete next.phone;
+      delete next.email;
+      delete next.pickupAddress;
+      delete next.pickupArea;
+      delete next.locationUrl;
+      return next;
+    });
+  }
+
+  function editReturningCustomer() {
+    if (!returningCustomer) return;
+    setCustomerNotice(null);
+    window.requestAnimationFrame(() => customerNameInputRef.current?.focus());
+  }
+
+  function useDifferentCustomerDetails() {
+    if (logoutInProgressRef.current) return;
+    customerSessionRequestRef.current += 1;
+    useDifferentDetailsRef.current = true;
+    setUseDifferentDetails(true);
+    setReturningCustomer(null);
+    setRememberDetails(false);
+    setSaveCustomerDetails(false);
+    setRecoveryOpen(false);
+    setRecoveryStep("phone");
+    setRecoveryPhone("");
+    setRecoveryCode("");
+    setRecoveryError(null);
+    setRecoveryMessage(null);
+    setCustomerSessionResolved(true);
+    clearCustomerContactState();
+    setCustomerNotice("You can enter different details for this booking.");
+    window.requestAnimationFrame(() => customerNameInputRef.current?.focus());
+  }
+
+  async function forgetCustomerDevice() {
+    if (logoutInProgressRef.current) return;
+    logoutInProgressRef.current = true;
+    customerSessionRequestRef.current += 1;
+    setReturningCustomer(null);
+    setRememberDetails(false);
+    setSaveCustomerDetails(false);
+    setRecoveryOpen(false);
+    setRecoveryStep("phone");
+    setRecoveryPhone("");
+    setRecoveryCode("");
+    setRecoveryError(null);
+    setRecoveryMessage(null);
+    setCustomerSessionResolved(true);
+
+    setCustomerAction("logout");
+    try {
+      const response = await fetch("/api/customer/session/logout", {
+        method: "POST",
+      });
+      if (!response.ok) throw new Error("logout_failed");
+      setCustomerNotice(
+        "This device will no longer remember your saved details.",
+      );
+    } catch {
+      setCustomerNotice(
+        "We could not forget this device right now. You can still continue with this booking.",
+      );
+    } finally {
+      logoutInProgressRef.current = false;
+      setCustomerAction(null);
+    }
+  }
+
+  function toggleRecovery() {
+    if (logoutInProgressRef.current) return;
+    const nextOpen = !recoveryOpen;
+    setRecoveryOpen(nextOpen);
+    if (!nextOpen) {
+      setRecoveryStep("phone");
+      setRecoveryPhone("");
+      setRecoveryCode("");
+    }
+    setRecoveryError(null);
+    setRecoveryMessage(null);
+  }
+
+  async function requestCustomerRecovery() {
+    if (logoutInProgressRef.current) return;
+    const phone = recoveryPhone.trim();
+    const phoneDigits = phone.replace(/\D/g, "");
+    if (phoneDigits.length < 7 || phoneDigits.length > 15) {
+      setRecoveryError("Enter a valid phone or WhatsApp number.");
+      setRecoveryMessage(null);
+      return;
+    }
+
+    setCustomerAction("recovery-request");
+    setRecoveryError(null);
+    try {
+      const response = await fetch("/api/customer/recovery/request", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ phone }),
+      });
+      const result = (await response.json()) as CustomerApiResponse;
+      if (!response.ok || result.ok !== true) throw new Error("recovery_failed");
+
+      setRecoveryStep("code");
+      setRecoveryCode("");
+      setRecoveryMessage(
+        responseMessage(
+          result.message,
+          "If we found a matching customer profile, a verification code has been sent to the registered email.",
+        ),
+      );
+    } catch {
+      setRecoveryError(
+        "We couldn't verify your saved profile right now. You can still continue with a normal booking.",
+      );
+    } finally {
+      setCustomerAction(null);
+    }
+  }
+
+  async function verifyCustomerRecovery() {
+    if (logoutInProgressRef.current) return;
+    const phone = recoveryPhone.trim();
+    const code = recoveryCode.trim();
+    if (!code || code.length > 32) {
+      setRecoveryError("Enter the verification code from your email.");
+      return;
+    }
+
+    setCustomerAction("recovery-verify");
+    setRecoveryError(null);
+    try {
+      const response = await fetch("/api/customer/recovery/verify", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ phone, code }),
+      });
+      const result = (await response.json()) as CustomerApiResponse;
+      const customer = customerFromResponse(result.customer);
+      if (!response.ok || result.ok !== true || !customer) {
+        throw new Error("verification_failed");
+      }
+
+      customerSessionRequestRef.current += 1;
+      applyReturningCustomer(customer, true);
+      setCustomerSessionResolved(true);
+      setRecoveryOpen(false);
+      setRecoveryStep("phone");
+      setRecoveryPhone("");
+      setRecoveryCode("");
+      setRecoveryMessage(null);
+      setCustomerNotice(
+        responseMessage(result.message, "Your saved details are ready to use."),
+      );
+    } catch {
+      setRecoveryError(
+        "We couldn't verify that code. You can try again or continue with a normal booking.",
+      );
+    } finally {
+      setCustomerAction(null);
+    }
   }
 
   function useCurrentLocation() {
@@ -553,6 +907,7 @@ export default function BookingForm({
 
   async function submitBooking(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (logoutInProgressRef.current || customerAction === "logout") return;
     setHasInteracted(true);
     const clientErrors = getValidationErrors(
       formValues,
@@ -571,6 +926,17 @@ export default function BookingForm({
 
     setState({ type: "sending" });
     const website = new FormData(event.currentTarget).get("website");
+    const shouldRememberDetails = !returningCustomer && rememberDetails;
+    const shouldSaveCustomerDetails = Boolean(
+      returningCustomer && saveCustomerDetails,
+    );
+    const shouldUseDifferentDetails =
+      useDifferentDetails || useDifferentDetailsRef.current;
+    const shouldUseCustomerSession = Boolean(
+      returningCustomer &&
+        customerSessionResolved &&
+        !shouldUseDifferentDetails,
+    );
     const payload = {
       customerName: formValues.customerName,
       phone: formValues.phone,
@@ -582,6 +948,10 @@ export default function BookingForm({
       locationUrl: formValues.locationUrl,
       notes: formValues.notes,
       expressRequested: expressRequested && !hasExpressAsPrimaryService,
+      rememberDetails: shouldRememberDetails,
+      saveCustomerDetails: shouldSaveCustomerDetails,
+      useCustomerSession: shouldUseCustomerSession,
+      useDifferentDetails: shouldUseDifferentDetails,
       items: items.map(({ serviceId, footwearType, brand, specialRequest }) => ({
         serviceId,
         footwearType,
@@ -625,6 +995,14 @@ export default function BookingForm({
       setExpandedSpecialRequests({});
       setLocationStatus("");
       setFieldErrors({});
+      setRememberDetails(false);
+      setSaveCustomerDetails(false);
+      useDifferentDetailsRef.current = false;
+      setUseDifferentDetails(false);
+      contactFieldsEditedRef.current = false;
+      if (shouldRememberDetails || shouldSaveCustomerDetails) {
+        void loadCustomerSession(true);
+      }
     } catch (error) {
       const message =
         error instanceof Error
@@ -676,6 +1054,193 @@ export default function BookingForm({
       </header>
 
       <div className={styles.compactFields}>
+        {returningCustomer && (
+          <section
+            aria-labelledby="returning-customer-heading"
+            className={classNames(styles.returningCustomerPanel, styles.compactFull)}
+          >
+            <div>
+              <p className={styles.returningCustomerKicker}>Saved details</p>
+              <h4 id="returning-customer-heading">
+                Welcome back, {customerFirstName(returningCustomer.name)}{" "}
+                <span aria-hidden="true">👋</span>
+              </h4>
+              <div className={styles.returningCustomerMaskedDetails}>
+                <span>{maskPhone(returningCustomer.phone)}</span>
+                {returningCustomer.email && (
+                  <span>{maskEmail(returningCustomer.email)}</span>
+                )}
+              </div>
+            </div>
+            <div className={styles.returningCustomerActions}>
+              <button onClick={editReturningCustomer} type="button">
+                Edit details
+              </button>
+              <button
+                disabled={customerAction === "logout"}
+                onClick={useDifferentCustomerDetails}
+                type="button"
+              >
+                {customerAction === "logout"
+                  ? "Updating…"
+                  : "Not you? Use different details"}
+              </button>
+              <button
+                disabled={customerAction === "logout"}
+                onClick={() => void forgetCustomerDevice()}
+                type="button"
+              >
+                Forget this device
+              </button>
+            </div>
+          </section>
+        )}
+
+        {customerNotice && (
+          <p className={classNames(styles.customerNotice, styles.compactFull)} role="status">
+            {customerNotice}
+          </p>
+        )}
+
+        {!returningCustomer && customerSessionResolved && (
+          <div className={classNames(styles.recoveryPrompt, styles.compactFull)}>
+            <span>Returning customer?</span>
+            <button
+              aria-controls="customer-recovery"
+              aria-expanded={recoveryOpen}
+              disabled={bookingSubmissionBlocked}
+              onClick={toggleRecovery}
+              type="button"
+            >
+              {recoveryOpen ? "Close saved-details recovery" : "Get my saved details"}
+            </button>
+          </div>
+        )}
+
+        {!returningCustomer && recoveryOpen && (
+          <section
+            aria-labelledby="customer-recovery-heading"
+            className={classNames(styles.customerRecovery, styles.compactFull)}
+            id="customer-recovery"
+          >
+            <header>
+              <p className={styles.returningCustomerKicker}>Saved details recovery</p>
+              <h4 id="customer-recovery-heading">Use your registered phone number</h4>
+              <p>
+                If we find an eligible saved profile, we&apos;ll send a short code to
+                the registered email address.
+              </p>
+            </header>
+
+            {recoveryStep === "phone" ? (
+              <label className={styles.field}>
+                <span>Phone / WhatsApp</span>
+                <input
+                  autoComplete="tel"
+                  className={styles.input}
+                  inputMode="tel"
+                  maxLength={30}
+                  name="recoveryPhone"
+                  onChange={(event) => {
+                    setRecoveryPhone(event.target.value);
+                    setRecoveryError(null);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void requestCustomerRecovery();
+                    }
+                  }}
+                  placeholder="+977 98XXXXXXXX"
+                  type="tel"
+                  value={recoveryPhone}
+                />
+              </label>
+            ) : (
+              <label className={styles.field}>
+                <span>Verification code</span>
+                <input
+                  autoComplete="one-time-code"
+                  className={styles.input}
+                  inputMode="numeric"
+                  maxLength={32}
+                  name="recoveryCode"
+                  onChange={(event) => {
+                    setRecoveryCode(event.target.value);
+                    setRecoveryError(null);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void verifyCustomerRecovery();
+                    }
+                  }}
+                  placeholder="Enter the code from your email"
+                  type="text"
+                  value={recoveryCode}
+                />
+              </label>
+            )}
+
+            {recoveryMessage && (
+              <p className={styles.recoveryMessage} role="status">
+                {recoveryMessage}
+              </p>
+            )}
+            {recoveryError && (
+              <p className={styles.recoveryError} role="alert">
+                {recoveryError}
+              </p>
+            )}
+
+            <div className={styles.customerRecoveryActions}>
+              {recoveryStep === "phone" ? (
+                <button
+                  disabled={
+                    customerAction === "recovery-request" || bookingSubmissionBlocked
+                  }
+                  onClick={() => void requestCustomerRecovery()}
+                  type="button"
+                >
+                  {customerAction === "recovery-request"
+                    ? "Sending code…"
+                    : "Send verification code"}
+                </button>
+              ) : (
+                <>
+                  <button
+                    disabled={
+                      customerAction === "recovery-verify" || bookingSubmissionBlocked
+                    }
+                    onClick={() => void verifyCustomerRecovery()}
+                    type="button"
+                  >
+                    {customerAction === "recovery-verify"
+                      ? "Verifying…"
+                      : "Verify and use my details"}
+                  </button>
+                  <button
+                    className={styles.customerRecoverySecondaryAction}
+                    disabled={
+                      customerAction === "recovery-verify" || bookingSubmissionBlocked
+                    }
+                    onClick={() => {
+                      setRecoveryStep("phone");
+                      setRecoveryPhone("");
+                      setRecoveryCode("");
+                      setRecoveryMessage(null);
+                      setRecoveryError(null);
+                    }}
+                    type="button"
+                  >
+                    Use a different phone number
+                  </button>
+                </>
+              )}
+            </div>
+          </section>
+        )}
+
         <label className={styles.field}>
           <span>Full name <b aria-hidden="true">*</b></span>
           <input
@@ -690,6 +1255,7 @@ export default function BookingForm({
             onBlur={() => validateField("customerName")}
             onChange={handleTextChange}
             placeholder="Your name"
+            ref={customerNameInputRef}
             required
             type="text"
             value={formValues.customerName}
@@ -750,6 +1316,41 @@ export default function BookingForm({
             </span>
           )}
         </label>
+
+        {returningCustomer ? (
+          <label className={classNames(styles.customerPreference, styles.compactFull)}>
+            <input
+              checked={saveCustomerDetails}
+              name="saveCustomerDetails"
+              onChange={(event) => setSaveCustomerDetails(event.target.checked)}
+              type="checkbox"
+            />
+            <span>
+              <strong>Save these updated details for next time</strong>
+              <small>
+                Update your saved contact and pickup details only after this
+                booking is successful. For privacy, changing your contact email
+                does not replace the email used for new-device recovery.
+              </small>
+            </span>
+          </label>
+        ) : (
+          <label className={classNames(styles.customerPreference, styles.compactFull)}>
+            <input
+              checked={rememberDetails}
+              name="rememberDetails"
+              onChange={(event) => setRememberDetails(event.target.checked)}
+              type="checkbox"
+            />
+            <span>
+              <strong>Remember my details on this device for faster booking next time</strong>
+              <small>
+                Your saved details are used only to make future Shoe Doctor
+                bookings faster.
+              </small>
+            </span>
+          </label>
+        )}
 
         <fieldset className={styles.pairQuantity}>
           <legend>How many pairs? <b aria-hidden="true">*</b></legend>
@@ -1314,9 +1915,9 @@ export default function BookingForm({
       )}
 
       <button
-        aria-disabled={!isReadyToSubmit || state.type === "sending"}
+        aria-disabled={!canSubmitBooking || state.type === "sending"}
         className={styles.submitButton}
-        disabled={!isReadyToSubmit || state.type === "sending"}
+        disabled={!canSubmitBooking || state.type === "sending"}
         type="submit"
       >
         {state.type === "sending" && <span aria-hidden="true" className={styles.spinner} />}

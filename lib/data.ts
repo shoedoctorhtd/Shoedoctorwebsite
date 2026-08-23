@@ -115,6 +115,7 @@ export type Booking = {
   customerName: string;
   phone: string;
   email: string | null;
+  customerId: string | null;
   serviceId: string;
   serviceName: string;
   shoeType: string;
@@ -433,7 +434,7 @@ const seedServices: Array<
 
 let setupPromise: Promise<void> | null = null;
 
-async function getDatabase() {
+export async function getDatabase() {
   const { env } = await import("cloudflare:workers");
   if (!env.DB) {
     throw new Error("D1 binding DB is unavailable.");
@@ -716,6 +717,7 @@ function parseBooking(row: Record<string, unknown>): Booking {
     customerName: String(row.customer_name),
     phone: String(row.phone),
     email: row.email ? String(row.email) : null,
+    customerId: row.customer_id ? String(row.customer_id) : null,
     serviceId: String(row.service_id),
     serviceName: String(row.service_name),
     shoeType: String(row.shoe_type),
@@ -1117,6 +1119,7 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
     customerName: input.customerName,
     phone: input.phone,
     email: input.email ?? null,
+    customerId: null,
     serviceId: firstItem.serviceId,
     serviceName: firstItem.serviceName,
     shoeType: firstItem.footwearType,

@@ -16,9 +16,18 @@ type GmailEnvironment = {
   GOOGLE_REFRESH_TOKEN?: string;
 };
 
-export type GmailStatusEmailResult =
+export type GmailEmailResult =
   | { status: "sent" }
   | { status: "failed"; errorCode: string };
+
+export type GmailStatusEmailResult = GmailEmailResult;
+
+export type GmailEmailInput = {
+  html: string;
+  subject: string;
+  text: string;
+  to: string;
+};
 
 export type GmailStatusEmailInput = {
   content: StatusEmailContent;
@@ -29,9 +38,9 @@ export type GmailStatusEmailInput = {
  * Exchanges the Worker-held refresh token and sends a Gmail REST message. No
  * OAuth credential is ever sent to, or read from, browser code.
  */
-export async function sendGmailStatusEmail(
-  input: GmailStatusEmailInput,
-): Promise<GmailStatusEmailResult> {
+export async function sendGmailEmail(
+  input: GmailEmailInput,
+): Promise<GmailEmailResult> {
   if (!isEmailAddress(input.to)) {
     return { status: "failed", errorCode: "customer_email_invalid" };
   }
@@ -57,9 +66,9 @@ export async function sendGmailStatusEmail(
     const raw = buildRawGmailMessage({
       from,
       to: input.to.trim(),
-      subject: input.content.subject,
-      text: input.content.text,
-      html: input.content.html,
+      subject: input.subject,
+      text: input.text,
+      html: input.html,
     });
     const response = await fetchWithTimeout(GMAIL_SEND_URL, {
       method: "POST",
@@ -80,6 +89,21 @@ export async function sendGmailStatusEmail(
   } catch (error) {
     return { status: "failed", errorCode: networkErrorCode(error) };
   }
+}
+
+/**
+ * Backwards-compatible status-email entry point. Customer status messages use
+ * the shared generic transport, while retaining the existing call signature.
+ */
+export async function sendGmailStatusEmail(
+  input: GmailStatusEmailInput,
+): Promise<GmailStatusEmailResult> {
+  return sendGmailEmail({
+    to: input.to,
+    subject: input.content.subject,
+    text: input.content.text,
+    html: input.content.html,
+  });
 }
 
 async function getGoogleAccessToken(credentials: {
