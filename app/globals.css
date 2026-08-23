@@ -13322,10 +13322,10 @@ video {
 
   .sd-mobile-nav .sd-steam-nav-trigger span {
     bottom: auto;
-    inset-inline-start: 0;
+    inset-inline-start: 16px;
     font-size: 5px;
     padding: 2px 3px;
-    top: -10px;
+    top: -25px;
   }
 
   .sd-mobile-nav > :nth-child(1) { grid-area: 1 / 1 / 2 / 4; }
