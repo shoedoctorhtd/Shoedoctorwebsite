@@ -13095,8 +13095,8 @@ video {
   }
 
   .sd-mobile-nav .sd-steam-nav-trigger span {
-    left: 4px;
-    top: -5px;
+    inset-inline-start: 3px;
+    top: -9px;
   }
 
   .sd-mobile-nav .sd-steam-nav-trigger[data-current="true"] {
@@ -13327,10 +13327,7 @@ video {
 
   .sd-mobile-nav .sd-steam-nav-trigger span {
     font-size: 5px;
-    bottom: auto;
-    inset-inline-start: 0;
     padding: 2px 3px;
-    top: -7px;
   }
 
   .sd-mobile-nav > :nth-child(1) { grid-area: 1 / 1 / 2 / 4; }
