@@ -13316,14 +13316,15 @@ video {
     font-size: clamp(10px, 2.9vw, 11px);
     min-height: 30px;
     padding: 6px 3px 4px;
+    position: relative;
     white-space: normal;
   }
 
   .sd-mobile-nav .sd-steam-nav-trigger span {
     font-size: 5px;
-    left: calc(50% - 43px);
+    bottom: calc(100% + 2px);
+    left: 3px;
     padding: 2px 3px;
-    top: -4px;
     transform: none;
   }
 
