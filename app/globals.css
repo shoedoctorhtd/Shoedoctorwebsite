@@ -13260,42 +13260,67 @@ video {
 
 @media (max-width: 640px) {
   .sd-header {
-    gap: 8px;
+    gap: 4px;
     grid-template-columns: minmax(0, 1fr);
-    padding: 8px 16px 10px;
+    padding: 6px 16px 7px;
   }
 
   .sd-brand {
     justify-self: center;
   }
 
+  .sd-logo-crop {
+    height: 38px;
+    width: 46px;
+  }
+
+  .sd-logo-crop img {
+    height: 46px;
+    width: 46px;
+  }
+
+  .sd-wordmark {
+    font-size: 13px;
+  }
+
+  .sd-plus-o {
+    font-size: 10px;
+    height: 17px;
+    width: 17px;
+  }
+
   .sd-mobile-nav {
     display: grid;
-    gap: 5px;
+    gap: 3px 5px;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     justify-content: stretch;
     width: 100%;
   }
 
   .sd-mobile-nav a {
-    font-size: clamp(10px, 3.1vw, 12px);
-    min-height: 38px;
-    padding: 7px 3px;
+    font-size: clamp(10px, 2.9vw, 11px);
+    min-height: 30px;
+    padding: 5px 3px;
     white-space: normal;
   }
 
+  .sd-mobile-nav a[aria-current="page"],
+  .sd-mobile-nav .sd-steam-nav-trigger[data-current="true"] {
+    border-radius: 999px;
+  }
+
   .sd-mobile-nav .sd-steam-nav-trigger {
-    font-size: clamp(10px, 3.1vw, 12px);
-    min-height: 38px;
-    padding: 10px 3px 5px;
+    font-size: clamp(10px, 2.9vw, 11px);
+    min-height: 30px;
+    padding: 6px 3px 4px;
     white-space: normal;
   }
 
   .sd-mobile-nav .sd-steam-nav-trigger span {
-    font-size: 6px;
-    left: 3px;
-    padding: 3px 4px;
-    top: 1px;
+    font-size: 5px;
+    left: 2px;
+    padding: 2px 3px;
+    top: -2px;
   }
 
   .sd-mobile-nav > :nth-child(1) { grid-area: 1 / 1; }
