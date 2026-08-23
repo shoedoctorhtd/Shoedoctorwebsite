@@ -13262,7 +13262,7 @@ video {
   .sd-header {
     gap: 4px;
     grid-template-columns: minmax(0, 1fr);
-    padding: 6px 16px 7px;
+    padding: 6px 16px 11px;
   }
 
   .sd-brand {
@@ -13320,9 +13320,10 @@ video {
 
   .sd-mobile-nav .sd-steam-nav-trigger span {
     font-size: 5px;
-    left: 2px;
+    left: calc(50% + 4px);
     padding: 2px 3px;
     top: -4px;
+    transform: translateX(-50%);
   }
 
   .sd-mobile-nav > :nth-child(1) { grid-area: 1 / 1; }

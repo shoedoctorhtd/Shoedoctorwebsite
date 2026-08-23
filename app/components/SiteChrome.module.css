@@ -6,10 +6,10 @@
 
 @media (max-width: 640px) {
   :global(.sd-mobile-nav) .steamNavTrigger {
-    font-size: inherit !important;
+    font-size: clamp(10px, 2.9vw, 11px) !important;
     letter-spacing: 0;
-    padding: 6px 3px 4px !important;
     font-weight: 800;
+    padding: 5px 3px !important;
     white-space: nowrap !important;
   }
 }
