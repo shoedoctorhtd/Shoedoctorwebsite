@@ -1896,7 +1896,7 @@ export default function BookingForm({
           </div>
         </dl>
         <div className={styles.summaryTotal}>
-          <span>{hasTotalPrice ? "Total" : "Price status"}</span>
+          <span>{hasTotalPrice ? "Final price" : "Price status"}</span>
           <strong>{hasTotalPrice ? formatNprPrice(total) : "Quote after review"}</strong>
         </div>
         <p className={styles.summaryNotice}>
