@@ -1,5 +1,6 @@
 import type { Booking } from "../data";
 import { getBookingItems } from "../booking-items.js";
+import { getBookingPublicReference } from "../booking-reference.ts";
 
 const QUOTE_AFTER_REVIEW = "Quote after review";
 
@@ -70,6 +71,7 @@ export async function sendBookingConfirmationEmail(
 export function buildBookingConfirmationEmail(
   booking: Booking,
 ): BookingConfirmationEmailContent {
+  const publicReference = getBookingPublicReference(booking);
   const items = getBookingItems(booking);
   const summary = getBookingEmailSummary(booking, items);
   const pairSections = items.map((item) => ({
@@ -89,7 +91,7 @@ export function buildBookingConfirmationEmail(
     {
       heading: "Booking",
       fields: [
-        { label: "Reference", value: booking.reference },
+        { label: "Reference", value: publicReference },
         {
           label: "Pairs",
           value:
@@ -157,7 +159,7 @@ export function buildBookingConfirmationEmail(
   return {
     subject:
       "\u{1F45F} Booking Confirmation \u2014 " +
-      headerValue(booking.reference),
+      headerValue(publicReference),
     text,
     html:
       '<!doctype html><html lang="en"><body style="margin:0;background:#f6f5f2;color:#151515;font-family:Arial,sans-serif;"><main style="box-sizing:border-box;margin:0 auto;max-width:600px;padding:28px 16px;"><section style="background:#ffffff;border:1px solid #dedbd4;border-radius:12px;overflow:hidden;"><div style="background:#7b1738;color:#ffffff;padding:24px 28px;"><p style="font-size:12px;font-weight:700;letter-spacing:.12em;margin:0 0 8px;text-transform:uppercase;">Shoe Doctor</p><h1 style="font-size:24px;line-height:1.25;margin:0;">We received your booking</h1></div><div style="padding:26px 28px;"><p style="font-size:16px;line-height:1.6;margin:0 0 16px;">Hi ' +

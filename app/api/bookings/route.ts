@@ -1,4 +1,5 @@
 import { createBooking } from "@/lib/data";
+import { getBookingPublicReference } from "@/lib/booking-reference";
 import { parsePublicBooking } from "@/lib/validation";
 import { sendBookingEmailNotification } from "@/lib/booking-email";
 import {
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
     }
 
     const created = await createBooking(booking);
+    const publicReference = getBookingPublicReference(created);
     const [emailNotification, whatsappNotification, confirmationNotification] =
       await Promise.all([
         sendBookingEmailNotification(created),
@@ -58,24 +60,26 @@ export async function POST(request: Request) {
 
     if (emailNotification.status === "not_configured") {
       console.warn(
-        `Booking ${created.reference} was saved, but email is not configured.`,
+        `Booking ${publicReference} was saved, but email is not configured.`,
       );
     }
     if (whatsappNotification.status === "not_configured") {
       console.warn(
-        `Booking ${created.reference} was saved, but WhatsApp is not configured.`,
+        `Booking ${publicReference} was saved, but WhatsApp is not configured.`,
       );
     }
     if (confirmationNotification.status === "failed") {
       console.warn(
-        `Booking ${created.reference} was saved, but customer confirmation email failed: ${confirmationNotification.errorCode}.`,
+        `Booking ${publicReference} was saved, but customer confirmation email failed: ${confirmationNotification.errorCode}.`,
       );
     }
 
     const response = Response.json(
       {
         ok: true,
-        reference: created.reference,
+        // Keep the established public response key, but never expose the
+        // legacy operational reference to the booking form.
+        reference: publicReference,
         pairCount: created.pairCount,
         items: created.items.map((item) => ({
           pairNumber: item.pairNumber,

@@ -1,8 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { getBookingItems } from "@/lib/booking-items.js";
+import {
+  BOOKING_REFERENCE_TIME_ZONE,
+  getPhysicalPairTag,
+  normalizeBookingReferenceSearch,
+} from "@/lib/booking-reference";
 import type {
   Booking,
   BookingItem,
@@ -112,6 +117,7 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-NP", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: BOOKING_REFERENCE_TIME_ZONE,
   }).format(new Date(value));
 }
 
@@ -136,6 +142,10 @@ function itemPriceLabel(item: BookingItem) {
 
 function pairCountLabel(pairCount: number) {
   return `${pairCount} ${pairCount === 1 ? "pair" : "pairs"}`;
+}
+
+function normalizedPhone(value: string) {
+  return value.replace(/\D/g, "");
 }
 
 function deliverySummary(booking: Booking) {
@@ -209,6 +219,11 @@ export default function AdminDashboard({
   const [bookingFilter, setBookingFilter] = useState<"all" | BookingStatus>(
     "all",
   );
+  const [bookingSearch, setBookingSearch] = useState("");
+  const [referenceSearchResult, setReferenceSearchResult] = useState<{
+    publicReference: string;
+    bookings: Booking[];
+  } | null>(null);
   const [editor, setEditor] = useState<{
     id: string | null;
     value: ServiceInput;
@@ -217,13 +232,101 @@ export default function AdminDashboard({
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const filteredBookings = useMemo(
-    () =>
-      bookingFilter === "all"
-        ? bookings
-        : bookings.filter((booking) => booking.status === bookingFilter),
-    [bookings, bookingFilter],
+  const bookingReferenceSearch = useMemo(
+    () => normalizeBookingReferenceSearch(bookingSearch),
+    [bookingSearch],
   );
+  const referenceSearchKey = bookingReferenceSearch?.publicReference ?? null;
+
+  useEffect(() => {
+    if (!referenceSearchKey) return;
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const response = await fetch(
+            "/api/admin/bookings?reference=" +
+              encodeURIComponent(referenceSearchKey),
+            { signal: controller.signal },
+          );
+          const result = (await response.json()) as {
+            bookings?: Booking[];
+            message?: string;
+          };
+          if (!response.ok) {
+            throw new Error(result.message || "Unable to search bookings.");
+          }
+          if (!controller.signal.aborted) {
+            setReferenceSearchResult({
+              publicReference: referenceSearchKey,
+              bookings: result.bookings ?? [],
+            });
+          }
+        } catch (error) {
+          if (controller.signal.aborted) return;
+          setReferenceSearchResult({
+            publicReference: referenceSearchKey,
+            bookings: [],
+          });
+          setNotice(
+            error instanceof Error ? error.message : "Unable to search bookings.",
+          );
+        }
+      })();
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [referenceSearchKey]);
+
+  const filteredBookings = useMemo(() => {
+    const textSearch = bookingSearch.trim().toLocaleLowerCase();
+    const phoneSearch = normalizedPhone(bookingSearch);
+    const serverReferenceBookings =
+      referenceSearchResult?.publicReference === referenceSearchKey
+        ? referenceSearchResult.bookings
+        : null;
+    const bookingsToFilter = bookingReferenceSearch
+      ? (serverReferenceBookings ?? bookings)
+      : bookings;
+
+    return bookingsToFilter.filter((booking) => {
+      if (bookingFilter !== "all" && booking.status !== bookingFilter) {
+        return false;
+      }
+      if (!textSearch) return true;
+
+      if (bookingReferenceSearch) {
+        if (
+          booking.publicReference !== bookingReferenceSearch.publicReference
+        ) {
+          return false;
+        }
+        return (
+          bookingReferenceSearch.pairNumber === null ||
+          getBookingItems(booking).some(
+            (item) => item.pairNumber === bookingReferenceSearch.pairNumber,
+          )
+        );
+      }
+
+      return (
+        booking.customerName.toLocaleLowerCase().includes(textSearch) ||
+        (phoneSearch.length > 0 &&
+          normalizedPhone(booking.phone).includes(phoneSearch))
+      );
+    });
+  }, [
+    bookings,
+    bookingFilter,
+    bookingReferenceSearch,
+    bookingSearch,
+    referenceSearchKey,
+    referenceSearchResult,
+  ]);
 
   const newBookings = bookings.filter(
     (booking) => booking.status === "new",
@@ -421,10 +524,34 @@ export default function AdminDashboard({
             : item,
         ),
       );
+      setReferenceSearchResult((current) =>
+        current
+          ? {
+              ...current,
+              bookings: current.bookings.map((item) =>
+                item.id === booking.id
+                  ? mergeStatusUpdate(
+                      item,
+                      result.booking as Booking,
+                      result.history,
+                      result.notification,
+                    )
+                  : item,
+              ),
+            }
+          : null,
+      );
       setNotice(
         result.unchanged
-          ? `${booking.reference} is already ${statusLabel(status)}.`
-          : `${booking.reference} marked ${statusLabel(status)}. ${notificationCopy(result.notification ?? null)}`,
+          ? (booking.publicReference ?? "This booking") +
+            " is already " +
+            statusLabel(status) +
+            "."
+          : (booking.publicReference ?? "This booking") +
+            " marked " +
+            statusLabel(status) +
+            ". " +
+            notificationCopy(result.notification ?? null),
       );
     } catch (error) {
       setNotice(
@@ -460,10 +587,29 @@ export default function AdminDashboard({
             : item,
         ),
       );
+      setReferenceSearchResult((current) =>
+        current
+          ? {
+              ...current,
+              bookings: current.bookings.map((item) =>
+                item.id === booking.id
+                  ? mergeNotification(
+                      item,
+                      result.notification as BookingNotification,
+                    )
+                  : item,
+              ),
+            }
+          : null,
+      );
       setNotice(
         result.notification.status === "sent"
-          ? `Customer email sent for ${booking.reference}.`
-          : `Customer email retry finished: ${notificationCopy(result.notification)}.`,
+          ? "Customer email sent for " +
+            (booking.publicReference ?? "this booking") +
+            "."
+          : "Customer email retry finished: " +
+            notificationCopy(result.notification) +
+            ".",
       );
     } catch (error) {
       setNotice(
@@ -471,6 +617,18 @@ export default function AdminDashboard({
       );
     } finally {
       setBusy(null);
+    }
+  }
+
+  async function copyBookingValue(value: string, label: string) {
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard is unavailable.");
+      }
+      await navigator.clipboard.writeText(value);
+      setNotice(label + " copied.");
+    } catch {
+      setNotice("Unable to copy " + label.toLocaleLowerCase() + ".");
     }
   }
 
@@ -615,24 +773,35 @@ export default function AdminDashboard({
               <p className="section-kicker">Customer requests</p>
               <h2>Every booking in one place.</h2>
             </div>
-            <label className="booking-filter">
-              <span>Show</span>
-              <select
-                value={bookingFilter}
-                onChange={(event) =>
-                  setBookingFilter(
-                    event.target.value as "all" | BookingStatus,
-                  )
-                }
-              >
-                <option value="all">All bookings</option>
-                {statusOptions.map((status) => (
-                  <option key={status.value} value={status.value}>
-                    {status.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="booking-filter-controls">
+              <label className="booking-search">
+                <span>Search</span>
+                <input
+                  type="search"
+                  value={bookingSearch}
+                  onChange={(event) => setBookingSearch(event.target.value)}
+                  placeholder="Reference, tag, name, or phone"
+                />
+              </label>
+              <label className="booking-filter">
+                <span>Show</span>
+                <select
+                  value={bookingFilter}
+                  onChange={(event) =>
+                    setBookingFilter(
+                      event.target.value as "all" | BookingStatus,
+                    )
+                  }
+                >
+                  <option value="all">All bookings</option>
+                  {statusOptions.map((status) => (
+                    <option key={status.value} value={status.value}>
+                      {status.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
           </div>
 
           <div className="admin-booking-list">
@@ -648,17 +817,52 @@ export default function AdminDashboard({
                 const pairCount = items.length;
                 const hasStoredItems = booking.items.length > 0;
                 const notification = latestStatusNotification(booking);
+                const publicReference = booking.publicReference;
+                const matchedPairNumber =
+                  publicReference &&
+                  bookingReferenceSearch?.publicReference === publicReference
+                    ? bookingReferenceSearch.pairNumber
+                    : null;
                 return (
                 <article className="admin-booking-card" key={booking.id}>
                   <div className="booking-card-top">
-                    <div>
+                    <div className="booking-card-meta">
                       <span className={`status-pill ${booking.status}`}>
                         {statusLabel(booking.status)}
                       </span>
                       <small>{formatDate(booking.createdAt)}</small>
                       <small>{pairCountLabel(pairCount)}</small>
+                      {matchedPairNumber !== null && (
+                        <small className="booking-search-match">
+                          Pair {matchedPairNumber} matched
+                        </small>
+                      )}
                     </div>
-                    <strong>{booking.reference}</strong>
+                    <div className="booking-card-reference">
+                      <small>Booking reference</small>
+                      {publicReference ? (
+                        <span className="booking-reference-value">
+                          <strong>{publicReference}</strong>
+                          <button
+                            type="button"
+                            className="booking-copy-button"
+                            onClick={() =>
+                              void copyBookingValue(
+                                publicReference,
+                                "Booking reference",
+                              )
+                            }
+                            aria-label={"Copy booking reference " + publicReference}
+                          >
+                            Copy
+                          </button>
+                        </span>
+                      ) : (
+                        <span className="booking-reference-unavailable">
+                          Reference unavailable
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="booking-customer">
@@ -710,17 +914,56 @@ export default function AdminDashboard({
 
                   <section
                     className="booking-status-history"
-                    aria-label={`Shoes in booking ${booking.reference}`}
+                    aria-label={
+                      publicReference
+                        ? "Shoes in booking " + publicReference
+                        : "Shoes in this booking"
+                    }
                   >
                     <div className="booking-status-history__heading">
-                      <small>Shoes</small>
+                      <small>Shoe tags</small>
                       <span>{pairCountLabel(pairCount)}</span>
                     </div>
                     <ol>
-                      {items.map((item) => (
-                        <li key={item.id}>
-                          <small>Pair {item.pairNumber}</small>
+                      {items.map((item) => {
+                        const physicalTag = publicReference
+                          ? getPhysicalPairTag(publicReference, item.pairNumber)
+                          : null;
+                        const isMatchedPair =
+                          item.pairNumber === matchedPairNumber;
+
+                        return (
+                        <li
+                          className={
+                            isMatchedPair ? "booking-pair--matched" : undefined
+                          }
+                          key={item.id}
+                        >
+                          <small>
+                            Pair {item.pairNumber}
+                            {isMatchedPair ? " - Matched" : ""}
+                          </small>
                           <div>
+                            {physicalTag && (
+                              <span className="booking-pair-tag">
+                                <span>
+                                  Tag <code>{physicalTag}</code>
+                                </span>
+                                <button
+                                  type="button"
+                                  className="booking-copy-button"
+                                  onClick={() =>
+                                    void copyBookingValue(
+                                      physicalTag,
+                                      "Shoe tag",
+                                    )
+                                  }
+                                  aria-label={"Copy shoe tag " + physicalTag}
+                                >
+                                  Copy
+                                </button>
+                              </span>
+                            )}
                             <strong>
                               {item.serviceName} · {itemPriceLabel(item)}
                             </strong>
@@ -733,13 +976,18 @@ export default function AdminDashboard({
                             )}
                           </div>
                         </li>
-                      ))}
+                        );
+                      })}
                     </ol>
                   </section>
 
                   <section
                     className="booking-notification"
-                    aria-label={`Order summary for ${booking.reference}`}
+                    aria-label={
+                      publicReference
+                        ? "Order summary for " + publicReference
+                        : "Order summary for this booking"
+                    }
                   >
                     <div>
                       <small>Order summary</small>

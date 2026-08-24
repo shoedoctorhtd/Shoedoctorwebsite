@@ -38,6 +38,7 @@ export const bookings = sqliteTable(
   {
     id: text("id").primaryKey(),
     reference: text("reference").notNull().unique(),
+    publicReference: text("public_reference"),
     customerName: text("customer_name").notNull(),
     phone: text("phone").notNull(),
     email: text("email"),
@@ -72,6 +73,7 @@ export const bookings = sqliteTable(
     updatedAt: text("updated_at").notNull(),
   },
   (table) => [
+    uniqueIndex("bookings_public_reference_unique").on(table.publicReference),
     index("bookings_status_created_idx").on(table.status, table.createdAt),
     index("bookings_customer_id_idx").on(table.customerId),
   ],

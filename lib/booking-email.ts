@@ -1,5 +1,6 @@
 import type { Booking } from "./data";
 import { getBookingItems } from "./booking-items.js";
+import { getBookingPublicReference } from "./booking-reference.ts";
 
 const BOOKING_RECIPIENT = "shoedoctorhtd@gmail.com";
 
@@ -66,7 +67,7 @@ export async function sendBookingEmailNotification(
     return { status: "sent" };
   } catch (error) {
     console.error(
-      `Booking ${booking.reference} was saved, but owner email notification failed:`,
+      `Booking ${getBookingPublicReference(booking)} was saved, but owner email notification failed:`,
       error,
     );
     return { status: "failed" };
@@ -74,6 +75,7 @@ export async function sendBookingEmailNotification(
 }
 
 function bookingEmailContent(booking: Booking) {
+  const publicReference = getBookingPublicReference(booking);
   const fulfillment =
     booking.fulfillmentMethod === "pickup_delivery"
       ? "Pickup & return delivery"
@@ -116,7 +118,7 @@ function bookingEmailContent(booking: Booking) {
     {
       heading: "Booking",
       fields: [
-        { label: "Booking ID", value: booking.reference },
+        { label: "Booking Reference", value: publicReference },
         { label: "Created", value: formatBookingDateTime(booking.createdAt) },
         {
           label: "Preferred service date",
@@ -183,7 +185,7 @@ function bookingEmailContent(booking: Booking) {
     },
   ];
   const highlights: EmailField[] = [
-    { label: "Booking ID", value: booking.reference },
+    { label: "Booking Reference", value: publicReference },
     { label: "Customer name", value: booking.customerName },
     { label: "Phone / WhatsApp", value: booking.phone },
     {
@@ -224,7 +226,7 @@ function bookingEmailContent(booking: Booking) {
     .join("");
 
   return {
-    subject: `\u{1F534} New Shoe Doctor Booking \u2014 ${headerValue(booking.reference)} \u2014 ${headerValue(booking.customerName)}`,
+    subject: `\u{1F534} New Shoe Doctor Booking \u2014 ${headerValue(publicReference)} \u2014 ${headerValue(booking.customerName)}`,
     text,
     html: `<!doctype html>
 <html lang="en">

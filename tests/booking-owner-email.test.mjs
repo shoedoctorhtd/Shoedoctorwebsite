@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-const { sendBookingEmailNotification } = await import(
-  "../lib/booking-email.ts"
-);
+const { sendBookingEmailNotification } = await import("../lib/booking-email.ts");
+const { bookingTemplateParameters } = await import("../lib/whatsapp.ts");
 
 const baseBooking = {
   id: "booking-1",
-  reference: "SD-TEST-1234",
+  reference: "SD-LEGACY-1234",
+  publicReference: "SD-260825-K7",
   customerName: "Asha <img src=x onerror=alert('x')>",
   phone: "+977 9812345678",
   email: "asha@example.com",
@@ -119,9 +119,11 @@ test("sends one complete, escaped owner email through the configured binding", a
   assert.equal(message.to, "shoedoctorhtd@gmail.com");
   assert.equal(
     message.subject,
-    "\u{1F534} New Shoe Doctor Booking \u2014 SD-TEST-1234 \u2014 Asha <img src=x onerror=alert('x')>",
+    "\u{1F534} New Shoe Doctor Booking \u2014 SD-260825-K7 \u2014 Asha <img src=x onerror=alert('x')>",
   );
   assert.match(message.text, /^NEW BOOKING/m);
+  assert.match(message.text, /Booking Reference: SD-260825-K7/);
+  assert.doesNotMatch(message.text, /SD-LEGACY-1234/);
   assert.match(message.text, /Created:/);
   assert.match(message.text, /Total pairs: 4 pairs/);
   assert.match(message.text, /PAIR 1/);
@@ -134,11 +136,20 @@ test("sends one complete, escaped owner email through the configured binding", a
   assert.match(message.text, /Open map: https:\/\/maps\.google\.com\/\?q=Hetauda/);
   assert.match(message.text, /We Diagnose\. We Clean\. We Restore\./);
   assert.match(message.html, /Asha &lt;img src=x onerror=alert\(&#39;x&#39;\)&gt;/);
+  assert.match(message.html, /Booking Reference[\s\S]*?SD-260825-K7/);
+  assert.doesNotMatch(message.html, /SD-LEGACY-1234/);
   assert.match(message.html, /Sneakers &lt;script&gt;alert\(&#39;x&#39;\)&lt;\/script&gt;/);
   assert.match(message.html, /Please treat the &lt;strong&gt;stain&lt;\/strong&gt;\./);
   assert.doesNotMatch(message.html, /<script>alert/);
   assert.match(message.html, /href="https:\/\/wa\.me\/9779812345678"/);
   assert.match(message.html, /href="https:\/\/maps\.google\.com\/\?q=Hetauda"/);
+});
+
+test("uses the public reference as the owner WhatsApp template reference", () => {
+  const parameters = bookingTemplateParameters(baseBooking);
+
+  assert.deepEqual(parameters[0], { type: "text", text: "SD-260825-K7" });
+  assert.equal(parameters.some((parameter) => parameter.text === "SD-LEGACY-1234"), false);
 });
 
 test("does not turn an unsafe saved location into an email link", async () => {

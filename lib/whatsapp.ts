@@ -1,4 +1,5 @@
 import type { Booking } from "./data";
+import { getBookingPublicReference } from "./booking-reference.ts";
 
 const DEFAULT_BOOKING_RECIPIENT = "9779761716743";
 const DEFAULT_TEMPLATE_NAME = "new_booking_alert";
@@ -68,7 +69,7 @@ export async function sendBookingWhatsAppNotification(
 
     if (!response.ok) {
       console.error(
-        `WhatsApp booking notification failed for ${booking.reference}: ${response.status}`,
+        `WhatsApp booking notification failed for ${getBookingPublicReference(booking)}: ${response.status}`,
       );
       return { status: "failed" };
     }
@@ -76,14 +77,14 @@ export async function sendBookingWhatsAppNotification(
     return { status: "sent" };
   } catch (error) {
     console.error(
-      `WhatsApp booking notification failed for ${booking.reference}:`,
+      `WhatsApp booking notification failed for ${getBookingPublicReference(booking)}:`,
       error,
     );
     return { status: "failed" };
   }
 }
 
-function bookingTemplateParameters(booking: Booking) {
+export function bookingTemplateParameters(booking: Booking) {
   const fulfillment =
     booking.fulfillmentMethod === "pickup_delivery"
       ? "Pickup & drop-off"
@@ -93,7 +94,7 @@ function bookingTemplateParameters(booking: Booking) {
     : booking.pickupAddress ?? "Not applicable";
 
   return [
-    booking.reference,
+    getBookingPublicReference(booking),
     booking.customerName,
     booking.phone,
     booking.serviceName,

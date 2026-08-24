@@ -15,6 +15,11 @@ import {
   buildStatusEmail,
   type StatusEmailContent,
 } from "./email/statusTemplates";
+import {
+  generatePublicBookingReference,
+  getBookingPublicReference,
+  isPublicReferenceCollision,
+} from "./booking-reference";
 
 export const SERVICE_CATEGORIES = ["Cleaning", "Repairs", "Add-ons"] as const;
 export const SERVICE_TONES = ["lime", "coral", "violet", "blue", "cream"] as const;
@@ -112,6 +117,7 @@ export type ServiceInput = Omit<Service, "id" | "createdAt" | "updatedAt">;
 export type Booking = {
   id: string;
   reference: string;
+  publicReference: string | null;
   customerName: string;
   phone: string;
   email: string | null;
@@ -473,6 +479,7 @@ async function initialiseDatabase() {
       CREATE TABLE IF NOT EXISTS bookings (
         id TEXT PRIMARY KEY,
         reference TEXT NOT NULL UNIQUE,
+        public_reference TEXT,
         customer_name TEXT NOT NULL,
         phone TEXT NOT NULL,
         email TEXT,
@@ -576,6 +583,25 @@ async function initialiseDatabase() {
   const bookingColumnNames = new Set(
     bookingColumns.results.map((column) => column.name),
   );
+  if (!bookingColumnNames.has("public_reference")) {
+    try {
+      await db
+        .prepare("ALTER TABLE bookings ADD COLUMN public_reference TEXT")
+        .run();
+    } catch (error) {
+      // Two cold Worker instances can both pass the PRAGMA check. The winner
+      // adds the compatibility column; the loser can safely continue.
+      const message = error instanceof Error ? error.message : String(error);
+      if (!/duplicate column name:\s*public_reference/iu.test(message)) {
+        throw error;
+      }
+    }
+  }
+  await db
+    .prepare(
+      "CREATE UNIQUE INDEX IF NOT EXISTS bookings_public_reference_unique ON bookings(public_reference)",
+    )
+    .run();
   if (!bookingColumnNames.has("pickup_area")) {
     await db.prepare("ALTER TABLE bookings ADD COLUMN pickup_area TEXT").run();
   }
@@ -664,6 +690,7 @@ async function initialiseDatabase() {
       ),
     );
   }
+
 }
 
 export async function ensureDatabase() {
@@ -672,6 +699,79 @@ export async function ensureDatabase() {
     throw error;
   });
   await setupPromise;
+}
+
+const PUBLIC_REFERENCE_BACKFILL_BATCH_SIZE = 25;
+
+/**
+ * Backfill a small, resumable batch only from protected/admin list reads.
+ * This keeps a large historical table from turning a customer booking or a
+ * Worker cold start into an unbounded migration job.
+ */
+async function backfillBookingPublicReferences(
+  db: Database,
+  limit = PUBLIC_REFERENCE_BACKFILL_BATCH_SIZE,
+) {
+  const result = await db
+    .prepare(`
+      SELECT id, created_at
+      FROM bookings
+      WHERE public_reference IS NULL OR public_reference = ''
+      ORDER BY created_at DESC, id DESC
+      LIMIT ?
+    `)
+    .bind(limit)
+    .all<Record<string, unknown>>();
+
+  for (const row of result.results) {
+    const bookingId = String(row.id);
+    const createdAt = new Date(String(row.created_at));
+    if (Number.isNaN(createdAt.getTime())) {
+      // Do not silently assign today's date to historical data. The record
+      // remains usable in the protected dashboard until its source date is
+      // repaired, while all other bookings can continue to be processed.
+      console.error(
+        `Unable to backfill a public booking reference for ${bookingId}: invalid created_at.`,
+      );
+      continue;
+    }
+
+    await assignBookingPublicReference(db, bookingId, createdAt);
+  }
+}
+
+async function assignBookingPublicReference(
+  db: Database,
+  bookingId: string,
+  createdAt: Date,
+) {
+  await generatePublicBookingReference({
+    date: createdAt,
+    tryPersist: async (publicReference) => {
+      try {
+        const update = await db
+          .prepare(`
+            UPDATE bookings
+            SET public_reference = ?
+            WHERE id = ? AND (public_reference IS NULL OR public_reference = '')
+          `)
+          .bind(publicReference, bookingId)
+          .run();
+        if (update.meta.changes) return true;
+
+        // Another Worker may have completed this record after the SELECT.
+        // This row no longer needs a candidate from this loop.
+        const current = await db
+          .prepare("SELECT public_reference FROM bookings WHERE id = ?")
+          .bind(bookingId)
+          .first<{ public_reference: string | null }>();
+        return Boolean(current?.public_reference);
+      } catch (error) {
+        if (isPublicReferenceCollision(error)) return false;
+        throw error;
+      }
+    },
+  });
 }
 
 function parseService(row: Record<string, unknown>): Service {
@@ -714,6 +814,9 @@ function parseBooking(row: Record<string, unknown>): Booking {
   return {
     id: String(row.id),
     reference: String(row.reference),
+    publicReference: row.public_reference
+      ? String(row.public_reference)
+      : null,
     customerName: String(row.customer_name),
     phone: String(row.phone),
     email: row.email ? String(row.email) : null,
@@ -1041,81 +1144,98 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
     : null;
 
   const id = crypto.randomUUID();
-  const reference = `SD-${Date.now().toString(36).toUpperCase()}-${id
+  const createdAt = new Date();
+  const reference = `SD-${createdAt.getTime().toString(36).toUpperCase()}-${id
     .slice(0, 4)
     .toUpperCase()}`;
-  const now = new Date().toISOString();
+  const now = createdAt.toISOString();
   const firstItem = itemSnapshots[0];
 
-  const batchResults = await db.batch([
-    db.prepare(`
-      INSERT INTO bookings (
-        id, reference, customer_name, phone, email, service_id,
-        service_name, shoe_type, shoe_brand, preferred_date,
-        fulfillment_method, pickup_area, delivery_fee, pair_count,
-        service_subtotal, express_fee, total_amount, free_delivery_applied,
-        free_delivery_reason, pickup_address, location_url, notes,
-        express_requested, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      id,
-      reference,
-      input.customerName,
-      input.phone,
-      input.email ?? null,
-      firstItem.serviceId,
-      firstItem.serviceName,
-      firstItem.footwearType,
-      firstItem.brand,
-      input.preferredDate ?? null,
-      input.fulfillmentMethod,
-      pickupArea,
-      delivery.deliveryFee,
-      itemSnapshots.length,
-      serviceSubtotal,
-      expressFee,
-      total,
-      delivery.freeDeliveryApplied ? 1 : 0,
-      freeDeliveryReason,
-      input.pickupAddress ?? null,
-      input.locationUrl ?? null,
-      input.notes ?? null,
-      expressRequested ? 1 : 0,
-      "new",
-      now,
-      now,
-    ),
-    ...itemSnapshots.map((item) =>
-      db
-        .prepare(`
-          INSERT INTO booking_items (
-            id, booking_id, pair_number, service_id, service_name,
-            service_price_label, service_price, footwear_type, brand,
-            special_request, status, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
-        `)
-        .bind(
-          item.id,
-          id,
-          item.pairNumber,
-          item.serviceId,
-          item.serviceName,
-          item.servicePriceLabel,
-          item.servicePrice,
-          item.footwearType,
-          item.brand,
-          item.specialRequest,
-          now,
-        ),
-    ),
-  ]);
-  if (batchResults.some((result) => !result.meta.changes)) {
-    throw new Error("Unable to save every pair in this booking.");
-  }
+  const publicReference = await generatePublicBookingReference({
+    date: createdAt,
+    tryPersist: async (candidate) => {
+      try {
+        const batchResults = await db.batch([
+          db.prepare(`
+            INSERT INTO bookings (
+              id, reference, public_reference, customer_name, phone, email, service_id,
+              service_name, shoe_type, shoe_brand, preferred_date,
+              fulfillment_method, pickup_area, delivery_fee, pair_count,
+              service_subtotal, express_fee, total_amount, free_delivery_applied,
+              free_delivery_reason, pickup_address, location_url, notes,
+              express_requested, status, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).bind(
+            id,
+            reference,
+            candidate,
+            input.customerName,
+            input.phone,
+            input.email ?? null,
+            firstItem.serviceId,
+            firstItem.serviceName,
+            firstItem.footwearType,
+            firstItem.brand,
+            input.preferredDate ?? null,
+            input.fulfillmentMethod,
+            pickupArea,
+            delivery.deliveryFee,
+            itemSnapshots.length,
+            serviceSubtotal,
+            expressFee,
+            total,
+            delivery.freeDeliveryApplied ? 1 : 0,
+            freeDeliveryReason,
+            input.pickupAddress ?? null,
+            input.locationUrl ?? null,
+            input.notes ?? null,
+            expressRequested ? 1 : 0,
+            "new",
+            now,
+            now,
+          ),
+          ...itemSnapshots.map((item) =>
+            db
+              .prepare(`
+                INSERT INTO booking_items (
+                  id, booking_id, pair_number, service_id, service_name,
+                  service_price_label, service_price, footwear_type, brand,
+                  special_request, status, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
+              `)
+              .bind(
+                item.id,
+                id,
+                item.pairNumber,
+                item.serviceId,
+                item.serviceName,
+                item.servicePriceLabel,
+                item.servicePrice,
+                item.footwearType,
+                item.brand,
+                item.specialRequest,
+                now,
+              ),
+          ),
+        ]);
+        if (batchResults.some((result) => !result.meta.changes)) {
+          throw new Error("Unable to save every pair in this booking.");
+        }
+        return true;
+      } catch (error) {
+        // The D1 unique index is the final authority. A concurrent booking can
+        // claim this exact reference between generation and INSERT, so only
+        // that conflict retries with another suffix.
+        if (isPublicReferenceCollision(error)) return false;
+        throw error;
+      }
+    },
+  });
 
   return {
     id,
     reference,
+    publicReference,
     customerName: input.customerName,
     phone: input.phone,
     email: input.email ?? null,
@@ -1154,8 +1274,30 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
 export async function listBookings(): Promise<Booking[]> {
   await ensureDatabase();
   const db = await getDatabase();
+  await backfillBookingPublicReferences(db);
   const result = await db
     .prepare("SELECT * FROM bookings ORDER BY created_at DESC LIMIT 500")
+    .all<Record<string, unknown>>();
+  const bookings = result.results.map(parseBooking);
+  await Promise.all([
+    attachBookingItems(db, bookings),
+    attachBookingStatusHistory(db, bookings),
+  ]);
+  return bookings;
+}
+
+/**
+ * Exact operational-reference lookup for the existing protected admin API.
+ * This deliberately avoids the dashboard's 500-record overview limit.
+ */
+export async function findBookingsByPublicReference(
+  publicReference: string,
+): Promise<Booking[]> {
+  await ensureDatabase();
+  const db = await getDatabase();
+  const result = await db
+    .prepare("SELECT * FROM bookings WHERE public_reference = ?")
+    .bind(publicReference)
     .all<Record<string, unknown>>();
   const bookings = result.results.map(parseBooking);
   await Promise.all([
@@ -1172,8 +1314,9 @@ export async function updateBookingStatus(
 ): Promise<BookingStatusUpdateResult> {
   await ensureDatabase();
   const db = await getDatabase();
-  const booking = await findBookingById(db, id);
-  if (!booking) return { kind: "not_found" };
+  const foundBooking = await findBookingById(db, id);
+  if (!foundBooking) return { kind: "not_found" };
+  const booking = await ensureBookingPublicReference(db, foundBooking);
   if (booking.status === status) return { kind: "unchanged", booking };
 
   const now = new Date().toISOString();
@@ -1322,12 +1465,12 @@ export async function retryBookingStatusNotification(
     lastError: null,
     updatedAt: now,
   };
-  const [booking, history] = await Promise.all([
+  const [foundBooking, history] = await Promise.all([
     findBookingById(db, bookingId),
     findBookingStatusHistory(db, notification.statusHistoryId),
   ]);
 
-  if (!booking || !history) {
+  if (!foundBooking || !history) {
     const failed = await recordNotificationWithoutDelivery(
       db,
       claimedNotification,
@@ -1337,8 +1480,10 @@ export async function retryBookingStatusNotification(
     return { kind: "failed", notification: failed };
   }
 
+  const booking = await ensureBookingPublicReference(db, foundBooking);
+
   const content = buildStatusEmail(history.newStatus, {
-    bookingReference: booking.reference,
+    bookingReference: getBookingPublicReference(booking),
     customerName: booking.customerName,
     fulfillmentMethod: booking.fulfillmentMethod,
     serviceName: booking.serviceName,
@@ -1462,6 +1607,24 @@ async function findBookingById(db: Database, id: string) {
   return booking;
 }
 
+async function ensureBookingPublicReference(
+  db: Database,
+  booking: Booking,
+) {
+  if (booking.publicReference) return booking;
+
+  const createdAt = new Date(booking.createdAt);
+  if (Number.isNaN(createdAt.getTime())) {
+    console.error(
+      `Unable to assign a public booking reference for ${booking.id}: invalid created_at.`,
+    );
+    return booking;
+  }
+
+  await assignBookingPublicReference(db, booking.id, createdAt);
+  return (await findBookingById(db, booking.id)) ?? booking;
+}
+
 async function findBookingNotification(
   db: Database,
   bookingId: string,
@@ -1491,7 +1654,7 @@ function buildStatusNotificationPlan(
   status: BookingStatus,
 ): StatusNotificationPlan {
   const content = buildStatusEmail(status, {
-    bookingReference: booking.reference,
+    bookingReference: getBookingPublicReference(booking),
     customerName: booking.customerName,
     fulfillmentMethod: booking.fulfillmentMethod,
     serviceName: booking.serviceName,
@@ -1581,7 +1744,7 @@ async function deliverStatusNotification(
 
   if (result.status === "failed") {
     console.error(
-      `Status email failed for booking ${booking.reference}; notification ${notification.id}; ${result.errorCode}.`,
+      `Status email failed for booking ${getBookingPublicReference(booking)}; notification ${notification.id}; ${result.errorCode}.`,
     );
   }
   try {
@@ -1597,7 +1760,7 @@ async function deliverStatusNotification(
     // Keeping the row pending is safer than permitting a blind retry after an
     // email may already have reached Gmail.
     console.error(
-      `Unable to record status email outcome for booking ${booking.reference}; notification ${notification.id}.`,
+      `Unable to record status email outcome for booking ${getBookingPublicReference(booking)}; notification ${notification.id}.`,
     );
     return {
       ...notification,

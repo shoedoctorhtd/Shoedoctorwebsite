@@ -8,7 +8,8 @@ const {
 
 const booking = {
   id: "booking-2",
-  reference: "SD-MULTI-1234",
+  reference: "SD-LEGACY-MULTI-1234",
+  publicReference: "SD-260825-P4",
   customerName: "Ravi <img src=x onerror=alert('x')>",
   phone: "+977 9812345678",
   email: "ravi@example.com",
@@ -99,9 +100,11 @@ test("builds one escaped multi-pair customer booking confirmation", () => {
 
   assert.equal(
     message.subject,
-    "\u{1F45F} Booking Confirmation \u2014 SD-MULTI-1234",
+    "\u{1F45F} Booking Confirmation \u2014 SD-260825-P4",
   );
   assert.match(message.text, /^SHOE DOCTOR BOOKING CONFIRMATION/m);
+  assert.match(message.text, /Reference: SD-260825-P4/);
+  assert.doesNotMatch(message.text, /SD-LEGACY-MULTI-1234/);
   assert.match(message.text, /Pairs: 4 pairs selected/);
   assert.match(message.text, /PAIR 1/);
   assert.match(message.text, /PAIR 4/);
@@ -117,6 +120,8 @@ test("builds one escaped multi-pair customer booking confirmation", () => {
     message.html,
     /Ravi &lt;img src=x onerror=alert\(&#39;x&#39;\)&gt;/,
   );
+  assert.match(message.html, /Reference[\s\S]*?SD-260825-P4/);
+  assert.doesNotMatch(message.html, /SD-LEGACY-MULTI-1234/);
   assert.doesNotMatch(message.html, /<script>alert/);
 });
 

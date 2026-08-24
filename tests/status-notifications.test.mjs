@@ -5,7 +5,7 @@ const { buildStatusEmail } = await import("../lib/email/statusTemplates.ts");
 const { buildRawGmailMessage } = await import("../lib/email/mime.ts");
 
 const booking = {
-  bookingReference: "SD-TEST-1234",
+  bookingReference: "SD-260825-XM",
   customerName: "Asha <script>alert('x')</script>",
   fulfillmentMethod: "self_dropoff",
   serviceName: "Deep Clean & Restore",
@@ -23,6 +23,8 @@ test("customer-facing statuses have a centralized predefined email", () => {
     const content = buildStatusEmail(status, booking);
     assert.ok(content, `${status} should create a customer notification`);
     assert.match(content.text, /Shoe Doctor/);
+    assert.match(content.text, /Booking: SD-260825-XM/);
+    assert.match(content.subject, /SD-260825-XM/);
     assert.match(content.html, /We Diagnose\. We Clean\. We Restore\./);
   }
   assert.equal(buildStatusEmail("new", booking), null);
