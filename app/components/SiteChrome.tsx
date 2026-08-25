@@ -142,6 +142,7 @@ export function SiteFooter() {
               {item.label}
             </a>
           ))}
+          <a href="/privacy-policy">Privacy Policy</a>
         </div>
         <div className="sd-footer-contact">
           <span>Talk to the Doctor</span>
