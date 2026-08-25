@@ -1,11 +1,16 @@
 import { createRestorationStory, listRestorationStories } from "@/lib/csr-data";
-import { csrAdminJson, csrApiError, requireCsrAdminApi } from "@/lib/csr-api";
+import {
+  csrAdminJson,
+  csrApiError,
+  requireCsrAdminApi,
+  requireCsrAdminMutation,
+} from "@/lib/csr-api";
 import { parseRestorationStoryInput } from "@/lib/csr-validation";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const unauthorized = await requireCsrAdminApi();
+export async function GET(request: Request) {
+  const unauthorized = await requireCsrAdminApi(request);
   if (unauthorized) return unauthorized;
   try {
     return csrAdminJson({ stories: await listRestorationStories() });
@@ -15,11 +20,12 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const unauthorized = await requireCsrAdminApi();
-  if (unauthorized) return unauthorized;
+  const auth = await requireCsrAdminMutation(request);
+  if ("response" in auth) return auth.response;
   try {
     const story = await createRestorationStory(
       parseRestorationStoryInput(await request.json()),
+      auth.user,
     );
     return csrAdminJson({ story }, { status: 201 });
   } catch (error) {

@@ -3,15 +3,24 @@ import {
   getDonationDrive,
   updateDonationDrive,
 } from "@/lib/csr-data";
-import { csrAdminJson, csrApiError, requireCsrAdminApi } from "@/lib/csr-api";
-import { parseCsrId, parseDonationDriveInput } from "@/lib/csr-validation";
+import {
+  csrAdminJson,
+  csrApiError,
+  requireCsrAdminApi,
+  requireCsrAdminMutation,
+} from "@/lib/csr-api";
+import {
+  parseCsrExpectedUpdatedAt,
+  parseCsrId,
+  parseDonationDriveInput,
+} from "@/lib/csr-validation";
 
 export const dynamic = "force-dynamic";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-export async function GET(_request: Request, context: RouteContext) {
-  const unauthorized = await requireCsrAdminApi();
+export async function GET(request: Request, context: RouteContext) {
+  const unauthorized = await requireCsrAdminApi(request);
   if (unauthorized) return unauthorized;
   try {
     const { id: rawId } = await context.params;
@@ -25,14 +34,17 @@ export async function GET(_request: Request, context: RouteContext) {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const unauthorized = await requireCsrAdminApi();
-  if (unauthorized) return unauthorized;
+  const auth = await requireCsrAdminMutation(request);
+  if ("response" in auth) return auth.response;
   try {
     const { id: rawId } = await context.params;
     const id = parseCsrId(rawId, "drive");
+    const body = await request.json();
     const drive = await updateDonationDrive(
       id,
-      parseDonationDriveInput(await request.json()),
+      parseDonationDriveInput(body),
+      parseCsrExpectedUpdatedAt(body.expectedUpdatedAt),
+      auth.user,
     );
     return drive
       ? csrAdminJson({ drive })
@@ -42,17 +54,18 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
-  const unauthorized = await requireCsrAdminApi();
-  if (unauthorized) return unauthorized;
+export async function DELETE(request: Request, context: RouteContext) {
+  const auth = await requireCsrAdminMutation(request);
+  if ("response" in auth) return auth.response;
   try {
     const { id: rawId } = await context.params;
     const id = parseCsrId(rawId, "drive");
-    const drive = await getDonationDrive(id);
-    if (!drive) {
-      return csrAdminJson({ message: "Donation drive not found." }, { status: 404 });
-    }
-    const deleted = await deleteDonationDrive(id);
+    const body = await request.json();
+    const deleted = await deleteDonationDrive(
+      id,
+      parseCsrExpectedUpdatedAt(body.expectedUpdatedAt),
+      auth.user,
+    );
     if (!deleted) {
       return csrAdminJson({ message: "Donation drive not found." }, { status: 404 });
     }

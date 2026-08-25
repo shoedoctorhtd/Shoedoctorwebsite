@@ -273,6 +273,7 @@ async function responseJson<T>(response: Response): Promise<T> {
 }
 
 const donationRequestsPageSize = 50;
+const emptyImpactStatsUpdatedAt = new Date(0).toISOString();
 
 function CsvDownload({ filters }: { filters: string }) {
   function exportCsv() {
@@ -1040,7 +1041,9 @@ export default function CsrDonationsDashboard({
         {
           method: editing ? "PATCH" : "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(input),
+          body: JSON.stringify(
+            editing ? { ...input, expectedUpdatedAt: editing.updatedAt } : input,
+          ),
         },
       );
       const result = await responseJson<{ drive: DonationDrive }>(response);
@@ -1074,7 +1077,9 @@ export default function CsrDonationsDashboard({
         {
           method: editing ? "PATCH" : "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(input),
+          body: JSON.stringify(
+            editing ? { ...input, expectedUpdatedAt: editing.updatedAt } : input,
+          ),
         },
       );
       const result = await responseJson<{ story: RestorationStory }>(response);
@@ -1101,7 +1106,9 @@ export default function CsrDonationsDashboard({
         {
           method: editing ? "PATCH" : "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(input),
+          body: JSON.stringify(
+            editing ? { ...input, expectedUpdatedAt: editing.updatedAt } : input,
+          ),
         },
       );
       const result = await responseJson<{ update: CommunityUpdate }>(response);
@@ -1133,7 +1140,10 @@ export default function CsrDonationsDashboard({
         {
           method: "PATCH",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(input),
+          body: JSON.stringify({
+            ...input,
+            expectedUpdatedAt: requestEditor.updatedAt,
+          }),
         },
       );
       const result = await responseJson<{
@@ -1195,7 +1205,11 @@ export default function CsrDonationsDashboard({
         {
           method: "PATCH",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ ...toDriveInput(drive), isPublished: !drive.isPublished }),
+          body: JSON.stringify({
+            ...toDriveInput(drive),
+            isPublished: !drive.isPublished,
+            expectedUpdatedAt: drive.updatedAt,
+          }),
         },
       );
       const result = await responseJson<{ drive: DonationDrive }>(response);
@@ -1224,7 +1238,11 @@ export default function CsrDonationsDashboard({
         {
           method: "PATCH",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ ...toStoryInput(story), isPublished: !story.isPublished }),
+          body: JSON.stringify({
+            ...toStoryInput(story),
+            isPublished: !story.isPublished,
+            expectedUpdatedAt: story.updatedAt,
+          }),
         },
       );
       const result = await responseJson<{ story: RestorationStory }>(response);
@@ -1246,7 +1264,11 @@ export default function CsrDonationsDashboard({
         {
           method: "PATCH",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ ...toUpdateInput(update), isPublished: !update.isPublished }),
+          body: JSON.stringify({
+            ...toUpdateInput(update),
+            isPublished: !update.isPublished,
+            expectedUpdatedAt: update.updatedAt,
+          }),
         },
       );
       const result = await responseJson<{ update: CommunityUpdate }>(response);
@@ -1273,7 +1295,11 @@ export default function CsrDonationsDashboard({
     try {
       const response = await fetch(
         `/api/admin/csr-donations/${target.kind === "story" ? "stories" : target.kind === "update" ? "updates" : `${target.kind}s`}/${encodeURIComponent(target.item.id)}`,
-        { method: "DELETE" },
+        {
+          method: "DELETE",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ expectedUpdatedAt: target.item.updatedAt }),
+        },
       );
       await responseJson<{ ok: boolean }>(response);
       if (target.kind === "request") {
@@ -1330,6 +1356,8 @@ export default function CsrDonationsDashboard({
           donationDrivesCompleted: readValue("donationDrivesCompleted"),
           partnerOrganizations: readValue("partnerOrganizations"),
           communitiesReached: readValue("communitiesReached"),
+          expectedUpdatedAt:
+            impactStats?.updatedAt ?? emptyImpactStatsUpdatedAt,
         }),
       });
       const result = await responseJson<{ stats: DonationImpactStats }>(response);
@@ -1344,6 +1372,19 @@ export default function CsrDonationsDashboard({
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Unable to save impact statistics.");
     } finally {
+      setBusy(null);
+    }
+  }
+
+  async function signOut() {
+    setBusy("logout");
+    setNotice(null);
+    try {
+      const response = await fetch("/api/admin/logout", { method: "POST" });
+      if (!response.ok) throw new Error("Unable to sign out.");
+      window.location.assign("/admin/login");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Unable to sign out.");
       setBusy(null);
     }
   }
@@ -1364,12 +1405,14 @@ export default function CsrDonationsDashboard({
           <span>SD+</span>
           <div>
             <strong>Shoe Doctor</strong>
-            <small>Owner dashboard</small>
+            <small>Super Admin dashboard</small>
           </div>
         </Link>
         <div className="admin-owner">
-          <span>Signed in as {ownerName}</span>
-          <a href="/api/admin/logout">Sign out</a>
+          <span>Signed in as {ownerName} · Super Admin</span>
+          <button type="button" onClick={() => void signOut()} disabled={busy === "logout"}>
+            {busy === "logout" ? "Signing out…" : "Sign out"}
+          </button>
         </div>
       </header>
 

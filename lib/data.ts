@@ -17,9 +17,17 @@ import {
 } from "./email/statusTemplates";
 import {
   generatePublicBookingReference,
+  getPhysicalPairTag,
   getBookingPublicReference,
   isPublicReferenceCollision,
 } from "./booking-reference";
+import {
+  auditValueDiff,
+  buildAuditLogInsert,
+  buildOwnerAlertEventInsert,
+  type AuditActor,
+} from "./audit";
+import type { AdminActor } from "./admin-types";
 
 export const SERVICE_CATEGORIES = ["Cleaning", "Repairs", "Add-ons"] as const;
 export const SERVICE_TONES = ["lime", "coral", "violet", "blue", "cream"] as const;
@@ -47,6 +55,18 @@ export type BookingNotificationStatus =
   | "failed"
   | "skipped";
 
+export type BookingCreationSource = "customer" | "admin" | "system" | "legacy";
+
+export type BookingOperationalNote = {
+  id: string;
+  bookingId: string;
+  note: string;
+  adminUserId: string | null;
+  administratorName: string | null;
+  administratorRole: "super_admin" | "admin" | null;
+  createdAt: string;
+};
+
 export type BookingNotification = {
   id: string;
   bookingId: string;
@@ -68,6 +88,11 @@ export type BookingStatusHistory = {
   previousStatus: BookingStatus;
   newStatus: BookingStatus;
   changedBy: string | null;
+  adminUserId: string | null;
+  administratorName: string | null;
+  administratorRole: "super_admin" | "admin" | null;
+  pairId: string | null;
+  pairReference: string | null;
   createdAt: string;
   notification: BookingNotification | null;
 };
@@ -114,6 +139,16 @@ export type Service = {
 
 export type ServiceInput = Omit<Service, "id" | "createdAt" | "updatedAt">;
 
+export type ServiceUpdateResult =
+  | { kind: "not_found" }
+  | { kind: "conflict"; service: Service }
+  | { kind: "updated"; service: Service & { ownerAlertEventId?: string | null } };
+
+export type ServiceDeleteResult =
+  | { kind: "not_found" }
+  | { kind: "conflict"; service: Service }
+  | { kind: "deleted"; ownerAlertEventId?: string | null };
+
 export type Booking = {
   id: string;
   reference: string;
@@ -122,6 +157,20 @@ export type Booking = {
   phone: string;
   email: string | null;
   customerId: string | null;
+  createdSource: BookingCreationSource;
+  createdByAdminId: string | null;
+  createdByAdminName: string | null;
+  updatedByAdminId: string | null;
+  updatedByAdminName: string | null;
+  deletedAt: string | null;
+  deletedByAdminId: string | null;
+  deletedByAdminName: string | null;
+  deletionReason: string | null;
+  restoredAt: string | null;
+  restoredByAdminId: string | null;
+  restoredByAdminName: string | null;
+  restorationReason: string | null;
+  recordVersion: number;
   serviceId: string;
   serviceName: string;
   shoeType: string;
@@ -134,6 +183,9 @@ export type Booking = {
   serviceSubtotal: number | null;
   expressFee: number | null;
   totalAmount: number | null;
+  discountAmount: number | null;
+  paymentAmount: number | null;
+  paymentStatus: "unpaid" | "partial" | "paid" | "refunded" | null;
   freeDeliveryApplied: boolean;
   freeDeliveryReason: string | null;
   pickupAddress: string | null;
@@ -145,6 +197,7 @@ export type Booking = {
   updatedAt: string;
   items: BookingItem[];
   statusHistory: BookingStatusHistory[];
+  operationalNotes: BookingOperationalNote[];
 };
 
 export type BookingItem = {
@@ -181,6 +234,27 @@ export type BookingInput = {
   locationUrl?: string | null;
   notes?: string | null;
   expressRequested: boolean;
+};
+
+export type BookingCreationContext = {
+  source?: Exclude<BookingCreationSource, "legacy">;
+  actor?: AdminActor | null;
+};
+
+export type BookingDetailsUpdateInput = {
+  customerName?: string;
+  phone?: string;
+  email?: string | null;
+  preferredDate?: string | null;
+  fulfillmentMethod?: FulfillmentMethod;
+  pickupArea?: PickupArea | null;
+  pickupAddress?: string | null;
+  locationUrl?: string | null;
+  notes?: string | null;
+  totalAmount?: number | null;
+  discountAmount?: number | null;
+  paymentAmount?: number | null;
+  paymentStatus?: "unpaid" | "partial" | "paid" | "refunded" | null;
 };
 
 const seedServices: Array<
@@ -821,6 +895,34 @@ function parseBooking(row: Record<string, unknown>): Booking {
     phone: String(row.phone),
     email: row.email ? String(row.email) : null,
     customerId: row.customer_id ? String(row.customer_id) : null,
+    createdSource:
+      row.created_source === "customer" ||
+      row.created_source === "admin" ||
+      row.created_source === "system" ||
+      row.created_source === "legacy"
+        ? row.created_source
+        : "legacy",
+    createdByAdminId: row.created_by_admin_id ? String(row.created_by_admin_id) : null,
+    createdByAdminName: row.created_by_admin_name_snapshot
+      ? String(row.created_by_admin_name_snapshot)
+      : null,
+    updatedByAdminId: row.updated_by_admin_id ? String(row.updated_by_admin_id) : null,
+    updatedByAdminName: row.updated_by_admin_name_snapshot
+      ? String(row.updated_by_admin_name_snapshot)
+      : null,
+    deletedAt: row.deleted_at ? String(row.deleted_at) : null,
+    deletedByAdminId: row.deleted_by_admin_id ? String(row.deleted_by_admin_id) : null,
+    deletedByAdminName: row.deleted_by_admin_name_snapshot
+      ? String(row.deleted_by_admin_name_snapshot)
+      : null,
+    deletionReason: row.deletion_reason ? String(row.deletion_reason) : null,
+    restoredAt: row.restored_at ? String(row.restored_at) : null,
+    restoredByAdminId: row.restored_by_admin_id ? String(row.restored_by_admin_id) : null,
+    restoredByAdminName: row.restored_by_admin_name_snapshot
+      ? String(row.restored_by_admin_name_snapshot)
+      : null,
+    restorationReason: row.restoration_reason ? String(row.restoration_reason) : null,
+    recordVersion: readPositiveInteger(row.record_version, 1),
     serviceId: String(row.service_id),
     serviceName: String(row.service_name),
     shoeType: String(row.shoe_type),
@@ -836,6 +938,15 @@ function parseBooking(row: Record<string, unknown>): Booking {
     serviceSubtotal: readOptionalNonNegativeAmount(row.service_subtotal),
     expressFee: readOptionalNonNegativeAmount(row.express_fee),
     totalAmount: readOptionalNonNegativeAmount(row.total_amount),
+    discountAmount: readOptionalNonNegativeAmount(row.discount_amount),
+    paymentAmount: readOptionalNonNegativeAmount(row.payment_amount),
+    paymentStatus:
+      row.payment_status === "unpaid" ||
+      row.payment_status === "partial" ||
+      row.payment_status === "paid" ||
+      row.payment_status === "refunded"
+        ? row.payment_status
+        : null,
     freeDeliveryApplied: Number(row.free_delivery_applied ?? 0) === 1,
     freeDeliveryReason: row.free_delivery_reason
       ? String(row.free_delivery_reason)
@@ -849,6 +960,7 @@ function parseBooking(row: Record<string, unknown>): Booking {
     updatedAt: String(row.updated_at),
     items: [],
     statusHistory: [],
+    operationalNotes: [],
   };
 }
 
@@ -918,6 +1030,17 @@ function parseBookingStatusHistory(
     previousStatus: row.previous_status as BookingStatus,
     newStatus: row.new_status as BookingStatus,
     changedBy: row.changed_by ? String(row.changed_by) : null,
+    adminUserId: row.admin_user_id ? String(row.admin_user_id) : null,
+    administratorName: row.administrator_name_snapshot
+      ? String(row.administrator_name_snapshot)
+      : null,
+    administratorRole:
+      row.administrator_role_snapshot === "super_admin" ||
+      row.administrator_role_snapshot === "admin"
+        ? row.administrator_role_snapshot
+        : null,
+    pairId: row.pair_id ? String(row.pair_id) : null,
+    pairReference: row.pair_reference ? String(row.pair_reference) : null,
     createdAt: String(row.created_at),
     notification,
   };
@@ -950,21 +1073,22 @@ export async function listPublicServices(): Promise<Service[]> {
   }
 }
 
-export async function createService(input: ServiceInput): Promise<Service> {
+export async function createService(input: ServiceInput, actor?: AdminActor | null): Promise<Service & { ownerAlertEventId?: string | null }> {
   await ensureDatabase();
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   const db = await getDatabase();
 
-  await db
-    .prepare(`
+  const auditId = crypto.randomUUID();
+  const ownerAlertEventId = actor ? crypto.randomUUID() : null;
+  const batch = await db.batch([
+    db.prepare(`
       INSERT INTO services (
         id, name, category, price_label, special_price_label, turnaround,
         description, features, badge, tone, icon, active, sort_order,
         created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `)
-    .bind(
+    `).bind(
       id,
       input.name,
       input.category,
@@ -980,28 +1104,69 @@ export async function createService(input: ServiceInput): Promise<Service> {
       input.sortOrder,
       now,
       now,
-    )
-    .run();
+    ),
+    ...(actor
+      ? [
+          buildAuditLogInsert(db, {
+            id: auditId,
+            actor,
+            action: "SERVICE_CREATED",
+            entityType: "service",
+            entityId: id,
+            newValues: serviceAuditSnapshot({ id, ...input, createdAt: now, updatedAt: now }),
+            changedFields: ["service"],
+            createdAt: now,
+            conditionalOn: {
+              sql: "EXISTS (SELECT 1 FROM services WHERE id = ?)",
+              bindings: [id],
+            },
+          }),
+          buildOwnerAlertEventInsert(db, {
+            id: ownerAlertEventId!,
+            auditLogId: auditId,
+            alertType: "SERVICE_CREATED",
+            createdAt: now,
+            conditionalOn: {
+              sql: "EXISTS (SELECT 1 FROM services WHERE id = ?)",
+              bindings: [id],
+            },
+          }),
+        ]
+      : []),
+  ]);
+  if (!batch[0]?.meta.changes || (actor && (!batch[1]?.meta.changes || !batch[2]?.meta.changes))) {
+    throw new Error("Unable to save the service audit record.");
+  }
 
-  return { id, ...input, createdAt: now, updatedAt: now };
+  return { id, ...input, createdAt: now, updatedAt: now, ownerAlertEventId };
 }
 
 export async function updateService(
   id: string,
   input: ServiceInput,
-): Promise<Service | null> {
+  actor?: AdminActor | null,
+  expectedUpdatedAt?: string | null,
+): Promise<ServiceUpdateResult> {
   await ensureDatabase();
   const now = new Date().toISOString();
   const db = await getDatabase();
-  const result = await db
-    .prepare(`
+  const existingRow = await db.prepare("SELECT * FROM services WHERE id = ?").bind(id).first<Record<string, unknown>>();
+  if (!existingRow) return { kind: "not_found" };
+  const existing = parseService(existingRow);
+  if (!expectedUpdatedAt || expectedUpdatedAt !== existing.updatedAt) {
+    return { kind: "conflict", service: existing };
+  }
+  const auditId = crypto.randomUUID();
+  const ownerAlertEventId = actor ? crypto.randomUUID() : null;
+  const operationId = crypto.randomUUID();
+  const batch = await db.batch([
+    db.prepare(`
       UPDATE services SET
         name = ?, category = ?, price_label = ?, special_price_label = ?,
         turnaround = ?, description = ?, features = ?, badge = ?, tone = ?,
-        icon = ?, active = ?, sort_order = ?, updated_at = ?
-      WHERE id = ?
-    `)
-    .bind(
+        icon = ?, active = ?, sort_order = ?, updated_at = ?, last_mutation_id = ?
+       WHERE id = ? AND updated_at = ?
+    `).bind(
       input.name,
       input.category,
       input.priceLabel,
@@ -1015,36 +1180,121 @@ export async function updateService(
       input.active ? 1 : 0,
       input.sortOrder,
       now,
+      operationId,
       id,
-    )
-    .run();
-
-  if (!result.meta.changes) return null;
-  const created = await db
-    .prepare("SELECT created_at FROM services WHERE id = ?")
-    .bind(id)
-    .first<{ created_at: string }>();
+      expectedUpdatedAt,
+    ),
+    ...(actor
+      ? [
+          buildAuditLogInsert(db, {
+            id: auditId,
+            actor,
+            action: "SERVICE_UPDATED",
+            entityType: "service",
+            entityId: id,
+            ...auditValueDiff(serviceAuditSnapshot(existing), serviceAuditSnapshot({
+              id,
+              ...input,
+              createdAt: existing.createdAt,
+              updatedAt: now,
+            })),
+            createdAt: now,
+            conditionalOn: {
+              sql: "EXISTS (SELECT 1 FROM services WHERE id = ? AND last_mutation_id = ?)",
+              bindings: [id, operationId],
+            },
+          }),
+          buildOwnerAlertEventInsert(db, {
+            id: ownerAlertEventId!,
+            auditLogId: auditId,
+            alertType: "SERVICE_UPDATED",
+            createdAt: now,
+            conditionalOn: {
+              sql: "EXISTS (SELECT 1 FROM services WHERE id = ? AND last_mutation_id = ?)",
+              bindings: [id, operationId],
+            },
+          }),
+        ]
+      : []),
+  ]);
+  if (!batch[0]?.meta.changes) {
+    const currentRow = await db.prepare("SELECT * FROM services WHERE id = ?").bind(id).first<Record<string, unknown>>();
+    return currentRow ? { kind: "conflict", service: parseService(currentRow) } : { kind: "not_found" };
+  }
+  if (actor && (!batch[1]?.meta.changes || !batch[2]?.meta.changes)) throw new Error("Unable to save the service audit record.");
   return {
-    id,
-    ...input,
-    createdAt: created?.created_at ?? now,
-    updatedAt: now,
+    kind: "updated",
+    service: {
+      id,
+      ...input,
+      createdAt: existing.createdAt,
+      updatedAt: now,
+      ownerAlertEventId,
+    },
   };
 }
 
-export async function deleteService(id: string): Promise<boolean> {
+export async function deleteService(
+  id: string,
+  actor?: AdminActor | null,
+  expectedUpdatedAt?: string | null,
+): Promise<ServiceDeleteResult> {
   await ensureDatabase();
   const db = await getDatabase();
-  const result = await db
-    .prepare("DELETE FROM services WHERE id = ?")
-    .bind(id)
-    .run();
-  return Boolean(result.meta.changes);
+  const existingRow = await db.prepare("SELECT * FROM services WHERE id = ?").bind(id).first<Record<string, unknown>>();
+  if (!existingRow) return { kind: "not_found" };
+  const existing = parseService(existingRow);
+  if (!expectedUpdatedAt || expectedUpdatedAt !== existing.updatedAt) {
+    return { kind: "conflict", service: existing };
+  }
+  const now = new Date().toISOString();
+  const auditId = crypto.randomUUID();
+  const ownerAlertEventId = actor ? crypto.randomUUID() : null;
+  const batch = await db.batch([
+    ...(actor
+      ? [
+          buildAuditLogInsert(db, {
+            id: auditId,
+            actor,
+            action: "SERVICE_DELETED",
+            entityType: "service",
+            entityId: id,
+            previousValues: serviceAuditSnapshot(existing),
+            changedFields: ["service"],
+            createdAt: now,
+            conditionalOn: { sql: "EXISTS (SELECT 1 FROM services WHERE id = ? AND updated_at = ?)", bindings: [id, expectedUpdatedAt] },
+          }),
+          db.prepare("DELETE FROM services WHERE id = ? AND updated_at = ?").bind(id, expectedUpdatedAt),
+          buildOwnerAlertEventInsert(db, {
+            id: ownerAlertEventId!,
+            auditLogId: auditId,
+            alertType: "SERVICE_DELETED",
+            createdAt: now,
+            conditionalOn: { sql: "EXISTS (SELECT 1 FROM audit_logs WHERE id = ?)", bindings: [auditId] },
+          }),
+        ]
+      : [db.prepare("DELETE FROM services WHERE id = ? AND updated_at = ?").bind(id, expectedUpdatedAt)]),
+  ]);
+  const deletedIndex = actor ? 1 : 0;
+  if (!batch[deletedIndex]?.meta.changes) {
+    const currentRow = await db.prepare("SELECT * FROM services WHERE id = ?").bind(id).first<Record<string, unknown>>();
+    return currentRow ? { kind: "conflict", service: parseService(currentRow) } : { kind: "not_found" };
+  }
+  if (actor && (!batch[0]?.meta.changes || !batch[2]?.meta.changes)) throw new Error("Unable to save the service audit record.");
+  return { kind: "deleted", ownerAlertEventId };
 }
 
-export async function createBooking(input: BookingInput): Promise<Booking> {
+export async function createBooking(
+  input: BookingInput,
+  context: BookingCreationContext = {},
+): Promise<Booking> {
   await ensureDatabase();
   const db = await getDatabase();
+  const createdSource = context.source ?? "customer";
+  const actor = context.actor ?? null;
+  if (createdSource === "admin" && !actor) {
+    throw new Error("An authenticated administrator is required for counter bookings.");
+  }
   if (!Array.isArray(input.items) || input.items.length < 1 || input.items.length > 20) {
     throw new Error("A booking must include between 1 and 20 pairs.");
   }
@@ -1144,12 +1394,17 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
     : null;
 
   const id = crypto.randomUUID();
+  const auditId = crypto.randomUUID();
   const createdAt = new Date();
   const reference = `SD-${createdAt.getTime().toString(36).toUpperCase()}-${id
     .slice(0, 4)
     .toUpperCase()}`;
   const now = createdAt.toISOString();
   const firstItem = itemSnapshots[0];
+  const auditActor: AuditActor = actor ?? {
+    actorType: createdSource === "customer" ? "customer" : "system",
+    name: createdSource === "customer" ? "Customer" : "System",
+  };
 
   const publicReference = await generatePublicBookingReference({
     date: createdAt,
@@ -1163,8 +1418,11 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
               fulfillment_method, pickup_area, delivery_fee, pair_count,
               service_subtotal, express_fee, total_amount, free_delivery_applied,
               free_delivery_reason, pickup_address, location_url, notes,
-              express_requested, status, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              express_requested, status, created_source, created_by_admin_id,
+              created_by_admin_name_snapshot, updated_by_admin_id,
+              updated_by_admin_name_snapshot, record_version, discount_amount,
+              payment_amount, payment_status, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `).bind(
             id,
             reference,
@@ -1191,6 +1449,15 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
             input.notes ?? null,
             expressRequested ? 1 : 0,
             "new",
+            createdSource,
+            actor?.id ?? null,
+            actor?.name ?? null,
+            actor?.id ?? null,
+            actor?.name ?? null,
+            1,
+            0,
+            0,
+            "unpaid",
             now,
             now,
           ),
@@ -1217,6 +1484,31 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
                 now,
               ),
           ),
+          buildAuditLogInsert(db, {
+            id: auditId,
+            actor: auditActor,
+            action: "BOOKING_CREATED",
+            entityType: "booking",
+            entityId: id,
+            bookingReference: candidate,
+            newValues: {
+              source: createdSource,
+              pairCount: itemSnapshots.length,
+              status: "new",
+              serviceSubtotal,
+              deliveryFee: delivery.deliveryFee,
+              totalAmount: total,
+            },
+            changedFields: [
+              "source",
+              "pairCount",
+              "status",
+              "serviceSubtotal",
+              "deliveryFee",
+              "totalAmount",
+            ],
+            createdAt: now,
+          }),
         ]);
         if (batchResults.some((result) => !result.meta.changes)) {
           throw new Error("Unable to save every pair in this booking.");
@@ -1240,6 +1532,20 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
     phone: input.phone,
     email: input.email ?? null,
     customerId: null,
+    createdSource,
+    createdByAdminId: actor?.id ?? null,
+    createdByAdminName: actor?.name ?? null,
+    updatedByAdminId: actor?.id ?? null,
+    updatedByAdminName: actor?.name ?? null,
+    deletedAt: null,
+    deletedByAdminId: null,
+    deletedByAdminName: null,
+    deletionReason: null,
+    restoredAt: null,
+    restoredByAdminId: null,
+    restoredByAdminName: null,
+    restorationReason: null,
+    recordVersion: 1,
     serviceId: firstItem.serviceId,
     serviceName: firstItem.serviceName,
     shoeType: firstItem.footwearType,
@@ -1252,6 +1558,9 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
     serviceSubtotal,
     expressFee,
     totalAmount: total,
+    discountAmount: 0,
+    paymentAmount: 0,
+    paymentStatus: "unpaid",
     freeDeliveryApplied: delivery.freeDeliveryApplied,
     freeDeliveryReason,
     pickupAddress: input.pickupAddress ?? null,
@@ -1268,20 +1577,46 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
       createdAt: now,
     })),
     statusHistory: [],
+    operationalNotes: [],
   };
 }
 
-export async function listBookings(): Promise<Booking[]> {
+function parseBookingOperationalNote(row: Record<string, unknown>): BookingOperationalNote {
+  return {
+    id: String(row.id),
+    bookingId: String(row.booking_id),
+    note: String(row.note),
+    adminUserId: row.admin_user_id ? String(row.admin_user_id) : null,
+    administratorName: row.administrator_name_snapshot
+      ? String(row.administrator_name_snapshot)
+      : null,
+    administratorRole:
+      row.administrator_role_snapshot === "super_admin" ||
+      row.administrator_role_snapshot === "admin"
+        ? row.administrator_role_snapshot
+        : null,
+    createdAt: String(row.created_at),
+  };
+}
+
+export async function listBookings(
+  options: { includeDeleted?: boolean } = {},
+): Promise<Booking[]> {
   await ensureDatabase();
   const db = await getDatabase();
   await backfillBookingPublicReferences(db);
   const result = await db
-    .prepare("SELECT * FROM bookings ORDER BY created_at DESC LIMIT 500")
+    .prepare(
+      options.includeDeleted
+        ? "SELECT * FROM bookings ORDER BY created_at DESC LIMIT 500"
+        : "SELECT * FROM bookings WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT 500",
+    )
     .all<Record<string, unknown>>();
   const bookings = result.results.map(parseBooking);
   await Promise.all([
     attachBookingItems(db, bookings),
     attachBookingStatusHistory(db, bookings),
+    attachBookingOperationalNotes(db, bookings),
   ]);
   return bookings;
 }
@@ -1292,43 +1627,90 @@ export async function listBookings(): Promise<Booking[]> {
  */
 export async function findBookingsByPublicReference(
   publicReference: string,
+  options: { includeDeleted?: boolean } = {},
 ): Promise<Booking[]> {
   await ensureDatabase();
   const db = await getDatabase();
   const result = await db
-    .prepare("SELECT * FROM bookings WHERE public_reference = ?")
+    .prepare(
+      options.includeDeleted
+        ? "SELECT * FROM bookings WHERE public_reference = ?"
+        : "SELECT * FROM bookings WHERE public_reference = ? AND deleted_at IS NULL",
+    )
     .bind(publicReference)
     .all<Record<string, unknown>>();
   const bookings = result.results.map(parseBooking);
   await Promise.all([
     attachBookingItems(db, bookings),
     attachBookingStatusHistory(db, bookings),
+    attachBookingOperationalNotes(db, bookings),
   ]);
   return bookings;
+}
+
+export async function listDeletedBookings(): Promise<Booking[]> {
+  await ensureDatabase();
+  const db = await getDatabase();
+  const result = await db
+    .prepare("SELECT * FROM bookings WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC LIMIT 500")
+    .all<Record<string, unknown>>();
+  const bookings = result.results.map(parseBooking);
+  await Promise.all([
+    attachBookingItems(db, bookings),
+    attachBookingStatusHistory(db, bookings),
+    attachBookingOperationalNotes(db, bookings),
+  ]);
+  return bookings;
+}
+
+export async function getBookingForAdmin(id: string, includeDeleted = false) {
+  await ensureDatabase();
+  const db = await getDatabase();
+  const foundBooking = await findBookingById(db, id);
+  if (!foundBooking || (!includeDeleted && foundBooking.deletedAt)) return null;
+  // Historical bookings can predate short public references. Normalise them
+  // through the established generator before returning an actionable admin
+  // record, rather than inventing a separate legacy identifier path.
+  const booking = await ensureBookingPublicReference(db, foundBooking);
+  await Promise.all([
+    attachBookingStatusHistory(db, [booking]),
+    attachBookingOperationalNotes(db, [booking]),
+  ]);
+  return booking;
 }
 
 export async function updateBookingStatus(
   id: string,
   status: BookingStatus,
-  changedBy?: string | null,
+  actor?: AdminActor | null,
+  expectedVersion?: number | null,
 ): Promise<BookingStatusUpdateResult> {
   await ensureDatabase();
   const db = await getDatabase();
   const foundBooking = await findBookingById(db, id);
-  if (!foundBooking) return { kind: "not_found" };
+  if (!foundBooking || foundBooking.deletedAt) return { kind: "not_found" };
   const booking = await ensureBookingPublicReference(db, foundBooking);
   if (booking.status === status) return { kind: "unchanged", booking };
+  const version = Number.isSafeInteger(expectedVersion) && Number(expectedVersion) > 0
+    ? Number(expectedVersion)
+    : booking.recordVersion;
 
   const now = new Date().toISOString();
   const historyId = crypto.randomUUID();
   const notificationId = crypto.randomUUID();
+  const auditId = crypto.randomUUID();
   const plan = buildStatusNotificationPlan(booking, status);
   const history: BookingStatusHistory = {
     id: historyId,
     bookingId: booking.id,
     previousStatus: booking.status,
     newStatus: status,
-    changedBy: cleanChangedBy(changedBy),
+    changedBy: cleanChangedBy(actor?.email),
+    adminUserId: actor?.id ?? null,
+    administratorName: actor?.name ?? null,
+    administratorRole: actor?.role ?? null,
+    pairId: null,
+    pairReference: null,
     createdAt: now,
     notification: null,
   };
@@ -1347,16 +1729,19 @@ export async function updateBookingStatus(
     db
       .prepare(`
         UPDATE bookings
-        SET status = ?, updated_at = ?, last_status_history_id = ?
-        WHERE id = ? AND status = ?
+        SET status = ?, updated_at = ?, last_status_history_id = ?,
+            updated_by_admin_id = ?, updated_by_admin_name_snapshot = ?,
+            record_version = record_version + 1
+        WHERE id = ? AND status = ? AND deleted_at IS NULL AND record_version = ?
       `)
-      .bind(status, now, historyId, booking.id, booking.status),
+      .bind(status, now, historyId, actor?.id ?? null, actor?.name ?? null, booking.id, booking.status, version),
     db
       .prepare(`
         INSERT INTO booking_status_history (
-          id, booking_id, previous_status, new_status, changed_by, created_at
-        )
-        SELECT ?, ?, ?, ?, ?, ?
+          id, booking_id, previous_status, new_status, changed_by, admin_user_id,
+          administrator_name_snapshot, administrator_role_snapshot, pair_id,
+          pair_reference, created_at
+        ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?
         WHERE EXISTS (
           SELECT 1 FROM bookings
           WHERE id = ? AND last_status_history_id = ?
@@ -1368,6 +1753,9 @@ export async function updateBookingStatus(
         history.previousStatus,
         history.newStatus,
         history.changedBy,
+        history.adminUserId,
+        history.administratorName,
+        history.administratorRole,
         history.createdAt,
         booking.id,
         history.id,
@@ -1399,6 +1787,22 @@ export async function updateBookingStatus(
         history.id,
         booking.id,
       ),
+    buildAuditLogInsert(db, {
+      id: auditId,
+      actor: actor ?? { actorType: "system", name: "System" },
+      action: "BOOKING_STATUS_CHANGED",
+      entityType: "booking",
+      entityId: booking.id,
+      bookingReference: getBookingPublicReference(booking),
+      previousValues: { status: booking.status },
+      newValues: { status },
+      changedFields: ["status"],
+      createdAt: now,
+      conditionalOn: {
+        sql: "EXISTS (SELECT 1 FROM bookings WHERE id = ? AND last_status_history_id = ?)",
+        bindings: [booking.id, historyId],
+      },
+    }),
   ]);
 
   if (!batchResults[0]?.meta.changes) {
@@ -1408,7 +1812,7 @@ export async function updateBookingStatus(
       ? { kind: "unchanged", booking: current }
       : { kind: "conflict", booking: current };
   }
-  if (!batchResults[1]?.meta.changes || !batchResults[2]?.meta.changes) {
+  if (!batchResults[1]?.meta.changes || !batchResults[2]?.meta.changes || !batchResults[3]?.meta.changes) {
     throw new Error("Unable to create the booking status notification record.");
   }
 
@@ -1416,6 +1820,9 @@ export async function updateBookingStatus(
     ...booking,
     status,
     updatedAt: now,
+    updatedByAdminId: actor?.id ?? null,
+    updatedByAdminName: actor?.name ?? null,
+    recordVersion: booking.recordVersion + 1,
   };
   if (notification.status === "pending" && plan.content && notification.recipient) {
     notification = await deliverStatusNotification(
@@ -1431,9 +1838,524 @@ export async function updateBookingStatus(
   return { kind: "updated", booking: updatedBooking, history, notification };
 }
 
+export async function updateBookingItemStatus(
+  bookingId: string,
+  itemId: string,
+  status: BookingStatus,
+  actor: AdminActor,
+  expectedVersion?: number | null,
+) {
+  await ensureDatabase();
+  const db = await getDatabase();
+  const foundBooking = await findBookingById(db, bookingId);
+  if (!foundBooking || foundBooking.deletedAt) return { kind: "not_found" as const };
+  const booking = await ensureBookingPublicReference(db, foundBooking);
+  const item = booking.items.find((candidate) => candidate.id === itemId);
+  if (!item) return { kind: "pair_not_found" as const };
+  const previousStatus = item.status ?? booking.status;
+  if (previousStatus === status) return { kind: "unchanged" as const, booking };
+  const version = validRecordVersion(expectedVersion) ?? booking.recordVersion;
+  const now = new Date().toISOString();
+  const historyId = crypto.randomUUID();
+  const auditId = crypto.randomUUID();
+  const operationId = crypto.randomUUID();
+  const pairReference = booking.publicReference
+    ? getPhysicalPairTag(booking.publicReference, item.pairNumber)
+    : `Pair ${item.pairNumber}`;
+  const batch = await db.batch([
+    db
+      .prepare(`
+        UPDATE bookings
+        SET updated_at = ?, updated_by_admin_id = ?, updated_by_admin_name_snapshot = ?,
+            record_version = record_version + 1, last_admin_mutation_id = ?
+        WHERE id = ? AND deleted_at IS NULL AND record_version = ?
+          AND EXISTS (SELECT 1 FROM booking_items WHERE id = ? AND booking_id = ?)
+      `)
+      .bind(now, actor.id, actor.name, operationId, booking.id, version, item.id, booking.id),
+    db
+      .prepare(`
+        UPDATE booking_items
+        SET status = ?
+        WHERE id = ? AND booking_id = ?
+          AND EXISTS (
+            SELECT 1 FROM bookings
+            WHERE id = ? AND last_admin_mutation_id = ?
+          )
+      `)
+      .bind(status, item.id, booking.id, booking.id, operationId),
+    db
+      .prepare(`
+        INSERT INTO booking_status_history (
+          id, booking_id, previous_status, new_status, changed_by, admin_user_id,
+          administrator_name_snapshot, administrator_role_snapshot, pair_id,
+          pair_reference, created_at
+        ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        WHERE EXISTS (
+          SELECT 1 FROM bookings WHERE id = ? AND last_admin_mutation_id = ?
+        )
+      `)
+      .bind(
+        historyId,
+        booking.id,
+        previousStatus,
+        status,
+        actor.email,
+        actor.id,
+        actor.name,
+        actor.role,
+        item.id,
+        pairReference,
+        now,
+        booking.id,
+        operationId,
+      ),
+    buildAuditLogInsert(db, {
+      id: auditId,
+      actor,
+      action: "BOOKING_PAIR_STATUS_CHANGED",
+      entityType: "booking_pair",
+      entityId: item.id,
+      bookingReference: getBookingPublicReference(booking),
+      pairReference,
+      previousValues: { status: previousStatus },
+      newValues: { status },
+      changedFields: ["status"],
+      createdAt: now,
+      conditionalOn: {
+        sql: "EXISTS (SELECT 1 FROM bookings WHERE id = ? AND last_admin_mutation_id = ?)",
+        bindings: [booking.id, operationId],
+      },
+    }),
+  ]);
+  if (!batch[0]?.meta.changes) {
+    const current = await findBookingById(db, bookingId);
+    return current ? { kind: "conflict" as const, booking: current } : { kind: "not_found" as const };
+  }
+  if (!batch[1]?.meta.changes || !batch[2]?.meta.changes || !batch[3]?.meta.changes) {
+    throw new Error("Unable to save the pair status history and audit record.");
+  }
+  const updated = await getBookingForAdmin(bookingId, true);
+  return { kind: "updated" as const, booking: updated ?? booking };
+}
+
+/** Super-Admin correction path for a pair's saved service snapshot. The
+ * original price label/name remain in the audit diff, while the booking keeps
+ * its multi-pair structure and a fresh optimistic-concurrency version. */
+export async function updateBookingItemService(
+  bookingId: string,
+  itemId: string,
+  serviceId: string,
+  actor: AdminActor,
+  expectedVersion: number,
+) {
+  await ensureDatabase();
+  const db = await getDatabase();
+  const booking = await findBookingById(db, bookingId);
+  if (!booking || booking.deletedAt) return { kind: "not_found" as const };
+  const item = booking.items.find((candidate) => candidate.id === itemId);
+  if (!item) return { kind: "pair_not_found" as const };
+  const service = await db
+    .prepare("SELECT id, name, price_label FROM services WHERE id = ?")
+    .bind(serviceId)
+    .first<{ id: string; name: string; price_label: string }>();
+  if (!service) return { kind: "service_not_found" as const };
+  const nextPrice = getExactNprPrice(service.price_label);
+  const nextTotals = calculateBookingTotals(
+    booking.items.map((candidate) => candidate.id === item.id ? nextPrice : candidate.servicePrice),
+    booking.deliveryFee,
+    booking.expressFee,
+  );
+  const before = {
+    serviceId: item.serviceId,
+    serviceName: item.serviceName,
+    servicePriceLabel: item.servicePriceLabel,
+    servicePrice: item.servicePrice,
+    serviceSubtotal: booking.serviceSubtotal,
+    totalAmount: booking.totalAmount,
+  };
+  const after = {
+    serviceId: service.id,
+    serviceName: service.name,
+    servicePriceLabel: service.price_label,
+    servicePrice: nextPrice,
+    serviceSubtotal: nextTotals.serviceSubtotal,
+    totalAmount: nextTotals.total,
+  };
+  const diff = auditValueDiff(before, after);
+  if (!diff.changedFields.length) return { kind: "unchanged" as const, booking };
+  const version = validRecordVersion(expectedVersion);
+  if (!version) throw new Error("Refresh the booking before changing its service.");
+  const now = new Date().toISOString();
+  const operationId = crypto.randomUUID();
+  const auditId = crypto.randomUUID();
+  const alertId = crypto.randomUUID();
+  const pairReference = booking.publicReference
+    ? getPhysicalPairTag(booking.publicReference, item.pairNumber)
+    : `Pair ${item.pairNumber}`;
+  const summaryFields = item.pairNumber === 1
+    ? ", service_id = ?, service_name = ?, service_subtotal = ?, total_amount = ?"
+    : ", service_subtotal = ?, total_amount = ?";
+  const parentBindings = [
+    now,
+    actor.id,
+    actor.name,
+    operationId,
+    ...(item.pairNumber === 1 ? [service.id, service.name] : []),
+    nextTotals.serviceSubtotal,
+    nextTotals.total,
+    booking.id,
+    version,
+  ];
+  const batch = await db.batch([
+    db
+      .prepare(`
+        UPDATE bookings
+        SET updated_at = ?, updated_by_admin_id = ?, updated_by_admin_name_snapshot = ?,
+            last_admin_mutation_id = ?, record_version = record_version + 1${summaryFields}
+        WHERE id = ? AND deleted_at IS NULL AND record_version = ?
+      `)
+      .bind(...parentBindings),
+    db
+      .prepare(`
+        UPDATE booking_items
+        SET service_id = ?, service_name = ?, service_price_label = ?, service_price = ?
+        WHERE id = ? AND booking_id = ?
+          AND EXISTS (SELECT 1 FROM bookings WHERE id = ? AND last_admin_mutation_id = ?)
+      `)
+      .bind(service.id, service.name, service.price_label, nextPrice, item.id, booking.id, booking.id, operationId),
+    buildAuditLogInsert(db, {
+      id: auditId,
+      actor,
+      action: "BOOKING_PAIR_SERVICE_CHANGED",
+      entityType: "booking_pair",
+      entityId: item.id,
+      bookingReference: getBookingPublicReference(booking),
+      pairReference,
+      previousValues: diff.previousValues,
+      newValues: diff.newValues,
+      changedFields: diff.changedFields,
+      createdAt: now,
+      conditionalOn: {
+        sql: "EXISTS (SELECT 1 FROM bookings WHERE id = ? AND last_admin_mutation_id = ?)",
+        bindings: [booking.id, operationId],
+      },
+    }),
+    buildOwnerAlertEventInsert(db, {
+      id: alertId,
+      auditLogId: auditId,
+      alertType: "BOOKING_PAIR_SERVICE_CHANGED",
+      createdAt: now,
+      conditionalOn: {
+        sql: "EXISTS (SELECT 1 FROM bookings WHERE id = ? AND last_admin_mutation_id = ?)",
+        bindings: [booking.id, operationId],
+      },
+    }),
+  ]);
+  if (!batch[0]?.meta.changes) {
+    const current = await getBookingForAdmin(bookingId, true);
+    return current ? { kind: "conflict" as const, booking: current } : { kind: "not_found" as const };
+  }
+  if (!batch[1]?.meta.changes || !batch[2]?.meta.changes || !batch[3]?.meta.changes) {
+    throw new Error("Unable to preserve the pair service change and audit record.");
+  }
+  return {
+    kind: "updated" as const,
+    booking: (await getBookingForAdmin(bookingId, true)) ?? booking,
+    ownerAlertEventId: alertId,
+  };
+}
+
+export async function addBookingOperationalNote(
+  bookingId: string,
+  noteInput: string,
+  actor: AdminActor,
+  expectedVersion?: number | null,
+) {
+  const note = cleanOperationalNote(noteInput);
+  if (!note) throw new Error("Enter an operational note between 1 and 800 characters.");
+  await ensureDatabase();
+  const db = await getDatabase();
+  const booking = await findBookingById(db, bookingId);
+  if (!booking || booking.deletedAt) return { kind: "not_found" as const };
+  const version = validRecordVersion(expectedVersion) ?? booking.recordVersion;
+  const now = new Date().toISOString();
+  const noteId = crypto.randomUUID();
+  const auditId = crypto.randomUUID();
+  const operationId = crypto.randomUUID();
+  const batch = await db.batch([
+    db
+      .prepare(`
+        UPDATE bookings
+        SET updated_at = ?, updated_by_admin_id = ?, updated_by_admin_name_snapshot = ?,
+            record_version = record_version + 1, last_admin_mutation_id = ?
+        WHERE id = ? AND deleted_at IS NULL AND record_version = ?
+      `)
+      .bind(now, actor.id, actor.name, operationId, booking.id, version),
+    db
+      .prepare(`
+        INSERT INTO booking_operational_notes (
+          id, booking_id, note, admin_user_id, administrator_name_snapshot,
+          administrator_role_snapshot, created_at
+        ) SELECT ?, ?, ?, ?, ?, ?, ?
+        WHERE EXISTS (SELECT 1 FROM bookings WHERE id = ? AND last_admin_mutation_id = ?)
+      `)
+      .bind(noteId, booking.id, note, actor.id, actor.name, actor.role, now, booking.id, operationId),
+    buildAuditLogInsert(db, {
+      id: auditId,
+      actor,
+      action: "BOOKING_OPERATIONAL_NOTE_ADDED",
+      entityType: "booking_operational_note",
+      entityId: noteId,
+      bookingReference: getBookingPublicReference(booking),
+      newValues: { note },
+      changedFields: ["note"],
+      createdAt: now,
+      conditionalOn: {
+        sql: "EXISTS (SELECT 1 FROM booking_operational_notes WHERE id = ? AND booking_id = ?) AND EXISTS (SELECT 1 FROM bookings WHERE id = ? AND last_admin_mutation_id = ?)",
+        bindings: [noteId, booking.id, booking.id, operationId],
+      },
+    }),
+  ]);
+  if (!batch[0]?.meta.changes) return { kind: "conflict" as const, booking };
+  if (!batch[1]?.meta.changes || !batch[2]?.meta.changes) {
+    throw new Error("Unable to preserve the operational note and audit record.");
+  }
+  return {
+    kind: "updated" as const,
+    booking: (await getBookingForAdmin(bookingId, true)) ?? booking,
+  };
+}
+
+export async function updateBookingDetails(
+  bookingId: string,
+  input: BookingDetailsUpdateInput,
+  actor: AdminActor,
+  expectedVersion?: number | null,
+) {
+  await ensureDatabase();
+  const db = await getDatabase();
+  const booking = await findBookingById(db, bookingId);
+  if (!booking || booking.deletedAt) return { kind: "not_found" as const };
+  const before = bookingEditableSnapshot(booking);
+  const after = mergeBookingDetails(before, input);
+  const diff = auditValueDiff(before, after);
+  if (!diff.changedFields.length) return { kind: "unchanged" as const, booking };
+  const version = validRecordVersion(expectedVersion) ?? booking.recordVersion;
+  const now = new Date().toISOString();
+  const auditId = crypto.randomUUID();
+  const operationId = crypto.randomUUID();
+  const requiresOwnerAlert = diff.changedFields.some((field) =>
+    ["customerName", "phone", "email", "totalAmount", "discountAmount", "paymentAmount", "paymentStatus"].includes(field),
+  );
+  const alertId = requiresOwnerAlert ? crypto.randomUUID() : null;
+  const columns: Record<keyof typeof after, string> = {
+    customerName: "customer_name",
+    phone: "phone",
+    email: "email",
+    preferredDate: "preferred_date",
+    fulfillmentMethod: "fulfillment_method",
+    pickupArea: "pickup_area",
+    pickupAddress: "pickup_address",
+    locationUrl: "location_url",
+    notes: "notes",
+    totalAmount: "total_amount",
+    discountAmount: "discount_amount",
+    paymentAmount: "payment_amount",
+    paymentStatus: "payment_status",
+  };
+  const setters = diff.changedFields.map((field) => `${columns[field as keyof typeof after]} = ?`);
+  const values = diff.changedFields.map((field) => after[field as keyof typeof after]);
+  const action = diff.changedFields.every((field) => ["customerName", "phone", "email"].includes(field))
+    ? "BOOKING_CUSTOMER_CHANGED"
+    : "BOOKING_DETAILS_CHANGED";
+  const batch = await db.batch([
+    db
+      .prepare(`
+        UPDATE bookings
+        SET ${setters.join(", ")}, updated_at = ?, updated_by_admin_id = ?,
+            updated_by_admin_name_snapshot = ?, record_version = record_version + 1,
+            last_admin_mutation_id = ?
+        WHERE id = ? AND deleted_at IS NULL AND record_version = ?
+      `)
+      .bind(...values, now, actor.id, actor.name, operationId, booking.id, version),
+    buildAuditLogInsert(db, {
+      id: auditId,
+      actor,
+      action,
+      entityType: "booking",
+      entityId: booking.id,
+      bookingReference: getBookingPublicReference(booking),
+      previousValues: diff.previousValues,
+      newValues: diff.newValues,
+      changedFields: diff.changedFields,
+      createdAt: now,
+      conditionalOn: {
+        sql: "EXISTS (SELECT 1 FROM bookings WHERE id = ? AND last_admin_mutation_id = ?)",
+        bindings: [booking.id, operationId],
+      },
+    }),
+    ...(alertId
+      ? [
+          buildOwnerAlertEventInsert(db, {
+            id: alertId,
+            auditLogId: auditId,
+            alertType: action,
+            conditionalOn: {
+              sql: "EXISTS (SELECT 1 FROM bookings WHERE id = ? AND last_admin_mutation_id = ?)",
+              bindings: [booking.id, operationId],
+            },
+            createdAt: now,
+          }),
+        ]
+      : []),
+  ]);
+  if (!batch[0]?.meta.changes) return { kind: "conflict" as const, booking };
+  if (!batch[1]?.meta.changes || (alertId && !batch[2]?.meta.changes)) {
+    throw new Error("Unable to write the booking audit record.");
+  }
+  return {
+    kind: "updated" as const,
+    booking: (await getBookingForAdmin(bookingId, true)) ?? booking,
+    ownerAlertEventId: alertId,
+  };
+}
+
+export async function softDeleteBooking(
+  bookingId: string,
+  reasonInput: string,
+  actor: AdminActor,
+  expectedVersion?: number | null,
+) {
+  const reason = cleanDeletionReason(reasonInput);
+  if (!reason) throw new Error("A deletion or void reason is required.");
+  await ensureDatabase();
+  const db = await getDatabase();
+  const booking = await findBookingById(db, bookingId);
+  if (!booking) return { kind: "not_found" as const };
+  if (booking.deletedAt) return { kind: "already_deleted" as const, booking };
+  const version = validRecordVersion(expectedVersion) ?? booking.recordVersion;
+  const now = new Date().toISOString();
+  const auditId = crypto.randomUUID();
+  const alertId = crypto.randomUUID();
+  const operationId = crypto.randomUUID();
+  const before = bookingDeletionSnapshot(booking);
+  const after = { ...before, deletedAt: now, deletedBy: actor.name, deletionReason: reason };
+  const batch = await db.batch([
+    db
+      .prepare(`
+        UPDATE bookings
+        SET deleted_at = ?, deleted_by_admin_id = ?, deleted_by_admin_name_snapshot = ?,
+            deletion_reason = ?, updated_at = ?, updated_by_admin_id = ?,
+            updated_by_admin_name_snapshot = ?, record_version = record_version + 1,
+            last_admin_mutation_id = ?
+        WHERE id = ? AND deleted_at IS NULL AND record_version = ?
+      `)
+      .bind(now, actor.id, actor.name, reason, now, actor.id, actor.name, operationId, booking.id, version),
+    buildAuditLogInsert(db, {
+      id: auditId,
+      actor,
+      action: "BOOKING_SOFT_DELETED",
+      entityType: "booking",
+      entityId: booking.id,
+      bookingReference: getBookingPublicReference(booking),
+      previousValues: before,
+      newValues: after,
+      changedFields: ["deletedAt", "deletedBy", "deletionReason"],
+      reason,
+      createdAt: now,
+      conditionalOn: {
+        sql: "EXISTS (SELECT 1 FROM bookings WHERE id = ? AND last_admin_mutation_id = ?)",
+        bindings: [booking.id, operationId],
+      },
+    }),
+    buildOwnerAlertEventInsert(db, {
+      id: alertId,
+      auditLogId: auditId,
+      alertType: "BOOKING_SOFT_DELETED",
+      conditionalOn: {
+        sql: "EXISTS (SELECT 1 FROM bookings WHERE id = ? AND last_admin_mutation_id = ?)",
+        bindings: [booking.id, operationId],
+      },
+      createdAt: now,
+    }),
+  ]);
+  if (!batch[0]?.meta.changes) return { kind: "conflict" as const, booking };
+  if (!batch[1]?.meta.changes || !batch[2]?.meta.changes) {
+    throw new Error("Unable to preserve the deletion audit and owner alert record.");
+  }
+  return { kind: "deleted" as const, booking: (await getBookingForAdmin(bookingId, true)) ?? booking, ownerAlertEventId: alertId };
+}
+
+export async function restoreBooking(
+  bookingId: string,
+  reasonInput: string,
+  actor: AdminActor,
+  expectedVersion?: number | null,
+) {
+  const reason = cleanDeletionReason(reasonInput);
+  if (!reason) throw new Error("A restoration reason is required.");
+  await ensureDatabase();
+  const db = await getDatabase();
+  const booking = await findBookingById(db, bookingId);
+  if (!booking) return { kind: "not_found" as const };
+  if (!booking.deletedAt) return { kind: "not_deleted" as const, booking };
+  const version = validRecordVersion(expectedVersion) ?? booking.recordVersion;
+  const now = new Date().toISOString();
+  const auditId = crypto.randomUUID();
+  const alertId = crypto.randomUUID();
+  const operationId = crypto.randomUUID();
+  const before = bookingDeletionSnapshot(booking);
+  const after = { ...before, restoredAt: now, restoredBy: actor.name, restorationReason: reason, active: true };
+  const batch = await db.batch([
+    db
+      .prepare(`
+        UPDATE bookings
+        SET deleted_at = NULL, restored_at = ?, restored_by_admin_id = ?,
+            restored_by_admin_name_snapshot = ?, restoration_reason = ?, updated_at = ?,
+            updated_by_admin_id = ?, updated_by_admin_name_snapshot = ?,
+            record_version = record_version + 1, last_admin_mutation_id = ?
+        WHERE id = ? AND deleted_at IS NOT NULL AND record_version = ?
+      `)
+      .bind(now, actor.id, actor.name, reason, now, actor.id, actor.name, operationId, booking.id, version),
+    buildAuditLogInsert(db, {
+      id: auditId,
+      actor,
+      action: "BOOKING_RESTORED",
+      entityType: "booking",
+      entityId: booking.id,
+      bookingReference: getBookingPublicReference(booking),
+      previousValues: before,
+      newValues: after,
+      changedFields: ["deletedAt", "restoredAt", "restoredBy", "restorationReason"],
+      reason,
+      createdAt: now,
+      conditionalOn: {
+        sql: "EXISTS (SELECT 1 FROM bookings WHERE id = ? AND last_admin_mutation_id = ?)",
+        bindings: [booking.id, operationId],
+      },
+    }),
+    buildOwnerAlertEventInsert(db, {
+      id: alertId,
+      auditLogId: auditId,
+      alertType: "BOOKING_RESTORED",
+      conditionalOn: {
+        sql: "EXISTS (SELECT 1 FROM bookings WHERE id = ? AND last_admin_mutation_id = ?)",
+        bindings: [booking.id, operationId],
+      },
+      createdAt: now,
+    }),
+  ]);
+  if (!batch[0]?.meta.changes) return { kind: "conflict" as const, booking };
+  if (!batch[1]?.meta.changes || !batch[2]?.meta.changes) {
+    throw new Error("Unable to preserve the restoration audit and owner alert record.");
+  }
+  return { kind: "restored" as const, booking: (await getBookingForAdmin(bookingId, true)) ?? booking, ownerAlertEventId: alertId };
+}
+
 export async function retryBookingStatusNotification(
   bookingId: string,
   notificationId: string,
+  actor?: AdminActor | null,
 ): Promise<BookingNotificationRetryResult> {
   await ensureDatabase();
   const db = await getDatabase();
@@ -1443,17 +2365,35 @@ export async function retryBookingStatusNotification(
     return { kind: "not_retryable", notification };
   }
 
+  const bookingForAudit = await findBookingById(db, bookingId);
   const now = new Date().toISOString();
-  const claim = await db
-    .prepare(`
+  const auditId = crypto.randomUUID();
+  const operationId = crypto.randomUUID();
+  const claimResults = await db.batch([
+    db.prepare(`
       UPDATE booking_notifications
       SET status = 'pending', attempt_count = attempt_count + 1,
-          last_error = NULL, updated_at = ?
+          last_error = NULL, updated_at = ?, last_mutation_id = ?
       WHERE id = ? AND booking_id = ? AND status = 'failed'
-    `)
-    .bind(now, notificationId, bookingId)
-    .run();
-  if (!claim.meta.changes) {
+    `).bind(now, operationId, notificationId, bookingId),
+    buildAuditLogInsert(db, {
+      id: auditId,
+      actor: actor ?? { actorType: "system", name: "System" },
+      action: "BOOKING_NOTIFICATION_RETRIED",
+      entityType: "booking_notification",
+      entityId: notificationId,
+      bookingReference: bookingForAudit ? getBookingPublicReference(bookingForAudit) : null,
+      previousValues: { status: "failed", attemptCount: notification.attemptCount },
+      newValues: { status: "pending", attemptCount: notification.attemptCount + 1 },
+      changedFields: ["status", "attemptCount"],
+      conditionalOn: {
+        sql: "EXISTS (SELECT 1 FROM booking_notifications WHERE id = ? AND booking_id = ? AND status = 'pending' AND last_mutation_id = ?)",
+        bindings: [notificationId, bookingId, operationId],
+      },
+      createdAt: now,
+    }),
+  ]);
+  if (!claimResults[0]?.meta.changes) {
     const current = await findBookingNotification(db, bookingId, notificationId);
     return { kind: "in_progress", notification: current ?? notification };
   }
@@ -1479,7 +2419,9 @@ export async function retryBookingStatusNotification(
     );
     return { kind: "failed", notification: failed };
   }
-
+  if (!claimResults[1]?.meta.changes) {
+    throw new Error("Unable to record the notification retry audit event.");
+  }
   const booking = await ensureBookingPublicReference(db, foundBooking);
 
   const content = buildStatusEmail(history.newStatus, {
@@ -1593,6 +2535,25 @@ async function attachBookingItems(db: Database, bookings: Booking[]) {
   result.results.forEach((row) => {
     const item = parseBookingItem(row);
     bookingById.get(item.bookingId)?.items.push(item);
+  });
+}
+
+async function attachBookingOperationalNotes(db: Database, bookings: Booking[]) {
+  if (!bookings.length) return;
+  const bookingIds = bookings.map((booking) => booking.id);
+  const placeholders = bookingIds.map(() => "?").join(", ");
+  const result = await db
+    .prepare(`
+      SELECT * FROM booking_operational_notes
+      WHERE booking_id IN (${placeholders})
+      ORDER BY created_at DESC
+    `)
+    .bind(...bookingIds)
+    .all<Record<string, unknown>>();
+  const bookingById = new Map(bookings.map((booking) => [booking.id, booking]));
+  result.results.forEach((row) => {
+    const note = parseBookingOperationalNote(row);
+    bookingById.get(note.bookingId)?.operationalNotes.push(note);
   });
 }
 
@@ -1810,4 +2771,124 @@ async function recordNotificationWithoutDelivery(
 function cleanChangedBy(value: string | null | undefined) {
   const cleaned = String(value ?? "").trim().slice(0, 160);
   return cleaned || null;
+}
+
+function validRecordVersion(value: unknown) {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function cleanOperationalNote(value: unknown) {
+  const note = String(value ?? "").trim().replace(/\s+/gu, " ");
+  return note.length > 0 && note.length <= 800 ? note : "";
+}
+
+function cleanDeletionReason(value: unknown) {
+  const reason = String(value ?? "").trim().replace(/\s+/gu, " ");
+  return reason.length >= 3 && reason.length <= 500 ? reason : "";
+}
+
+function bookingEditableSnapshot(booking: Booking) {
+  return {
+    customerName: booking.customerName,
+    phone: booking.phone,
+    email: booking.email,
+    preferredDate: booking.preferredDate,
+    fulfillmentMethod: booking.fulfillmentMethod,
+    pickupArea: booking.pickupArea,
+    pickupAddress: booking.pickupAddress,
+    locationUrl: booking.locationUrl,
+    notes: booking.notes,
+    totalAmount: booking.totalAmount,
+    discountAmount: booking.discountAmount,
+    paymentAmount: booking.paymentAmount,
+    paymentStatus: booking.paymentStatus,
+  };
+}
+
+function mergeBookingDetails(
+  current: ReturnType<typeof bookingEditableSnapshot>,
+  input: BookingDetailsUpdateInput,
+) {
+  const next = { ...current };
+  if (input.customerName !== undefined) next.customerName = input.customerName;
+  if (input.phone !== undefined) next.phone = input.phone;
+  if (input.email !== undefined) next.email = input.email;
+  if (input.preferredDate !== undefined) next.preferredDate = input.preferredDate;
+  if (input.fulfillmentMethod !== undefined) next.fulfillmentMethod = input.fulfillmentMethod;
+  if (input.pickupArea !== undefined) next.pickupArea = input.pickupArea;
+  if (input.pickupAddress !== undefined) next.pickupAddress = input.pickupAddress;
+  if (input.locationUrl !== undefined) next.locationUrl = input.locationUrl;
+  if (input.notes !== undefined) next.notes = input.notes;
+  if (input.totalAmount !== undefined) next.totalAmount = input.totalAmount;
+  if (input.discountAmount !== undefined) next.discountAmount = input.discountAmount;
+  if (input.paymentAmount !== undefined) next.paymentAmount = input.paymentAmount;
+  if (input.paymentStatus !== undefined) next.paymentStatus = input.paymentStatus;
+
+  if (next.fulfillmentMethod === "self_dropoff") {
+    next.pickupArea = null;
+    next.pickupAddress = null;
+    next.locationUrl = null;
+  }
+  if (next.fulfillmentMethod === "pickup_delivery" && (!next.pickupArea || !next.pickupAddress)) {
+    throw new Error("Pickup and delivery bookings need a pickup area and address.");
+  }
+  for (const amount of [next.totalAmount, next.discountAmount, next.paymentAmount]) {
+    if (amount !== null && (!Number.isSafeInteger(amount) || amount < 0)) {
+      throw new Error("Prices, discounts, and payment amounts must be non-negative whole rupee amounts.");
+    }
+  }
+  return next;
+}
+
+function bookingDeletionSnapshot(booking: Booking) {
+  return {
+    booking: {
+      publicReference: booking.publicReference,
+      creationSource: booking.createdSource,
+      status: booking.status,
+      pairCount: booking.pairCount,
+      fulfillmentMethod: booking.fulfillmentMethod,
+      pickupArea: booking.pickupArea,
+      preferredDate: booking.preferredDate,
+      serviceSubtotal: booking.serviceSubtotal,
+      deliveryFee: booking.deliveryFee,
+      expressFee: booking.expressFee,
+      totalAmount: booking.totalAmount,
+      discountAmount: booking.discountAmount,
+      paymentAmount: booking.paymentAmount,
+      paymentStatus: booking.paymentStatus,
+    },
+    pairs: booking.items.map((item) => ({
+      pairNumber: item.pairNumber,
+      serviceId: item.serviceId,
+      serviceName: item.serviceName,
+      servicePriceLabel: item.servicePriceLabel,
+      servicePrice: item.servicePrice,
+      status: item.status,
+    })),
+    deletedAt: booking.deletedAt,
+    deletedBy: booking.deletedByAdminName,
+    deletionReason: booking.deletionReason,
+    restoredAt: booking.restoredAt,
+    restoredBy: booking.restoredByAdminName,
+    restorationReason: booking.restorationReason,
+  };
+}
+
+function serviceAuditSnapshot(service: Service) {
+  return {
+    name: service.name,
+    category: service.category,
+    priceLabel: service.priceLabel,
+    specialPriceLabel: service.specialPriceLabel,
+    turnaround: service.turnaround,
+    description: service.description,
+    features: service.features,
+    badge: service.badge,
+    tone: service.tone,
+    icon: service.icon,
+    active: service.active,
+    sortOrder: service.sortOrder,
+  };
 }

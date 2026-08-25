@@ -22,6 +22,7 @@ export const services = sqliteTable(
     icon: text("icon").notNull().default("+"),
     active: integer("active", { mode: "boolean" }).notNull().default(true),
     sortOrder: integer("sort_order").notNull().default(0),
+    lastMutationId: text("last_mutation_id"),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
@@ -69,6 +70,24 @@ export const bookings = sqliteTable(
       .default(false),
     status: text("status").notNull().default("new"),
     lastStatusHistoryId: text("last_status_history_id"),
+    createdSource: text("created_source"),
+    createdByAdminId: text("created_by_admin_id"),
+    createdByAdminNameSnapshot: text("created_by_admin_name_snapshot"),
+    updatedByAdminId: text("updated_by_admin_id"),
+    updatedByAdminNameSnapshot: text("updated_by_admin_name_snapshot"),
+    deletedAt: text("deleted_at"),
+    deletedByAdminId: text("deleted_by_admin_id"),
+    deletedByAdminNameSnapshot: text("deleted_by_admin_name_snapshot"),
+    deletionReason: text("deletion_reason"),
+    restoredAt: text("restored_at"),
+    restoredByAdminId: text("restored_by_admin_id"),
+    restoredByAdminNameSnapshot: text("restored_by_admin_name_snapshot"),
+    restorationReason: text("restoration_reason"),
+    recordVersion: integer("record_version").notNull().default(1),
+    lastAdminMutationId: text("last_admin_mutation_id"),
+    discountAmount: integer("discount_amount"),
+    paymentAmount: integer("payment_amount"),
+    paymentStatus: text("payment_status"),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
@@ -210,6 +229,11 @@ export const bookingStatusHistory = sqliteTable(
     previousStatus: text("previous_status").notNull(),
     newStatus: text("new_status").notNull(),
     changedBy: text("changed_by"),
+    adminUserId: text("admin_user_id"),
+    administratorNameSnapshot: text("administrator_name_snapshot"),
+    administratorRoleSnapshot: text("administrator_role_snapshot"),
+    pairId: text("pair_id"),
+    pairReference: text("pair_reference"),
     createdAt: text("created_at").notNull(),
   },
   (table) => [
@@ -217,6 +241,147 @@ export const bookingStatusHistory = sqliteTable(
       table.bookingId,
       table.createdAt,
     ),
+  ],
+);
+
+export const bookingOperationalNotes = sqliteTable(
+  "booking_operational_notes",
+  {
+    id: text("id").primaryKey(),
+    bookingId: text("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "restrict" }),
+    note: text("note").notNull(),
+    adminUserId: text("admin_user_id"),
+    administratorNameSnapshot: text("administrator_name_snapshot"),
+    administratorRoleSnapshot: text("administrator_role_snapshot"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("booking_operational_notes_booking_created_idx").on(table.bookingId, table.createdAt)],
+);
+
+export const adminUsers = sqliteTable(
+  "admin_users",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    email: text("email").notNull(),
+    emailNormalized: text("email_normalized").notNull(),
+    passwordHash: text("password_hash").notNull(),
+    role: text("role").notNull(),
+    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    createdAt: text("created_at").notNull(),
+    createdByAdminId: text("created_by_admin_id"),
+    updatedAt: text("updated_at").notNull(),
+    lastLoginAt: text("last_login_at"),
+    mustChangePassword: integer("must_change_password", { mode: "boolean" }).notNull().default(false),
+    lastMutationId: text("last_mutation_id"),
+  },
+  (table) => [
+    uniqueIndex("admin_users_email_normalized_unique").on(table.emailNormalized),
+    index("admin_users_active_role_idx").on(table.active, table.role),
+  ],
+);
+
+export const adminSessions = sqliteTable(
+  "admin_sessions",
+  {
+    id: text("id").primaryKey(),
+    adminUserId: text("admin_user_id")
+      .notNull()
+      .references(() => adminUsers.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    createdAt: text("created_at").notNull(),
+    expiresAt: text("expires_at").notNull(),
+    lastUsedAt: text("last_used_at"),
+    revokedAt: text("revoked_at"),
+    lastMutationId: text("last_mutation_id"),
+  },
+  (table) => [
+    uniqueIndex("admin_sessions_token_hash_uniq").on(table.tokenHash),
+    index("admin_sessions_user_active_idx").on(table.adminUserId, table.revokedAt, table.expiresAt),
+  ],
+);
+
+export const adminAuthSettings = sqliteTable("admin_auth_settings", {
+  singleton: integer("singleton").primaryKey(),
+  bootstrapCompletedAt: text("bootstrap_completed_at"),
+  sharedLoginDisabledAt: text("shared_login_disabled_at"),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const adminLoginRateLimits = sqliteTable(
+  "admin_login_rate_limits",
+  {
+    scope: text("scope").notNull(),
+    keyHash: text("key_hash").notNull(),
+    windowStartedAt: text("window_started_at").notNull(),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    blockedUntil: text("blocked_until"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("admin_login_rate_limits_scope_key_uniq").on(table.scope, table.keyHash),
+    index("admin_login_rate_limits_blocked_idx").on(table.blockedUntil),
+  ],
+);
+
+export const auditLogs = sqliteTable(
+  "audit_logs",
+  {
+    id: text("id").primaryKey(),
+    actorType: text("actor_type").notNull(),
+    adminUserId: text("admin_user_id"),
+    administratorNameSnapshot: text("administrator_name_snapshot"),
+    administratorEmailSnapshot: text("administrator_email_snapshot"),
+    administratorRoleSnapshot: text("administrator_role_snapshot"),
+    action: text("action").notNull(),
+    entityType: text("entity_type").notNull(),
+    entityId: text("entity_id"),
+    bookingReference: text("booking_reference"),
+    pairReference: text("pair_reference"),
+    previousValues: text("previous_values"),
+    newValues: text("new_values"),
+    changedFields: text("changed_fields").notNull().default("[]"),
+    reason: text("reason"),
+    sessionId: text("session_id"),
+    requestId: text("request_id"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("audit_logs_created_at_idx").on(table.createdAt),
+    index("audit_logs_admin_created_idx").on(table.adminUserId, table.createdAt),
+    index("audit_logs_action_created_idx").on(table.action, table.createdAt),
+    index("audit_logs_entity_created_idx").on(table.entityType, table.entityId, table.createdAt),
+    index("audit_logs_booking_reference_created_idx").on(table.bookingReference, table.createdAt),
+    index("audit_logs_request_id_created_idx").on(table.requestId, table.createdAt),
+  ],
+);
+
+export const ownerAlertEvents = sqliteTable(
+  "owner_alert_events",
+  {
+    id: text("id").primaryKey(),
+    auditLogId: text("audit_log_id")
+      .notNull()
+      .references(() => auditLogs.id, { onDelete: "restrict" }),
+    eventKey: text("event_key").notNull(),
+    alertType: text("alert_type").notNull(),
+    deliveryStatus: text("delivery_status").notNull().default("pending"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    errorSummary: text("error_summary"),
+    sentAt: text("sent_at"),
+    leaseToken: text("lease_token"),
+    leaseExpiresAt: text("lease_expires_at"),
+    lastMutationId: text("last_mutation_id"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("owner_alert_events_audit_log_id_unique").on(table.auditLogId),
+    uniqueIndex("owner_alert_events_event_key_unique").on(table.eventKey),
+    index("owner_alert_events_delivery_updated_idx").on(table.deliveryStatus, table.updatedAt),
   ],
 );
 
@@ -239,6 +404,7 @@ export const bookingNotifications = sqliteTable(
     attemptCount: integer("attempt_count").notNull().default(0),
     lastError: text("last_error"),
     sentAt: text("sent_at"),
+    lastMutationId: text("last_mutation_id"),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },

@@ -41,10 +41,9 @@ export default function AdminLoginForm({ nextPath }: { nextPath: string }) {
   return (
     <form className="admin-login-form" onSubmit={submit}>
       <label>
-        <span>Owner email</span>
+        <span>Administrator email</span>
         <input
           autoComplete="username"
-          defaultValue="shoedoctorhtd@gmail.com"
           name="email"
           required
           type="email"
@@ -56,7 +55,7 @@ export default function AdminLoginForm({ nextPath }: { nextPath: string }) {
           autoComplete="current-password"
           minLength={12}
           name="password"
-          placeholder="Your private admin password"
+          placeholder="Your administrator password"
           required
           type="password"
         />
@@ -67,7 +66,7 @@ export default function AdminLoginForm({ nextPath }: { nextPath: string }) {
         </p>
       )}
       <button disabled={busy} type="submit">
-        {busy ? "Signing in…" : "Open owner dashboard"}
+        {busy ? "Signing in…" : "Sign in"}
       </button>
     </form>
   );

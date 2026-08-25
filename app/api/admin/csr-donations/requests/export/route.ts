@@ -4,7 +4,11 @@ import {
   type DonationRequest,
   type DonationRequestListOptions,
 } from "@/lib/csr-data";
-import { csrApiError, requireCsrAdminApi } from "@/lib/csr-api";
+import {
+  appendCsrActivityAudit,
+  csrApiError,
+  requireCsrAdminActor,
+} from "@/lib/csr-api";
 import { parseDonationRequestListOptions } from "@/lib/csr-validation";
 
 export const dynamic = "force-dynamic";
@@ -16,8 +20,8 @@ function csvCell(value: unknown) {
 }
 
 export async function GET(request: Request) {
-  const unauthorized = await requireCsrAdminApi();
-  if (unauthorized) return unauthorized;
+  const auth = await requireCsrAdminActor(request);
+  if ("response" in auth) return auth.response;
   try {
     const options = parseDonationRequestListOptions(new URL(request.url));
     const filters: DonationRequestListOptions = {
@@ -72,6 +76,12 @@ export async function GET(request: Request) {
       item.submittedAt,
     ]);
     const body = [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
+    await appendCsrActivityAudit(auth.user, {
+      action: "DONATION_REQUESTS_EXPORTED",
+      entityType: "donation_request_export",
+      newValues: { recordCount: records.length },
+      changedFields: ["export"],
+    });
     return new Response(body, {
       headers: {
         "content-type": "text/csv; charset=utf-8",

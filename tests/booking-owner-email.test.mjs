@@ -96,6 +96,7 @@ const baseBooking = {
 function configuredEnvironment(messages) {
   return {
     BOOKING_NOTIFICATION_FROM: "bookings@shoedoctor.com.np",
+    OWNER_ALERT_EMAIL: "owner@example.test",
     BOOKING_EMAIL: {
       async send(message) {
         messages.push(message);
@@ -116,7 +117,7 @@ test("sends one complete, escaped owner email through the configured binding", a
 
   const [message] = messages;
   assert.equal(message.from, "bookings@shoedoctor.com.np");
-  assert.equal(message.to, "shoedoctorhtd@gmail.com");
+  assert.equal(message.to, "owner@example.test");
   assert.equal(
     message.subject,
     "\u{1F534} New Shoe Doctor Booking \u2014 SD-260825-K7 \u2014 Asha <img src=x onerror=alert('x')>",
@@ -190,6 +191,7 @@ test("a binding failure is contained after the booking has been created", async 
   try {
     const result = await sendBookingEmailNotification(baseBooking, {
       BOOKING_NOTIFICATION_FROM: "bookings@shoedoctor.com.np",
+      OWNER_ALERT_EMAIL: "owner@example.test",
       BOOKING_EMAIL: {
         async send() {
           throw new Error("binding rejected message");

@@ -3,15 +3,24 @@ import {
   getCommunityUpdate,
   updateCommunityUpdate,
 } from "@/lib/csr-data";
-import { csrAdminJson, csrApiError, requireCsrAdminApi } from "@/lib/csr-api";
-import { parseCommunityUpdateInput, parseCsrId } from "@/lib/csr-validation";
+import {
+  csrAdminJson,
+  csrApiError,
+  requireCsrAdminApi,
+  requireCsrAdminMutation,
+} from "@/lib/csr-api";
+import {
+  parseCommunityUpdateInput,
+  parseCsrExpectedUpdatedAt,
+  parseCsrId,
+} from "@/lib/csr-validation";
 
 export const dynamic = "force-dynamic";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-export async function GET(_request: Request, context: RouteContext) {
-  const unauthorized = await requireCsrAdminApi();
+export async function GET(request: Request, context: RouteContext) {
+  const unauthorized = await requireCsrAdminApi(request);
   if (unauthorized) return unauthorized;
   try {
     const { id: rawId } = await context.params;
@@ -25,14 +34,17 @@ export async function GET(_request: Request, context: RouteContext) {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const unauthorized = await requireCsrAdminApi();
-  if (unauthorized) return unauthorized;
+  const auth = await requireCsrAdminMutation(request);
+  if ("response" in auth) return auth.response;
   try {
     const { id: rawId } = await context.params;
     const id = parseCsrId(rawId, "update");
+    const body = await request.json();
     const update = await updateCommunityUpdate(
       id,
-      parseCommunityUpdateInput(await request.json()),
+      parseCommunityUpdateInput(body),
+      parseCsrExpectedUpdatedAt(body.expectedUpdatedAt),
+      auth.user,
     );
     return update
       ? csrAdminJson({ update })
@@ -42,17 +54,18 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
-  const unauthorized = await requireCsrAdminApi();
-  if (unauthorized) return unauthorized;
+export async function DELETE(request: Request, context: RouteContext) {
+  const auth = await requireCsrAdminMutation(request);
+  if ("response" in auth) return auth.response;
   try {
     const { id: rawId } = await context.params;
     const id = parseCsrId(rawId, "update");
-    const update = await getCommunityUpdate(id);
-    if (!update) {
-      return csrAdminJson({ message: "Community update not found." }, { status: 404 });
-    }
-    const deleted = await deleteCommunityUpdate(id);
+    const body = await request.json();
+    const deleted = await deleteCommunityUpdate(
+      id,
+      parseCsrExpectedUpdatedAt(body.expectedUpdatedAt),
+      auth.user,
+    );
     if (!deleted) {
       return csrAdminJson({ message: "Community update not found." }, { status: 404 });
     }

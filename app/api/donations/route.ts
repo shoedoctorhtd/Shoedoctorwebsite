@@ -48,7 +48,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const donation = await createDonationRequest(input);
+    const donation = await createDonationRequest(input, { actorType: "customer" });
     try {
       // A donation is already durable at this point. A Gmail failure must
       // never turn a successful submission into a failed public request.

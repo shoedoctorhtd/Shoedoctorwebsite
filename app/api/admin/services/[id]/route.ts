@@ -1,26 +1,38 @@
-import { getAdminUser } from "@/lib/admin-auth";
+import { requireAdminApi } from "@/lib/admin-auth";
 import { deleteService, updateService } from "@/lib/data";
-import { parseServiceInput } from "@/lib/validation";
+import { parseAdminUpdatedAt, parseServiceInput } from "@/lib/validation";
+import { deliverOwnerAlertEvent } from "@/lib/owner-alerts";
 
 export const dynamic = "force-dynamic";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, context: RouteContext) {
-  if (!(await getAdminUser())) {
-    return Response.json({ message: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireAdminApi(request, {
+    action: "SERVICE_UPDATE",
+    mutation: true,
+    roles: ["super_admin"],
+    entityType: "service",
+  });
+  if (auth.response) return auth.response;
 
   try {
     const { id } = await context.params;
-    const service = await updateService(
+    const body = (await request.json()) as Record<string, unknown>;
+    const result = await updateService(
       id,
-      parseServiceInput(await request.json()),
+      parseServiceInput(body),
+      auth.user,
+      parseAdminUpdatedAt(body.updatedAt, "service"),
     );
-    if (!service) {
+    if (result.kind === "not_found") {
       return Response.json({ message: "Service not found." }, { status: 404 });
     }
-    return Response.json({ service });
+    if (result.kind === "conflict") {
+      return Response.json({ message: "This service changed. Refresh and try again.", service: result.service }, { status: 409 });
+    }
+    if (result.service.ownerAlertEventId) await deliverOwnerAlertEvent(result.service.ownerAlertEventId);
+    return Response.json({ service: result.service });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unable to update service.";
@@ -28,13 +40,23 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
-  if (!(await getAdminUser())) {
-    return Response.json({ message: "Unauthorized" }, { status: 401 });
+export async function DELETE(request: Request, context: RouteContext) {
+  const auth = await requireAdminApi(request, {
+    action: "SERVICE_DELETE",
+    mutation: true,
+    roles: ["super_admin"],
+    entityType: "service",
+  });
+  if (auth.response) return auth.response;
+  try {
+    const { id } = await context.params;
+    const body = (await request.json()) as Record<string, unknown>;
+    const result = await deleteService(id, auth.user, parseAdminUpdatedAt(body.updatedAt, "service"));
+    if (result.kind === "not_found") return Response.json({ message: "Service not found." }, { status: 404 });
+    if (result.kind === "conflict") return Response.json({ message: "This service changed. Refresh and try again.", service: result.service }, { status: 409 });
+    if (result.ownerAlertEventId) await deliverOwnerAlertEvent(result.ownerAlertEventId);
+    return Response.json({ ok: true });
+  } catch (error) {
+    return Response.json({ message: error instanceof Error ? error.message : "Unable to delete service." }, { status: 400 });
   }
-  const { id } = await context.params;
-  const deleted = await deleteService(id);
-  return deleted
-    ? Response.json({ ok: true })
-    : Response.json({ message: "Service not found." }, { status: 404 });
 }

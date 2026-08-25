@@ -3,15 +3,24 @@ import {
   getRestorationStory,
   updateRestorationStory,
 } from "@/lib/csr-data";
-import { csrAdminJson, csrApiError, requireCsrAdminApi } from "@/lib/csr-api";
-import { parseCsrId, parseRestorationStoryInput } from "@/lib/csr-validation";
+import {
+  csrAdminJson,
+  csrApiError,
+  requireCsrAdminApi,
+  requireCsrAdminMutation,
+} from "@/lib/csr-api";
+import {
+  parseCsrExpectedUpdatedAt,
+  parseCsrId,
+  parseRestorationStoryInput,
+} from "@/lib/csr-validation";
 
 export const dynamic = "force-dynamic";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-export async function GET(_request: Request, context: RouteContext) {
-  const unauthorized = await requireCsrAdminApi();
+export async function GET(request: Request, context: RouteContext) {
+  const unauthorized = await requireCsrAdminApi(request);
   if (unauthorized) return unauthorized;
   try {
     const { id: rawId } = await context.params;
@@ -25,14 +34,17 @@ export async function GET(_request: Request, context: RouteContext) {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const unauthorized = await requireCsrAdminApi();
-  if (unauthorized) return unauthorized;
+  const auth = await requireCsrAdminMutation(request);
+  if ("response" in auth) return auth.response;
   try {
     const { id: rawId } = await context.params;
     const id = parseCsrId(rawId, "story");
+    const body = await request.json();
     const story = await updateRestorationStory(
       id,
-      parseRestorationStoryInput(await request.json()),
+      parseRestorationStoryInput(body),
+      parseCsrExpectedUpdatedAt(body.expectedUpdatedAt),
+      auth.user,
     );
     return story
       ? csrAdminJson({ story })
@@ -42,17 +54,18 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
-  const unauthorized = await requireCsrAdminApi();
-  if (unauthorized) return unauthorized;
+export async function DELETE(request: Request, context: RouteContext) {
+  const auth = await requireCsrAdminMutation(request);
+  if ("response" in auth) return auth.response;
   try {
     const { id: rawId } = await context.params;
     const id = parseCsrId(rawId, "story");
-    const story = await getRestorationStory(id);
-    if (!story) {
-      return csrAdminJson({ message: "Restoration story not found." }, { status: 404 });
-    }
-    const deleted = await deleteRestorationStory(id);
+    const body = await request.json();
+    const deleted = await deleteRestorationStory(
+      id,
+      parseCsrExpectedUpdatedAt(body.expectedUpdatedAt),
+      auth.user,
+    );
     if (!deleted) {
       return csrAdminJson({ message: "Restoration story not found." }, { status: 404 });
     }

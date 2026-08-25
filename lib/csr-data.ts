@@ -6,6 +6,11 @@ import {
   normalizeDonationStatus,
   type DonationStatus,
 } from "./donation-status";
+import {
+  auditValueDiff,
+  buildAuditLogInsert,
+  type AuditLogInput,
+} from "./audit";
 import { isEmailAddress } from "./email/address";
 import { buildDonationEmail } from "./email/donationTemplates";
 import { sendGmailEmail } from "./email/gmail";
@@ -770,6 +775,154 @@ async function runList<T>(query: string, values: unknown[], parse: (row: RawRow)
 
 type Database = Awaited<ReturnType<typeof getDatabase>>;
 
+/**
+ * CSR mutations receive this only from a route that has already verified the
+ * administrator session and role.  The data layer owns the audit action and
+ * allowlisted value snapshots so no client-provided audit metadata is trusted.
+ */
+export type CsrAuditActor = AuditLogInput["actor"];
+
+/**
+ * Thrown when an administrator submits a CSR record version that no longer
+ * matches D1. Routes turn this into a 409 response; importantly, the matching
+ * business statement and audit insert are both skipped in that case.
+ */
+export class CsrMutationConflictError extends Error {
+  constructor() {
+    super("This record was changed by another administrator. Reload and try again.");
+    this.name = "CsrMutationConflictError";
+  }
+}
+
+function assertExpectedUpdatedAt(
+  current: { updatedAt: string },
+  expectedUpdatedAt: string,
+) {
+  if (current.updatedAt !== expectedUpdatedAt) {
+    throw new CsrMutationConflictError();
+  }
+}
+
+type CsrAuditTable =
+  | "donation_requests"
+  | "donation_drives"
+  | "restoration_stories"
+  | "community_updates"
+  | "donation_impact_stats"
+  | "donation_email_events";
+
+function auditRowCondition(
+  table: CsrAuditTable,
+  id: string,
+  updatedAt: string,
+) {
+  return {
+    sql: `EXISTS (SELECT 1 FROM ${table} WHERE id = ? AND updated_at = ?)`,
+    bindings: [id, updatedAt],
+  };
+}
+
+function buildCsrAuditInsert(
+  db: Database,
+  actor: CsrAuditActor,
+  input: Omit<AuditLogInput, "actor">,
+) {
+  return buildAuditLogInsert(db, { actor, ...input });
+}
+
+function donationRequestAuditSnapshot(donation: DonationRequest) {
+  return {
+    requestId: donation.requestId,
+    status: donation.status,
+    emailUpdatesConsent: donation.emailUpdatesConsent,
+    location: donation.location,
+    numberOfPairs: donation.numberOfPairs,
+    shoeType: donation.shoeType,
+    shoeCondition: donation.shoeCondition,
+    donationMethod: donation.donationMethod,
+    internalNotes: donation.internalNotes,
+    distributionLocation: donation.distributionLocation,
+    distributionCampaign: donation.distributionCampaign,
+    distributionDate: donation.distributionDate,
+    pairsDistributed: donation.pairsDistributed,
+    impactNote: donation.impactNote,
+  };
+}
+
+function donationDriveAuditSnapshot(drive: DonationDrive) {
+  return {
+    slug: drive.slug,
+    title: drive.title,
+    shortDescription: drive.shortDescription,
+    fullStory: drive.fullStory,
+    coverImageUrl: drive.coverImageUrl,
+    driveDate: drive.driveDate,
+    location: drive.location,
+    partnerOrganization: drive.partnerOrganization,
+    goalPairs: drive.goalPairs,
+    pairsCollected: drive.pairsCollected,
+    pairsRestored: drive.pairsRestored,
+    pairsDonated: drive.pairsDonated,
+    status: drive.status,
+    isPublished: drive.isPublished,
+    ctaText: drive.ctaText,
+    ctaLink: drive.ctaLink,
+    publishedAt: drive.publishedAt,
+  };
+}
+
+function restorationStoryAuditSnapshot(story: RestorationStory) {
+  return {
+    slug: story.slug,
+    title: story.title,
+    category: story.category,
+    beforeImageUrl: story.beforeImageUrl,
+    afterImageUrl: story.afterImageUrl,
+    description: story.description,
+    restorationWork: story.restorationWork,
+    storyDate: story.storyDate,
+    isPublished: story.isPublished,
+    publishedAt: story.publishedAt,
+  };
+}
+
+function communityUpdateAuditSnapshot(update: CommunityUpdate) {
+  return {
+    slug: update.slug,
+    title: update.title,
+    coverImageUrl: update.coverImageUrl,
+    galleryImageUrls: update.galleryImageUrls,
+    updateDate: update.updateDate,
+    location: update.location,
+    recipientOrganization: update.recipientOrganization,
+    shoesDonated: update.shoesDonated,
+    story: update.story,
+    isPublished: update.isPublished,
+    publishedAt: update.publishedAt,
+  };
+}
+
+function impactStatsAuditSnapshot(stats: DonationImpactStats) {
+  return {
+    totalPairsCollected: stats.totalPairsCollected,
+    totalPairsRestored: stats.totalPairsRestored,
+    totalPairsDonated: stats.totalPairsDonated,
+    donationDrivesCompleted: stats.donationDrivesCompleted,
+    partnerOrganizations: stats.partnerOrganizations,
+    communitiesReached: stats.communitiesReached,
+  };
+}
+
+function donationEmailEventAuditSnapshot(event: DonationEmailEvent) {
+  return {
+    donationReference: event.donationReference,
+    workflowStatus: event.workflowStatus,
+    deliveryStatus: event.deliveryStatus,
+    attemptCount: event.attemptCount,
+    errorSummary: event.errorSummary,
+  };
+}
+
 async function attachDonationEmailEvents(donations: DonationRequest[]) {
   if (!donations.length) return;
   const donationIds = donations.map((donation) => donation.id);
@@ -805,46 +958,14 @@ async function attachDonationEmailEvents(donations: DonationRequest[]) {
 
 export async function createDonationRequest(
   input: DonationRequestInput,
+  actor: CsrAuditActor,
 ): Promise<DonationRequest> {
   const id = crypto.randomUUID();
   const requestId = `DON-${Date.now().toString(36).toUpperCase()}-${id
     .slice(0, 4)
     .toUpperCase()}`;
   const now = new Date().toISOString();
-  const db = await getDatabase();
-  await db
-    .prepare(
-      `INSERT INTO donation_requests (
-        id, request_id, donor_name, phone, email, location, number_of_pairs,
-        shoe_type, shoe_condition, donation_method, pickup_address,
-        preferred_pickup_date, donor_notes, status, workflow_status,
-        email_update_consent, internal_notes, distribution_location,
-        distribution_campaign, distribution_date, pairs_distributed, impact_note,
-        submitted_at, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', 'submitted', ?, NULL, NULL, NULL, NULL, NULL, NULL, ?, ?, ?)`,
-    )
-    .bind(
-      id,
-      requestId,
-      input.donorName,
-      input.phone,
-      input.email ?? null,
-      input.location,
-      input.numberOfPairs,
-      input.shoeType ?? null,
-      input.shoeCondition,
-      input.donationMethod,
-      input.pickupAddress ?? null,
-      input.preferredPickupDate ?? null,
-      input.donorNotes ?? null,
-      input.emailUpdatesConsent ? 1 : 0,
-      now,
-      now,
-      now,
-    )
-    .run();
-
-  return {
+  const donation: DonationRequest = {
     id,
     requestId,
     donorName: input.donorName,
@@ -872,6 +993,50 @@ export async function createDonationRequest(
     createdAt: now,
     updatedAt: now,
   };
+  const db = await getDatabase();
+  const insertStatement = db
+    .prepare(
+      `INSERT INTO donation_requests (
+        id, request_id, donor_name, phone, email, location, number_of_pairs,
+        shoe_type, shoe_condition, donation_method, pickup_address,
+        preferred_pickup_date, donor_notes, status, workflow_status,
+        email_update_consent, internal_notes, distribution_location,
+        distribution_campaign, distribution_date, pairs_distributed, impact_note,
+        submitted_at, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', 'submitted', ?, NULL, NULL, NULL, NULL, NULL, NULL, ?, ?, ?)`,
+    )
+    .bind(
+      donation.id,
+      donation.requestId,
+      donation.donorName,
+      donation.phone,
+      donation.email,
+      donation.location,
+      donation.numberOfPairs,
+      donation.shoeType,
+      donation.shoeCondition,
+      donation.donationMethod,
+      donation.pickupAddress,
+      donation.preferredPickupDate,
+      donation.donorNotes,
+      donation.emailUpdatesConsent ? 1 : 0,
+      donation.submittedAt,
+      donation.createdAt,
+      donation.updatedAt,
+    );
+  await db.batch([
+    insertStatement,
+    buildCsrAuditInsert(db, actor, {
+      action: "DONATION_REQUEST_CREATED",
+      entityType: "donation_request",
+      entityId: id,
+      newValues: donationRequestAuditSnapshot(donation),
+      changedFields: ["creation"],
+      createdAt: now,
+    }),
+  ]);
+
+  return donation;
 }
 
 export async function listDonationRequests(
@@ -960,9 +1125,12 @@ export async function getDonationRequest(id: string) {
 export async function updateDonationRequest(
   id: string,
   input: DonationRequestUpdateInput,
+  expectedUpdatedAt: string,
+  actor: CsrAuditActor,
 ): Promise<DonationRequestUpdateResult | null> {
   const current = await getDonationRequest(id);
   if (!current) return null;
+  assertExpectedUpdatedAt(current, expectedUpdatedAt);
   const nextStatus = input.status ?? current.status;
   const statusChanged = nextStatus !== current.status;
   const nextInternalNotes =
@@ -998,6 +1166,13 @@ export async function updateDonationRequest(
     impactNote: nextImpactNote,
     updatedAt: now,
   };
+  const auditDiff = auditValueDiff(
+    donationRequestAuditSnapshot(current),
+    donationRequestAuditSnapshot(updated),
+  );
+  if (!auditDiff.changedFields.length) {
+    return { request: current, statusChanged: false, notification: null };
+  }
   const transitionId = statusChanged ? crypto.randomUUID() : null;
   const notificationPlan = statusChanged
     ? buildDonationEmailPlan(updated, nextStatus, {
@@ -1008,6 +1183,15 @@ export async function updateDonationRequest(
     notificationPlan?.persistEvent && transitionId
       ? donationEmailEventFromPlan(updated, nextStatus, notificationPlan, now)
       : null;
+  const updateAuditCondition = statusChanged
+    ? {
+        sql: `EXISTS (
+          SELECT 1 FROM donation_requests
+          WHERE id = ? AND updated_at = ? AND workflow_status = ?
+        )`,
+        bindings: [id, expectedUpdatedAt, current.status],
+      }
+    : auditRowCondition("donation_requests", id, expectedUpdatedAt);
   const updateStatement = db
     .prepare(
       `UPDATE donation_requests SET
@@ -1016,7 +1200,7 @@ export async function updateDonationRequest(
         distribution_location = ?, distribution_campaign = ?, distribution_date = ?,
         pairs_distributed = ?, impact_note = ?, updated_at = ?,
         last_workflow_event_id = CASE WHEN ? THEN ? ELSE last_workflow_event_id END
-       WHERE id = ?${statusChanged ? " AND workflow_status = ?" : ""}`,
+       WHERE id = ? AND updated_at = ?${statusChanged ? " AND workflow_status = ?" : ""}`,
     )
     .bind(
       statusChanged ? 1 : 0,
@@ -1032,25 +1216,35 @@ export async function updateDonationRequest(
       statusChanged ? 1 : 0,
       transitionId,
       id,
+      expectedUpdatedAt,
       ...(statusChanged ? [current.status] : []),
     );
-  const statements = [updateStatement];
+  const statements = [
+    buildCsrAuditInsert(db, actor, {
+      action: "DONATION_REQUEST_UPDATED",
+      entityType: "donation_request",
+      entityId: id,
+      previousValues: auditDiff.previousValues,
+      newValues: auditDiff.newValues,
+      changedFields: auditDiff.changedFields,
+      createdAt: now,
+      conditionalOn: updateAuditCondition,
+    }),
+    updateStatement,
+  ];
   if (notificationEvent) {
     statements.push(
       prepareDonationEmailEventInsert(db, notificationEvent, transitionId),
     );
   }
-  // The event insert is guarded by the transition token written by this exact
-  // conditional UPDATE. D1 executes batch statements transactionally, so a
-  // failed event write cannot leave a successful status change without its
-  // durable delivery record.
+  // The audit is first and is guarded by the same server-read record version as
+  // the UPDATE. The event insert is guarded by the transition token written by
+  // that exact UPDATE. D1 executes the batch transactionally, so no successful
+  // request change can commit without its audit row or durable email record.
   const results = await db.batch(statements);
 
-  if (!results[0]?.meta.changes) {
-    const refreshed = await getDonationRequest(id);
-    return refreshed
-      ? { request: refreshed, statusChanged: false, notification: null }
-      : null;
+  if (!results[1]?.meta.changes) {
+    throw new CsrMutationConflictError();
   }
 
   let notification: DonationNotificationResult | null = null;
@@ -1061,7 +1255,7 @@ export async function updateDonationRequest(
         event: null,
         reason: notificationPlan.reason,
       };
-    } else if (!results[1]?.meta.changes) {
+    } else if (!results[2]?.meta.changes) {
       const existing = await findDonationEmailEvent(
         db,
         updated.id,
@@ -1181,6 +1375,7 @@ export async function sendDonationStatusNotification(
 export async function retryDonationEmailEvent(
   donationId: string,
   eventId: string,
+  actor: CsrAuditActor,
 ): Promise<DonationEmailRetryResult> {
   const db = await getDatabase();
   const event = await findDonationEmailEventById(db, donationId, eventId);
@@ -1190,22 +1385,6 @@ export async function retryDonationEmailEvent(
   }
 
   const now = new Date().toISOString();
-  const claim = await db
-    .prepare(`
-      UPDATE donation_email_events
-      SET delivery_status = 'pending', attempt_count = attempt_count + 1,
-          error_summary = NULL, updated_at = ?
-      WHERE id = ? AND donation_id = ? AND delivery_status = 'failed'
-    `)
-    .bind(now, eventId, donationId)
-    .run();
-  if (!claim.meta.changes) {
-    const current = await findDonationEmailEventById(db, donationId, eventId);
-    return current?.deliveryStatus === "pending"
-      ? { kind: "in_progress", event: current }
-      : { kind: "not_retryable", event: current ?? event };
-  }
-
   const claimed: DonationEmailEvent = {
     ...event,
     deliveryStatus: "pending",
@@ -1214,6 +1393,45 @@ export async function retryDonationEmailEvent(
     sentAt: null,
     updatedAt: now,
   };
+  const auditDiff = auditValueDiff(
+    donationEmailEventAuditSnapshot(event),
+    donationEmailEventAuditSnapshot(claimed),
+  );
+  const claimCondition = {
+    sql: `EXISTS (
+      SELECT 1 FROM donation_email_events
+      WHERE id = ? AND donation_id = ? AND delivery_status = 'failed' AND updated_at = ?
+    )`,
+    bindings: [eventId, donationId, event.updatedAt],
+  };
+  const claimStatement = db
+    .prepare(`
+      UPDATE donation_email_events
+      SET delivery_status = 'pending', attempt_count = attempt_count + 1,
+          error_summary = NULL, updated_at = ?
+      WHERE id = ? AND donation_id = ? AND delivery_status = 'failed' AND updated_at = ?
+    `)
+    .bind(now, eventId, donationId, event.updatedAt);
+  const claimResults = await db.batch([
+    buildCsrAuditInsert(db, actor, {
+      action: "DONATION_EMAIL_RETRIED",
+      entityType: "donation_email_event",
+      entityId: eventId,
+      previousValues: auditDiff.previousValues,
+      newValues: auditDiff.newValues,
+      changedFields: auditDiff.changedFields,
+      createdAt: now,
+      conditionalOn: claimCondition,
+    }),
+    claimStatement,
+  ]);
+  if (!claimResults[1]?.meta.changes) {
+    const current = await findDonationEmailEventById(db, donationId, eventId);
+    return current?.deliveryStatus === "pending"
+      ? { kind: "in_progress", event: current }
+      : { kind: "not_retryable", event: current ?? event };
+  }
+
   const donation = await getDonationRequest(donationId);
   if (!donation) {
     const failed = await recordDonationEmailWithoutDelivery(
@@ -1505,13 +1723,32 @@ async function deliverDonationEmail(
   return next;
 }
 
-export async function deleteDonationRequest(id: string) {
+export async function deleteDonationRequest(
+  id: string,
+  expectedUpdatedAt: string,
+  actor: CsrAuditActor,
+) {
+  const current = await getDonationRequest(id);
+  if (!current) return false;
+  assertExpectedUpdatedAt(current, expectedUpdatedAt);
+  const now = new Date().toISOString();
   const db = await getDatabase();
-  const result = await db
-    .prepare("DELETE FROM donation_requests WHERE id = ?")
-    .bind(id)
-    .run();
-  return Boolean(result.meta.changes);
+  const results = await db.batch([
+    buildCsrAuditInsert(db, actor, {
+      action: "DONATION_REQUEST_DELETED",
+      entityType: "donation_request",
+      entityId: id,
+      previousValues: donationRequestAuditSnapshot(current),
+      changedFields: ["deletion"],
+      createdAt: now,
+      conditionalOn: auditRowCondition("donation_requests", id, expectedUpdatedAt),
+    }),
+    db
+      .prepare("DELETE FROM donation_requests WHERE id = ? AND updated_at = ?")
+      .bind(id, expectedUpdatedAt),
+  ]);
+  if (!results[1]?.meta.changes) throw new CsrMutationConflictError();
+  return true;
 }
 
 export async function listDonationDrives(options: ContentListOptions = {}) {
@@ -1568,45 +1805,13 @@ export async function getPublicDonationDriveBySlug(slug: string) {
 
 export async function createDonationDrive(
   input: DonationDriveInput,
+  actor: CsrAuditActor,
 ): Promise<DonationDrive> {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   const slug = await uniqueSlug("donation_drives", input.slug, input.title);
   const publishedAt = input.isPublished ? now : null;
-  const db = await getDatabase();
-  await db
-    .prepare(
-      `INSERT INTO donation_drives (
-        id, slug, title, short_description, full_story, cover_image_id,
-        drive_date, location, partner_organization, goal_pairs, pairs_collected,
-        pairs_restored, pairs_donated, status, is_published, cta_text, cta_link,
-        published_at, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .bind(
-      id,
-      slug,
-      input.title,
-      input.shortDescription,
-      input.fullStory,
-      input.coverImageUrl ?? null,
-      input.driveDate,
-      input.location,
-      input.partnerOrganization ?? null,
-      input.goalPairs,
-      input.pairsCollected,
-      input.pairsRestored,
-      input.pairsDonated,
-      input.status,
-      input.isPublished ? 1 : 0,
-      input.ctaText ?? null,
-      input.ctaLink ?? null,
-      publishedAt,
-      now,
-      now,
-    )
-    .run();
-  return {
+  const drive: DonationDrive = {
     id,
     ...input,
     slug,
@@ -1618,14 +1823,61 @@ export async function createDonationDrive(
     createdAt: now,
     updatedAt: now,
   };
+  const db = await getDatabase();
+  const insertStatement = db
+    .prepare(
+      `INSERT INTO donation_drives (
+        id, slug, title, short_description, full_story, cover_image_id,
+        drive_date, location, partner_organization, goal_pairs, pairs_collected,
+        pairs_restored, pairs_donated, status, is_published, cta_text, cta_link,
+        published_at, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      id,
+      slug,
+      drive.title,
+      drive.shortDescription,
+      drive.fullStory,
+      drive.coverImageUrl,
+      drive.driveDate,
+      drive.location,
+      drive.partnerOrganization,
+      drive.goalPairs,
+      drive.pairsCollected,
+      drive.pairsRestored,
+      drive.pairsDonated,
+      drive.status,
+      drive.isPublished ? 1 : 0,
+      drive.ctaText,
+      drive.ctaLink,
+      drive.publishedAt,
+      drive.createdAt,
+      drive.updatedAt,
+    );
+  await db.batch([
+    insertStatement,
+    buildCsrAuditInsert(db, actor, {
+      action: "DONATION_DRIVE_CREATED",
+      entityType: "donation_drive",
+      entityId: id,
+      newValues: donationDriveAuditSnapshot(drive),
+      changedFields: ["creation"],
+      createdAt: now,
+    }),
+  ]);
+  return drive;
 }
 
 export async function updateDonationDrive(
   id: string,
   input: DonationDriveInput,
+  expectedUpdatedAt: string,
+  actor: CsrAuditActor,
 ): Promise<DonationDrive | null> {
   const current = await getDonationDrive(id);
   if (!current) return null;
+  assertExpectedUpdatedAt(current, expectedUpdatedAt);
   const now = new Date().toISOString();
   const slug = await uniqueSlug(
     "donation_drives",
@@ -1634,40 +1886,7 @@ export async function updateDonationDrive(
     id,
   );
   const publishedAt = input.isPublished ? current.publishedAt ?? now : null;
-  const db = await getDatabase();
-  await db
-    .prepare(
-      `UPDATE donation_drives SET
-        slug = ?, title = ?, short_description = ?, full_story = ?,
-        cover_image_id = ?, drive_date = ?, location = ?, partner_organization = ?,
-        goal_pairs = ?, pairs_collected = ?, pairs_restored = ?, pairs_donated = ?,
-        status = ?, is_published = ?, cta_text = ?, cta_link = ?, published_at = ?,
-        updated_at = ?
-       WHERE id = ?`,
-    )
-    .bind(
-      slug,
-      input.title,
-      input.shortDescription,
-      input.fullStory,
-      input.coverImageUrl ?? null,
-      input.driveDate,
-      input.location,
-      input.partnerOrganization ?? null,
-      input.goalPairs,
-      input.pairsCollected,
-      input.pairsRestored,
-      input.pairsDonated,
-      input.status,
-      input.isPublished ? 1 : 0,
-      input.ctaText ?? null,
-      input.ctaLink ?? null,
-      publishedAt,
-      now,
-      id,
-    )
-    .run();
-  return {
+  const drive: DonationDrive = {
     id,
     ...input,
     slug,
@@ -1679,15 +1898,87 @@ export async function updateDonationDrive(
     createdAt: current.createdAt,
     updatedAt: now,
   };
+  const auditDiff = auditValueDiff(
+    donationDriveAuditSnapshot(current),
+    donationDriveAuditSnapshot(drive),
+  );
+  if (!auditDiff.changedFields.length) return current;
+  const db = await getDatabase();
+  const updateStatement = db
+    .prepare(
+      `UPDATE donation_drives SET
+        slug = ?, title = ?, short_description = ?, full_story = ?,
+        cover_image_id = ?, drive_date = ?, location = ?, partner_organization = ?,
+        goal_pairs = ?, pairs_collected = ?, pairs_restored = ?, pairs_donated = ?,
+        status = ?, is_published = ?, cta_text = ?, cta_link = ?, published_at = ?,
+        updated_at = ?
+       WHERE id = ? AND updated_at = ?`,
+    )
+    .bind(
+      drive.slug,
+      drive.title,
+      drive.shortDescription,
+      drive.fullStory,
+      drive.coverImageUrl,
+      drive.driveDate,
+      drive.location,
+      drive.partnerOrganization,
+      drive.goalPairs,
+      drive.pairsCollected,
+      drive.pairsRestored,
+      drive.pairsDonated,
+      drive.status,
+      drive.isPublished ? 1 : 0,
+      drive.ctaText,
+      drive.ctaLink,
+      drive.publishedAt,
+      drive.updatedAt,
+      id,
+      expectedUpdatedAt,
+    );
+  const results = await db.batch([
+    buildCsrAuditInsert(db, actor, {
+      action: "DONATION_DRIVE_UPDATED",
+      entityType: "donation_drive",
+      entityId: id,
+      previousValues: auditDiff.previousValues,
+      newValues: auditDiff.newValues,
+      changedFields: auditDiff.changedFields,
+      createdAt: now,
+      conditionalOn: auditRowCondition("donation_drives", id, expectedUpdatedAt),
+    }),
+    updateStatement,
+  ]);
+  if (!results[1]?.meta.changes) throw new CsrMutationConflictError();
+  return drive;
 }
 
-export async function deleteDonationDrive(id: string) {
+export async function deleteDonationDrive(
+  id: string,
+  expectedUpdatedAt: string,
+  actor: CsrAuditActor,
+) {
+  const current = await getDonationDrive(id);
+  if (!current) return false;
+  assertExpectedUpdatedAt(current, expectedUpdatedAt);
+  const now = new Date().toISOString();
   const db = await getDatabase();
-  const result = await db
-    .prepare("DELETE FROM donation_drives WHERE id = ?")
-    .bind(id)
-    .run();
-  return Boolean(result.meta.changes);
+  const results = await db.batch([
+    buildCsrAuditInsert(db, actor, {
+      action: "DONATION_DRIVE_DELETED",
+      entityType: "donation_drive",
+      entityId: id,
+      previousValues: donationDriveAuditSnapshot(current),
+      changedFields: ["deletion"],
+      createdAt: now,
+      conditionalOn: auditRowCondition("donation_drives", id, expectedUpdatedAt),
+    }),
+    db
+      .prepare("DELETE FROM donation_drives WHERE id = ? AND updated_at = ?")
+      .bind(id, expectedUpdatedAt),
+  ]);
+  if (!results[1]?.meta.changes) throw new CsrMutationConflictError();
+  return true;
 }
 
 export async function listRestorationStories(options: { limit?: number } = {}) {
@@ -1729,36 +2020,13 @@ export async function getPublicRestorationStoryBySlug(slug: string) {
 
 export async function createRestorationStory(
   input: RestorationStoryInput,
+  actor: CsrAuditActor,
 ): Promise<RestorationStory> {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   const slug = await uniqueSlug("restoration_stories", input.slug, input.title);
   const publishedAt = input.isPublished ? now : null;
-  const db = await getDatabase();
-  await db
-    .prepare(
-      `INSERT INTO restoration_stories (
-        id, slug, title, category, before_image_id, after_image_id, description,
-        restoration_work, story_date, is_published, published_at, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .bind(
-      id,
-      slug,
-      input.title,
-      input.category,
-      input.beforeImageUrl ?? null,
-      input.afterImageUrl ?? null,
-      input.description,
-      input.restorationWork,
-      input.storyDate,
-      input.isPublished ? 1 : 0,
-      publishedAt,
-      now,
-      now,
-    )
-    .run();
-  return {
+  const story: RestorationStory = {
     id,
     ...input,
     slug,
@@ -1768,14 +2036,52 @@ export async function createRestorationStory(
     createdAt: now,
     updatedAt: now,
   };
+  const db = await getDatabase();
+  const insertStatement = db
+    .prepare(
+      `INSERT INTO restoration_stories (
+        id, slug, title, category, before_image_id, after_image_id, description,
+        restoration_work, story_date, is_published, published_at, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      id,
+      slug,
+      story.title,
+      story.category,
+      story.beforeImageUrl,
+      story.afterImageUrl,
+      story.description,
+      story.restorationWork,
+      story.storyDate,
+      story.isPublished ? 1 : 0,
+      story.publishedAt,
+      story.createdAt,
+      story.updatedAt,
+    );
+  await db.batch([
+    insertStatement,
+    buildCsrAuditInsert(db, actor, {
+      action: "RESTORATION_STORY_CREATED",
+      entityType: "restoration_story",
+      entityId: id,
+      newValues: restorationStoryAuditSnapshot(story),
+      changedFields: ["creation"],
+      createdAt: now,
+    }),
+  ]);
+  return story;
 }
 
 export async function updateRestorationStory(
   id: string,
   input: RestorationStoryInput,
+  expectedUpdatedAt: string,
+  actor: CsrAuditActor,
 ): Promise<RestorationStory | null> {
   const current = await getRestorationStory(id);
   if (!current) return null;
+  assertExpectedUpdatedAt(current, expectedUpdatedAt);
   const now = new Date().toISOString();
   const slug = await uniqueSlug(
     "restoration_stories",
@@ -1784,31 +2090,7 @@ export async function updateRestorationStory(
     id,
   );
   const publishedAt = input.isPublished ? current.publishedAt ?? now : null;
-  const db = await getDatabase();
-  await db
-    .prepare(
-      `UPDATE restoration_stories SET
-        slug = ?, title = ?, category = ?, before_image_id = ?, after_image_id = ?,
-        description = ?, restoration_work = ?, story_date = ?, is_published = ?,
-        published_at = ?, updated_at = ?
-       WHERE id = ?`,
-    )
-    .bind(
-      slug,
-      input.title,
-      input.category,
-      input.beforeImageUrl ?? null,
-      input.afterImageUrl ?? null,
-      input.description,
-      input.restorationWork,
-      input.storyDate,
-      input.isPublished ? 1 : 0,
-      publishedAt,
-      now,
-      id,
-    )
-    .run();
-  return {
+  const story: RestorationStory = {
     id,
     ...input,
     slug,
@@ -1818,15 +2100,78 @@ export async function updateRestorationStory(
     createdAt: current.createdAt,
     updatedAt: now,
   };
+  const auditDiff = auditValueDiff(
+    restorationStoryAuditSnapshot(current),
+    restorationStoryAuditSnapshot(story),
+  );
+  if (!auditDiff.changedFields.length) return current;
+  const db = await getDatabase();
+  const updateStatement = db
+    .prepare(
+      `UPDATE restoration_stories SET
+        slug = ?, title = ?, category = ?, before_image_id = ?, after_image_id = ?,
+        description = ?, restoration_work = ?, story_date = ?, is_published = ?,
+        published_at = ?, updated_at = ?
+       WHERE id = ? AND updated_at = ?`,
+    )
+    .bind(
+      story.slug,
+      story.title,
+      story.category,
+      story.beforeImageUrl,
+      story.afterImageUrl,
+      story.description,
+      story.restorationWork,
+      story.storyDate,
+      story.isPublished ? 1 : 0,
+      story.publishedAt,
+      story.updatedAt,
+      id,
+      expectedUpdatedAt,
+    );
+  const results = await db.batch([
+    buildCsrAuditInsert(db, actor, {
+      action: "RESTORATION_STORY_UPDATED",
+      entityType: "restoration_story",
+      entityId: id,
+      previousValues: auditDiff.previousValues,
+      newValues: auditDiff.newValues,
+      changedFields: auditDiff.changedFields,
+      createdAt: now,
+      conditionalOn: auditRowCondition("restoration_stories", id, expectedUpdatedAt),
+    }),
+    updateStatement,
+  ]);
+  if (!results[1]?.meta.changes) throw new CsrMutationConflictError();
+  return story;
 }
 
-export async function deleteRestorationStory(id: string) {
+export async function deleteRestorationStory(
+  id: string,
+  expectedUpdatedAt: string,
+  actor: CsrAuditActor,
+) {
+  const current = await getRestorationStory(id);
+  if (!current) return false;
+  assertExpectedUpdatedAt(current, expectedUpdatedAt);
+  const now = new Date().toISOString();
   const db = await getDatabase();
-  const result = await db
-    .prepare("DELETE FROM restoration_stories WHERE id = ?")
-    .bind(id)
-    .run();
-  return Boolean(result.meta.changes);
+  const results = await db.batch([
+    buildCsrAuditInsert(db, actor, {
+      action: "RESTORATION_STORY_DELETED",
+      entityType: "restoration_story",
+      entityId: id,
+      previousValues: restorationStoryAuditSnapshot(current),
+      changedFields: ["deletion"],
+      createdAt: now,
+      conditionalOn: auditRowCondition("restoration_stories", id, expectedUpdatedAt),
+    }),
+    db
+      .prepare("DELETE FROM restoration_stories WHERE id = ? AND updated_at = ?")
+      .bind(id, expectedUpdatedAt),
+  ]);
+  if (!results[1]?.meta.changes) throw new CsrMutationConflictError();
+  return true;
 }
 
 export async function listCommunityUpdates(options: { limit?: number } = {}) {
@@ -1868,14 +2213,25 @@ export async function getPublicCommunityUpdateBySlug(slug: string) {
 
 export async function createCommunityUpdate(
   input: CommunityUpdateInput,
+  actor: CsrAuditActor,
 ): Promise<CommunityUpdate> {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   const slug = await uniqueSlug("community_updates", input.slug, input.title);
   const publishedAt = input.isPublished ? now : null;
   const galleryImageUrls = input.galleryImageUrls ?? [];
+  const update: CommunityUpdate = {
+    id,
+    ...input,
+    slug,
+    coverImageUrl: input.coverImageUrl ?? null,
+    galleryImageUrls,
+    publishedAt,
+    createdAt: now,
+    updatedAt: now,
+  };
   const db = await getDatabase();
-  await db
+  const insertStatement = db
     .prepare(
       `INSERT INTO community_updates (
         id, slug, title, cover_image_id, gallery_image_ids, update_date, location,
@@ -1886,38 +2242,42 @@ export async function createCommunityUpdate(
     .bind(
       id,
       slug,
-      input.title,
-      input.coverImageUrl ?? null,
-      JSON.stringify(galleryImageUrls),
-      input.updateDate,
-      input.location,
-      input.recipientOrganization,
-      input.shoesDonated,
-      input.story,
-      input.isPublished ? 1 : 0,
-      publishedAt,
-      now,
-      now,
-    )
-    .run();
-  return {
-    id,
-    ...input,
-    slug,
-    coverImageUrl: input.coverImageUrl ?? null,
-    galleryImageUrls,
-    publishedAt,
-    createdAt: now,
-    updatedAt: now,
-  };
+      update.title,
+      update.coverImageUrl,
+      JSON.stringify(update.galleryImageUrls),
+      update.updateDate,
+      update.location,
+      update.recipientOrganization,
+      update.shoesDonated,
+      update.story,
+      update.isPublished ? 1 : 0,
+      update.publishedAt,
+      update.createdAt,
+      update.updatedAt,
+    );
+  await db.batch([
+    insertStatement,
+    buildCsrAuditInsert(db, actor, {
+      action: "COMMUNITY_UPDATE_CREATED",
+      entityType: "community_update",
+      entityId: id,
+      newValues: communityUpdateAuditSnapshot(update),
+      changedFields: ["creation"],
+      createdAt: now,
+    }),
+  ]);
+  return update;
 }
 
 export async function updateCommunityUpdate(
   id: string,
   input: CommunityUpdateInput,
+  expectedUpdatedAt: string,
+  actor: CsrAuditActor,
 ): Promise<CommunityUpdate | null> {
   const current = await getCommunityUpdate(id);
   if (!current) return null;
+  assertExpectedUpdatedAt(current, expectedUpdatedAt);
   const now = new Date().toISOString();
   const slug = await uniqueSlug(
     "community_updates",
@@ -1927,32 +2287,7 @@ export async function updateCommunityUpdate(
   );
   const publishedAt = input.isPublished ? current.publishedAt ?? now : null;
   const galleryImageUrls = input.galleryImageUrls ?? [];
-  const db = await getDatabase();
-  await db
-    .prepare(
-      `UPDATE community_updates SET
-        slug = ?, title = ?, cover_image_id = ?, gallery_image_ids = ?,
-        update_date = ?, location = ?, recipient_organization = ?, shoes_donated = ?,
-        story = ?, is_published = ?, published_at = ?, updated_at = ?
-       WHERE id = ?`,
-    )
-    .bind(
-      slug,
-      input.title,
-      input.coverImageUrl ?? null,
-      JSON.stringify(galleryImageUrls),
-      input.updateDate,
-      input.location,
-      input.recipientOrganization,
-      input.shoesDonated,
-      input.story,
-      input.isPublished ? 1 : 0,
-      publishedAt,
-      now,
-      id,
-    )
-    .run();
-  return {
+  const update: CommunityUpdate = {
     id,
     ...input,
     slug,
@@ -1962,15 +2297,79 @@ export async function updateCommunityUpdate(
     createdAt: current.createdAt,
     updatedAt: now,
   };
+  const auditDiff = auditValueDiff(
+    communityUpdateAuditSnapshot(current),
+    communityUpdateAuditSnapshot(update),
+  );
+  if (!auditDiff.changedFields.length) return current;
+  const db = await getDatabase();
+  const updateStatement = db
+    .prepare(
+      `UPDATE community_updates SET
+        slug = ?, title = ?, cover_image_id = ?, gallery_image_ids = ?,
+        update_date = ?, location = ?, recipient_organization = ?, shoes_donated = ?,
+        story = ?, is_published = ?, published_at = ?, updated_at = ?
+       WHERE id = ? AND updated_at = ?`,
+    )
+    .bind(
+      update.slug,
+      update.title,
+      update.coverImageUrl,
+      JSON.stringify(update.galleryImageUrls),
+      update.updateDate,
+      update.location,
+      update.recipientOrganization,
+      update.shoesDonated,
+      update.story,
+      update.isPublished ? 1 : 0,
+      update.publishedAt,
+      update.updatedAt,
+      id,
+      expectedUpdatedAt,
+    );
+  const results = await db.batch([
+    buildCsrAuditInsert(db, actor, {
+      action: "COMMUNITY_UPDATE_UPDATED",
+      entityType: "community_update",
+      entityId: id,
+      previousValues: auditDiff.previousValues,
+      newValues: auditDiff.newValues,
+      changedFields: auditDiff.changedFields,
+      createdAt: now,
+      conditionalOn: auditRowCondition("community_updates", id, expectedUpdatedAt),
+    }),
+    updateStatement,
+  ]);
+  if (!results[1]?.meta.changes) throw new CsrMutationConflictError();
+  return update;
 }
 
-export async function deleteCommunityUpdate(id: string) {
+export async function deleteCommunityUpdate(
+  id: string,
+  expectedUpdatedAt: string,
+  actor: CsrAuditActor,
+) {
+  const current = await getCommunityUpdate(id);
+  if (!current) return false;
+  assertExpectedUpdatedAt(current, expectedUpdatedAt);
+  const now = new Date().toISOString();
   const db = await getDatabase();
-  const result = await db
-    .prepare("DELETE FROM community_updates WHERE id = ?")
-    .bind(id)
-    .run();
-  return Boolean(result.meta.changes);
+  const results = await db.batch([
+    buildCsrAuditInsert(db, actor, {
+      action: "COMMUNITY_UPDATE_DELETED",
+      entityType: "community_update",
+      entityId: id,
+      previousValues: communityUpdateAuditSnapshot(current),
+      changedFields: ["deletion"],
+      createdAt: now,
+      conditionalOn: auditRowCondition("community_updates", id, expectedUpdatedAt),
+    }),
+    db
+      .prepare("DELETE FROM community_updates WHERE id = ? AND updated_at = ?")
+      .bind(id, expectedUpdatedAt),
+  ]);
+  if (!results[1]?.meta.changes) throw new CsrMutationConflictError();
+  return true;
 }
 
 const emptyImpactStats = (): DonationImpactStats => ({
@@ -1992,10 +2391,32 @@ export async function getDonationImpactStats(): Promise<DonationImpactStats> {
   return row ? parseImpactStats(row) : emptyImpactStats();
 }
 
-export async function updateDonationImpactStats(input: DonationImpactStatsInput) {
+export async function updateDonationImpactStats(
+  input: DonationImpactStatsInput,
+  expectedUpdatedAt: string,
+  actor: CsrAuditActor,
+) {
   const now = new Date().toISOString();
   const db = await getDatabase();
-  await db
+  const currentRow = await db
+    .prepare("SELECT * FROM donation_impact_stats WHERE id = ? LIMIT 1")
+    .bind(IMPACT_STATS_ID)
+    .first<RawRow>();
+  const current = currentRow ? parseImpactStats(currentRow) : emptyImpactStats();
+  assertExpectedUpdatedAt(current, expectedUpdatedAt);
+  const stats: DonationImpactStats = { ...input, updatedAt: now };
+  const auditDiff = auditValueDiff(
+    impactStatsAuditSnapshot(current),
+    impactStatsAuditSnapshot(stats),
+  );
+  if (!auditDiff.changedFields.length) return current;
+  const currentRowCondition = currentRow
+    ? auditRowCondition("donation_impact_stats", IMPACT_STATS_ID, expectedUpdatedAt)
+    : {
+        sql: "NOT EXISTS (SELECT 1 FROM donation_impact_stats WHERE id = ?)",
+        bindings: [IMPACT_STATS_ID],
+      };
+  const updateStatement = db
     .prepare(
       `INSERT INTO donation_impact_stats (
         id, total_pairs_collected, total_pairs_restored, total_pairs_donated,
@@ -2009,21 +2430,36 @@ export async function updateDonationImpactStats(input: DonationImpactStatsInput)
         donation_drives_completed = excluded.donation_drives_completed,
         partner_organizations = excluded.partner_organizations,
         communities_reached = excluded.communities_reached,
-        updated_at = excluded.updated_at`,
+        updated_at = excluded.updated_at
+      WHERE donation_impact_stats.updated_at = ?`,
     )
     .bind(
       IMPACT_STATS_ID,
-      input.totalPairsCollected,
-      input.totalPairsRestored,
-      input.totalPairsDonated,
-      input.donationDrivesCompleted,
-      input.partnerOrganizations,
-      input.communitiesReached,
+      stats.totalPairsCollected,
+      stats.totalPairsRestored,
+      stats.totalPairsDonated,
+      stats.donationDrivesCompleted,
+      stats.partnerOrganizations,
+      stats.communitiesReached,
       now,
       now,
-    )
-    .run();
-  return { ...input, updatedAt: now };
+      expectedUpdatedAt,
+    );
+  const results = await db.batch([
+    buildCsrAuditInsert(db, actor, {
+      action: "DONATION_IMPACT_STATS_UPDATED",
+      entityType: "donation_impact_stats",
+      entityId: "global",
+      previousValues: auditDiff.previousValues,
+      newValues: auditDiff.newValues,
+      changedFields: auditDiff.changedFields,
+      createdAt: now,
+      conditionalOn: currentRowCondition,
+    }),
+    updateStatement,
+  ]);
+  if (!results[1]?.meta.changes) throw new CsrMutationConflictError();
+  return stats;
 }
 
 export async function getCsrDashboardSummary(): Promise<CsrDashboardSummary> {

@@ -30,7 +30,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const created = await createBooking(booking);
+    const created = await createBooking(booking, { source: "customer" });
     const publicReference = getBookingPublicReference(created);
     const [emailNotification, whatsappNotification, confirmationNotification] =
       await Promise.all([

@@ -1,12 +1,21 @@
-import { clearAdminSessionCookie } from "@/lib/admin-auth";
+import {
+  clearAdminSessionCookie,
+  clearLegacyAdminSessionCookie,
+  logoutAdminSession,
+  requireAdminApi,
+} from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
-  const location = new URL("/", request.url).toString();
-  const headers = new Headers({
-    Location: location,
-    "Set-Cookie": clearAdminSessionCookie(),
+export async function POST(request: Request) {
+  const auth = await requireAdminApi(request, {
+    action: "ADMIN_LOGOUT",
+    mutation: true,
   });
-  return new Response(null, { status: 303, headers });
+  if (auth.response) return auth.response;
+  await logoutAdminSession(request);
+  const response = Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+  response.headers.append("Set-Cookie", clearAdminSessionCookie());
+  response.headers.append("Set-Cookie", clearLegacyAdminSessionCookie());
+  return response;
 }

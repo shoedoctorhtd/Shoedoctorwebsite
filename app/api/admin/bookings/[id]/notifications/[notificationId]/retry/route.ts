@@ -1,4 +1,4 @@
-import { getAdminUser } from "@/lib/admin-auth";
+import { requireAdminApi } from "@/lib/admin-auth";
 import { retryBookingStatusNotification } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
@@ -7,14 +7,18 @@ type RouteContext = {
   params: Promise<{ id: string; notificationId: string }>;
 };
 
-export async function POST(_request: Request, context: RouteContext) {
-  if (!(await getAdminUser())) {
-    return Response.json({ message: "Unauthorized" }, { status: 401 });
-  }
+export async function POST(request: Request, context: RouteContext) {
+  const auth = await requireAdminApi(request, {
+    action: "BOOKING_NOTIFICATION_RETRY",
+    mutation: true,
+    roles: ["super_admin"],
+    entityType: "booking_notification",
+  });
+  if (auth.response) return auth.response;
 
   try {
     const { id, notificationId } = await context.params;
-    const result = await retryBookingStatusNotification(id, notificationId);
+    const result = await retryBookingStatusNotification(id, notificationId, auth.user);
     if (result.kind === "not_found") {
       return Response.json({ message: "Notification not found." }, { status: 404 });
     }

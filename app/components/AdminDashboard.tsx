@@ -80,6 +80,7 @@ type AdminDashboardProps = {
   initialServices: Service[];
   initialBookings: Booking[];
   ownerName: string;
+  ownerRole: "super_admin" | "admin";
 };
 
 function toInput(service: Service): ServiceInput {
@@ -212,8 +213,12 @@ export default function AdminDashboard({
   initialServices,
   initialBookings,
   ownerName,
+  ownerRole,
 }: AdminDashboardProps) {
-  const [tab, setTab] = useState<"services" | "bookings">("services");
+  const isSuperAdmin = ownerRole === "super_admin";
+  const [tab, setTab] = useState<"services" | "bookings">(
+    isSuperAdmin ? "services" : "bookings",
+  );
   const [services, setServices] = useState(initialServices);
   const [bookings, setBookings] = useState(initialBookings);
   const [bookingFilter, setBookingFilter] = useState<"all" | BookingStatus>(
@@ -226,6 +231,7 @@ export default function AdminDashboard({
   } | null>(null);
   const [editor, setEditor] = useState<{
     id: string | null;
+    updatedAt: string | null;
     value: ServiceInput;
   } | null>(null);
   const [featuresText, setFeaturesText] = useState("");
@@ -336,6 +342,7 @@ export default function AdminDashboard({
   function openNewService() {
     setEditor({
       id: null,
+      updatedAt: null,
       value: {
         ...emptyService,
         sortOrder: services.length
@@ -348,7 +355,7 @@ export default function AdminDashboard({
   }
 
   function openService(service: Service) {
-    setEditor({ id: service.id, value: toInput(service) });
+    setEditor({ id: service.id, updatedAt: service.updatedAt, value: toInput(service) });
     setFeaturesText(service.features.join("\n"));
     setNotice(null);
   }
@@ -372,6 +379,7 @@ export default function AdminDashboard({
     setNotice(null);
     const payload = {
       ...editor.value,
+      ...(editor.id ? { updatedAt: editor.updatedAt } : {}),
       features: featuresText
         .split("\n")
         .map((feature) => feature.trim())
@@ -425,7 +433,7 @@ export default function AdminDashboard({
         {
           method: "PATCH",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ ...toInput(service), active: !service.active }),
+          body: JSON.stringify({ ...toInput(service), active: !service.active, updatedAt: service.updatedAt }),
         },
       );
       const result = (await response.json()) as {
@@ -468,7 +476,11 @@ export default function AdminDashboard({
     try {
       const response = await fetch(
         `/api/admin/services/${encodeURIComponent(service.id)}`,
-        { method: "DELETE" },
+        {
+          method: "DELETE",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ updatedAt: service.updatedAt }),
+        },
       );
       const result = (await response.json()) as { message?: string };
       if (!response.ok) {
@@ -499,7 +511,7 @@ export default function AdminDashboard({
         {
           method: "PATCH",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ status }),
+          body: JSON.stringify({ status, recordVersion: booking.recordVersion }),
         },
       );
       const result = (await response.json()) as {
@@ -632,6 +644,18 @@ export default function AdminDashboard({
     }
   }
 
+  async function signOut() {
+    setBusy("logout");
+    try {
+      const response = await fetch("/api/admin/logout", { method: "POST" });
+      if (!response.ok) throw new Error("Unable to sign out.");
+      window.location.assign("/");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Unable to sign out.");
+      setBusy(null);
+    }
+  }
+
   return (
     <main className="admin-shell">
       <header className="admin-header">
@@ -639,12 +663,14 @@ export default function AdminDashboard({
           <span>SD+</span>
           <div>
             <strong>Shoe Doctor</strong>
-            <small>Owner dashboard</small>
+            <small>{isSuperAdmin ? "Super Admin dashboard" : "Operations dashboard"}</small>
           </div>
         </Link>
         <div className="admin-owner">
-          <span>Signed in as {ownerName}</span>
-          <a href="/api/admin/logout">Sign out</a>
+          <span>Signed in as {ownerName} · {isSuperAdmin ? "Super Admin" : "Admin"}</span>
+          <button type="button" onClick={() => void signOut()} disabled={busy === "logout"}>
+            {busy === "logout" ? "Signing out…" : "Sign out"}
+          </button>
         </div>
       </header>
 
@@ -666,14 +692,16 @@ export default function AdminDashboard({
       </section>
 
       <div className="admin-tabs" role="tablist">
-        <button
-          className={tab === "services" ? "active" : ""}
-          onClick={() => setTab("services")}
-          role="tab"
-          aria-selected={tab === "services"}
-        >
-          Services & pricing
-        </button>
+        {isSuperAdmin && (
+          <button
+            className={tab === "services" ? "active" : ""}
+            onClick={() => setTab("services")}
+            role="tab"
+            aria-selected={tab === "services"}
+          >
+            Services & pricing
+          </button>
+        )}
         <button
           className={tab === "bookings" ? "active" : ""}
           onClick={() => setTab("bookings")}
@@ -682,14 +710,20 @@ export default function AdminDashboard({
         >
           Bookings {newBookings > 0 && <span>{newBookings}</span>}
         </button>
-        <Link
-          className="admin-csr-nav-link"
-          href="/admin/csr-donations"
-          aria-label="Open CSR and Donations"
-        >
-          <CsrDonationsIcon />
-          <span>CSR &amp; Donations</span>
+        <Link className="admin-view-site-link" href="/admin/bookings/new">
+          + Counter booking
         </Link>
+        {isSuperAdmin && (
+          <>
+            <Link className="admin-csr-nav-link" href="/admin/csr-donations" aria-label="Open CSR and Donations">
+              <CsrDonationsIcon />
+              <span>CSR &amp; Donations</span>
+            </Link>
+            <Link className="admin-view-site-link" href="/admin/users">Admin users</Link>
+            <Link className="admin-view-site-link" href="/admin/activity">Admin activity</Link>
+            <Link className="admin-view-site-link" href="/admin/deleted-bookings">Deleted bookings</Link>
+          </>
+        )}
         <Link
           className="admin-view-site-link"
           href="/"
@@ -709,7 +743,7 @@ export default function AdminDashboard({
         </div>
       )}
 
-      {tab === "services" ? (
+      {isSuperAdmin && tab === "services" ? (
         <section className="admin-panel">
           <div className="admin-panel-heading">
             <div>
@@ -832,6 +866,13 @@ export default function AdminDashboard({
                       </span>
                       <small>{formatDate(booking.createdAt)}</small>
                       <small>{pairCountLabel(pairCount)}</small>
+                      <small>
+                        {booking.createdSource === "admin"
+                          ? `Entered by ${booking.createdByAdminName ?? "Unknown"}`
+                          : booking.createdSource === "legacy"
+                            ? "Legacy/Unknown"
+                            : "Customer/System"}
+                      </small>
                       {matchedPairNumber !== null && (
                         <small className="booking-search-match">
                           Pair {matchedPairNumber} matched
@@ -1044,7 +1085,7 @@ export default function AdminDashboard({
                           <span>Sent {formatDate(notification.sentAt)}</span>
                         )}
                       </div>
-                      {notification?.status === "failed" && (
+                      {isSuperAdmin && notification?.status === "failed" && (
                         <button
                           className="admin-secondary booking-notification__retry"
                           type="button"
@@ -1080,6 +1121,9 @@ export default function AdminDashboard({
                       </select>
                     </label>
                     <a href={`tel:${booking.phone}`}>Call customer</a>
+                    <Link href={`/admin/bookings/${encodeURIComponent(booking.id)}`}>
+                      View details
+                    </Link>
                   </div>
                 </article>
                 );

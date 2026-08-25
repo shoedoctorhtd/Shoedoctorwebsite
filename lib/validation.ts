@@ -6,6 +6,7 @@ import {
   type BookingStatus,
   type BookingInput,
   type BookingItemInput,
+  type BookingDetailsUpdateInput,
   type ServiceInput,
 } from "./data";
 import { isPickupArea } from "./booking-pricing";
@@ -284,4 +285,92 @@ export function parsePublicBooking(value: unknown): BookingInput {
     notes,
     expressRequested: input.expressRequested === true,
   };
+}
+
+export function parseAdminBookingDetails(value: unknown): BookingDetailsUpdateInput {
+  const input = (value ?? {}) as Record<string, unknown>;
+  const output: BookingDetailsUpdateInput = {};
+  const has = (key: string) => Object.prototype.hasOwnProperty.call(input, key);
+  if (has("customerName")) {
+    const name = bookingText(input.customerName, 80, "Customer name");
+    if (name.length < 2) throw new Error("Customer name must contain at least two characters.");
+    output.customerName = name;
+  }
+  if (has("phone")) {
+    const phone = bookingText(input.phone, 30, "Phone");
+    const digits = phone.replace(/\D/gu, "");
+    if (digits.length < 7 || digits.length > 15) throw new Error("Enter a valid phone number.");
+    output.phone = phone;
+  }
+  if (has("email")) {
+    const email = optionalBookingText(input.email, 120, "Email address");
+    if (email && !isEmailAddress(email)) throw new Error("Enter a valid email address.");
+    output.email = email;
+  }
+  if (has("preferredDate")) {
+    const date = optionalBookingText(input.preferredDate, 20, "Preferred date");
+    if (date && !/^\d{4}-\d{2}-\d{2}$/u.test(date)) throw new Error("Choose a valid preferred date.");
+    output.preferredDate = date;
+  }
+  if (has("fulfillmentMethod")) {
+    const method = bookingText(input.fulfillmentMethod, 30, "Collection method");
+    if (!FULFILLMENT_METHODS.includes(method as BookingInput["fulfillmentMethod"])) {
+      throw new Error("Choose a valid collection method.");
+    }
+    output.fulfillmentMethod = method as BookingInput["fulfillmentMethod"];
+  }
+  if (has("pickupArea")) {
+    const area = optionalBookingText(input.pickupArea, 30, "Pickup area");
+    if (area && !isPickupArea(area)) throw new Error("Choose a valid pickup area.");
+    output.pickupArea = area as BookingDetailsUpdateInput["pickupArea"];
+  }
+  if (has("pickupAddress")) output.pickupAddress = optionalBookingText(input.pickupAddress, 300, "Pickup address");
+  if (has("locationUrl")) {
+    const url = optionalBookingText(input.locationUrl, 500, "Map location link");
+    if (url && !/^https?:\/\//iu.test(url)) throw new Error("Enter a valid map location link.");
+    output.locationUrl = url;
+  }
+  if (has("notes")) output.notes = optionalBookingText(input.notes, 800, "Booking notes");
+  if (has("totalAmount")) output.totalAmount = parseNullableMoney(input.totalAmount, "Final price");
+  if (has("discountAmount")) output.discountAmount = parseNullableMoney(input.discountAmount, "Discount");
+  if (has("paymentAmount")) output.paymentAmount = parseNullableMoney(input.paymentAmount, "Payment amount");
+  if (has("paymentStatus")) {
+    const status = optionalBookingText(input.paymentStatus, 20, "Payment status");
+    if (status && !["unpaid", "partial", "paid", "refunded"].includes(status)) {
+      throw new Error("Choose a valid payment status.");
+    }
+    output.paymentStatus = status as BookingDetailsUpdateInput["paymentStatus"];
+  }
+  if (!Object.keys(output).length) throw new Error("Choose at least one permitted booking field to update.");
+  return output;
+}
+
+export function parseAdminRecordVersion(value: unknown) {
+  const version = Number(value);
+  if (!Number.isSafeInteger(version) || version <= 0) {
+    throw new Error("This booking is missing its current version. Refresh it before making changes.");
+  }
+  return version;
+}
+
+export function parseAdminUpdatedAt(value: unknown, label = "record") {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(value) || Number.isNaN(Date.parse(value))) {
+    throw new Error(`This ${label} is missing its current version. Refresh it before making changes.`);
+  }
+  return value;
+}
+
+export function parseRequiredAdminReason(value: unknown, label = "Reason") {
+  const reason = bookingText(value, 500, label).replace(/\s+/gu, " ");
+  if (reason.length < 3) throw new Error(`${label} must contain at least three characters.`);
+  return reason;
+}
+
+function parseNullableMoney(value: unknown, label: string) {
+  if (value === null || value === "") return null;
+  const amount = Number(value);
+  if (!Number.isSafeInteger(amount) || amount < 0) {
+    throw new Error(`${label} must be a non-negative whole rupee amount.`);
+  }
+  return amount;
 }

@@ -98,8 +98,51 @@ Copy the generated value into `SESSION_SECRET`. Do not put either secret in
 GitHub. The owner email is configured as `shoedoctorhtd@gmail.com` in
 `wrangler.jsonc`.
 
-After saving the secrets, redeploy the latest Worker version. The admin login is
-then available at:
+These legacy values are only a migration bridge for the existing shared login.
+Do not create or share employee credentials with them. The role-aware system
+uses individual D1-backed accounts and opaque server-side sessions.
+
+### First named Super Admin rollout
+
+Use this order for an existing production Worker. Do not deploy the new code
+before the migration and named account exist, and do not sign out of the
+existing owner session until the deployment step has completed.
+
+1. Apply the additive migration while the existing Worker is still live:
+
+   ```bash
+   npx wrangler d1 migrations apply shoe-doctor-db --remote
+   ```
+
+2. On a trusted local machine, set `SUPER_ADMIN_PASSWORD` only for the current
+   shell and run the one-time local bootstrap. It prompts for the name and
+   email; it never creates a public bootstrap route or writes the password to
+   disk:
+
+   ```bash
+   npm run admin:bootstrap -- --remote
+   ```
+
+   The script refuses to run when a named account already exists. It creates
+   the first `super_admin` and atomically disables the old shared-login
+   fallback.
+
+3. Deploy the role-aware Worker immediately after bootstrap:
+
+   ```bash
+   npx wrangler deploy
+   ```
+
+4. Open a fresh private-browser session and verify that the named account can
+   sign in at `/admin`. The first named login also claims the bootstrap owner
+   alert. Do not use the old shared login after bootstrap.
+
+After bootstrap, `ADMIN_PASSWORD` no longer grants application access. Keep
+the old secret only until the rollout is verified, then remove it from the
+Worker. Retain `SESSION_SECRET` until every legacy cookie has expired; it is no
+longer used for named sessions.
+
+The named admin login is then available at:
 
 ```text
 https://YOUR-WORKER.workers.dev/admin
@@ -209,6 +252,17 @@ npm run auth:secret
 ## Security notes
 
 - The password and session secret are never committed to GitHub.
-- The login cookie is HTTP-only, secure and limited to the same site.
-- Admin API routes verify the signed session on the server.
-- Use a unique password that you do not reuse elsewhere.
+- Named administrator passwords use a per-account Workers Web Crypto PBKDF2
+  hash. Raw passwords, hashes, session tokens, OAuth credentials, and cookies
+  are excluded from audit logs.
+- Named login uses an HTTP-only, secure, same-site opaque cookie backed by a
+  D1 session that is checked, expires, and can be revoked server-side.
+- Every admin mutation checks same-origin request metadata and the verified
+  server-side role. Do not trust browser-supplied actor identity or role.
+- `super_admin` is the only role allowed to manage accounts, change global
+  services/pricing, export CSR data, view audit/deleted data, alter protected
+  booking details, or soft-delete/restore a booking. `admin` can run active
+  booking operations, status changes, pair work, counter bookings, and
+  append-only operational notes.
+- Apply D1 migrations before deployment; the application never performs the
+  new security schema migration at request time.

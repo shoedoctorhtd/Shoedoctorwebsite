@@ -2,13 +2,21 @@ import {
   getDonationImpactStats,
   updateDonationImpactStats,
 } from "@/lib/csr-data";
-import { csrAdminJson, csrApiError, requireCsrAdminApi } from "@/lib/csr-api";
-import { parseDonationImpactStatsInput } from "@/lib/csr-validation";
+import {
+  csrAdminJson,
+  csrApiError,
+  requireCsrAdminApi,
+  requireCsrAdminMutation,
+} from "@/lib/csr-api";
+import {
+  parseCsrExpectedUpdatedAt,
+  parseDonationImpactStatsInput,
+} from "@/lib/csr-validation";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const unauthorized = await requireCsrAdminApi();
+export async function GET(request: Request) {
+  const unauthorized = await requireCsrAdminApi(request);
   if (unauthorized) return unauthorized;
   try {
     return csrAdminJson({ stats: await getDonationImpactStats() });
@@ -18,11 +26,14 @@ export async function GET() {
 }
 
 async function saveStats(request: Request) {
-  const unauthorized = await requireCsrAdminApi();
-  if (unauthorized) return unauthorized;
+  const auth = await requireCsrAdminMutation(request);
+  if ("response" in auth) return auth.response;
   try {
+    const body = await request.json();
     const stats = await updateDonationImpactStats(
-      parseDonationImpactStatsInput(await request.json()),
+      parseDonationImpactStatsInput(body),
+      parseCsrExpectedUpdatedAt(body.expectedUpdatedAt),
+      auth.user,
     );
     return csrAdminJson({ stats });
   } catch (error) {

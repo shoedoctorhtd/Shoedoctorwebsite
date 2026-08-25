@@ -15487,3 +15487,435 @@ video {
     padding: 12px;
   }
 }
+
+/* Individual administrator, audit, and recoverable-booking controls. */
+.admin-owner button {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: var(--white);
+  cursor: pointer;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 8px 10px;
+  text-transform: uppercase;
+}
+
+.admin-owner button:disabled,
+.admin-primary:disabled,
+.admin-secondary:disabled,
+.admin-danger:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.admin-welcome--compact {
+  display: block;
+  padding-bottom: 28px;
+  padding-top: 48px;
+}
+
+.admin-welcome--compact p:last-child {
+  line-height: 1.55;
+  margin: 20px 0 0;
+  max-width: 680px;
+}
+
+.admin-management-shell .admin-panel {
+  padding-bottom: 22px;
+  padding-top: 22px;
+}
+
+.admin-form-grid--narrow {
+  max-width: 760px;
+}
+
+.admin-form-help {
+  color: var(--muted);
+  font-size: 11px;
+  margin: 0;
+}
+
+.admin-notice--error {
+  background: #ffd4ce;
+}
+
+.admin-sensitive-result {
+  background: #fff7b9;
+  border: 1px solid var(--ink);
+  margin: 18px clamp(20px, 4vw, 60px);
+  padding: 18px;
+}
+
+.admin-sensitive-result code {
+  display: block;
+  font-size: 18px;
+  margin: 10px 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-user-list,
+.admin-deleted-list,
+.admin-activity-list,
+.admin-pair-status-list,
+.admin-note-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-user-row,
+.admin-deleted-row,
+.admin-activity-row,
+.admin-pair-status-row,
+.admin-detail-card {
+  background: var(--white);
+  border: 1px solid var(--ink);
+}
+
+.admin-user-row,
+.admin-deleted-row {
+  align-items: center;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  padding: 16px;
+}
+
+.admin-user-row > div,
+.admin-deleted-row > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.admin-user-row span,
+.admin-deleted-row span,
+.admin-user-row small,
+.admin-deleted-row small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.admin-row-actions,
+.admin-deleted-row > div:last-child,
+.modal-actions,
+.admin-pagination {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-row-actions button,
+.admin-deleted-row button,
+.admin-deleted-row a,
+.admin-alert-status + button {
+  background: var(--white);
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 8px 10px;
+}
+
+.admin-role-pill,
+.admin-alert-status {
+  border: 1px solid var(--ink);
+  color: var(--ink) !important;
+  display: inline-flex;
+  font-size: 9px !important;
+  font-weight: 800;
+  padding: 4px 7px;
+  text-transform: uppercase;
+}
+
+.admin-role-pill.super_admin,
+.admin-alert-status.sent {
+  background: var(--lime);
+}
+
+.admin-alert-status.failed {
+  background: #ffd4ce;
+}
+
+.admin-alert-status.sending,
+.admin-alert-status.pending {
+  background: #fff7b9;
+}
+
+.admin-filter-form {
+  align-items: end;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.admin-filter-form label,
+.admin-operation-row label,
+.admin-note-form label,
+.admin-pair-status-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.admin-filter-form span,
+.admin-operation-row span,
+.admin-note-form span,
+.admin-pair-status-row span {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.admin-filter-form input,
+.admin-operation-row select,
+.admin-note-form textarea,
+.admin-pair-status-row select,
+.admin-pair-editor input,
+.admin-pair-editor select {
+  background: var(--white);
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  font: inherit;
+  min-width: 0;
+  padding: 10px;
+}
+
+.admin-activity-row {
+  display: grid;
+  gap: 15px;
+  grid-template-columns: 145px minmax(0, 1fr) minmax(120px, auto);
+  padding: 16px;
+}
+
+.admin-activity-row time,
+.admin-audit-list time,
+.admin-note-list time {
+  color: var(--muted);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+}
+
+.admin-activity-row > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.admin-activity-row b {
+  color: #7b1738;
+  font-size: 12px;
+}
+
+.admin-activity-row p,
+.admin-deleted-row p {
+  font-size: 11px;
+  line-height: 1.5;
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-activity-row aside {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.admin-pagination {
+  justify-content: space-between;
+  margin-top: 18px;
+}
+
+.admin-empty {
+  background: var(--white);
+  border: 1px dashed var(--ink);
+  padding: 26px;
+}
+
+.admin-empty p {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.admin-detail-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-detail-card {
+  padding: 18px;
+}
+
+.admin-detail-card dl {
+  display: grid;
+  gap: 7px 16px;
+  grid-template-columns: minmax(110px, 0.45fr) minmax(0, 1fr);
+  margin: 14px 0 0;
+}
+
+.admin-detail-card dt {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.admin-detail-card dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-pair-status-row {
+  align-items: center;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 0.4fr);
+  padding: 14px;
+}
+
+.admin-pair-status-row > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-pair-status-row > div span {
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: none;
+}
+
+.admin-operation-row,
+.admin-note-form {
+  margin-top: 18px;
+  max-width: 620px;
+}
+
+.admin-note-form {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-note-form textarea {
+  resize: vertical;
+}
+
+.admin-note-list,
+.admin-audit-list {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+}
+
+.admin-note-list li,
+.admin-audit-list li {
+  background: var(--white);
+  border-left: 4px solid var(--lime);
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+}
+
+.admin-note-list p,
+.admin-audit-list p,
+.admin-audit-list em {
+  font-size: 11px;
+  font-style: normal;
+  margin: 0;
+}
+
+.admin-audit-list li > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-audit-list span,
+.admin-audit-list em {
+  color: var(--muted);
+}
+
+.admin-danger {
+  background: #7b1738;
+  border: 1px solid #7b1738;
+  color: var(--white);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 13px 16px;
+  text-transform: uppercase;
+}
+
+.admin-fieldset {
+  border: 1px solid var(--ink);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 14px;
+}
+
+.admin-fieldset legend {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.admin-inline-choice {
+  align-items: center;
+  display: inline-flex !important;
+  flex-direction: row !important;
+  gap: 8px !important;
+}
+
+.admin-inline-choice input {
+  accent-color: var(--ink);
+}
+
+.admin-pair-editor {
+  margin-top: 12px;
+}
+
+.admin-pair-row {
+  align-items: center;
+  background: var(--white);
+  border: 1px solid var(--ink);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: auto repeat(4, minmax(0, 1fr)) auto;
+  margin-top: 8px;
+  padding: 10px;
+}
+
+@media (max-width: 760px) {
+  .admin-user-row,
+  .admin-deleted-row,
+  .admin-activity-row,
+  .admin-pair-status-row,
+  .admin-detail-grid,
+  .admin-filter-form,
+  .admin-pair-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-activity-row aside {
+    align-items: flex-start;
+  }
+
+  .admin-owner {
+    gap: 7px;
+  }
+
+  .admin-owner span {
+    display: none;
+  }
+}

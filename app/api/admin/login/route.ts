@@ -1,6 +1,8 @@
 import {
   adminSessionCookie,
-  createAdminSessionToken,
+  createAdminSession,
+  createLegacyAdminSessionToken,
+  legacyAdminSessionCookie,
   safeReturnPath,
   verifyAdminCredentials,
 } from "@/lib/admin-auth";
@@ -8,6 +10,11 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const origin = request.headers.get("origin");
+  if (!origin || origin !== new URL(request.url).origin) {
+    return Response.json({ message: "Invalid login request." }, { status: 403 });
+  }
+
   let body: Record<string, unknown>;
   try {
     body = (await request.json()) as Record<string, unknown>;
@@ -19,31 +26,50 @@ export async function POST(request: Request) {
   const password = typeof body.password === "string" ? body.password : "";
   if (!email || !password || password.length > 256) {
     return Response.json(
-      { message: "Enter your owner email and password." },
+      { message: "Enter your administrator email and password." },
       { status: 400 },
     );
   }
 
-  const result = await verifyAdminCredentials(email, password);
+  const result = await verifyAdminCredentials(email, password, request);
   if (!result.ok) {
-    const status = result.reason === "configuration" ? 503 : 401;
+    const status = result.reason === "configuration" ? 503 : result.reason === "rate_limited" ? 429 : 401;
     const message =
       result.reason === "configuration"
-        ? "Admin login is not configured yet. Add the Cloudflare secrets first."
-        : "The email or password is incorrect.";
-    return Response.json({ message }, { status });
+        ? "Administrator login is not configured yet."
+        : result.reason === "rate_limited"
+          ? "Too many attempts. Please wait before trying again."
+          : "The email or password is incorrect.";
+    return Response.json({ message }, { status, headers: { "Cache-Control": "no-store" } });
   }
 
-  const token = await createAdminSessionToken(
-    result.email,
-    result.sessionSecret,
+  let token: string;
+  let redirectTo: string;
+  let namedSession = false;
+  if (result.kind === "named") {
+    const session = await createAdminSession(result.user);
+    if (!session) {
+      return Response.json(
+        { message: "The administrator account is no longer active." },
+        { status: 401, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+    token = session.token;
+    namedSession = true;
+    redirectTo = session.user.mustChangePassword
+      ? "/admin/change-password"
+      : safeReturnPath(typeof body.next === "string" ? body.next : "/admin");
+  } else {
+    token = await createLegacyAdminSessionToken(result.email, result.sessionSecret);
+    redirectTo = safeReturnPath(typeof body.next === "string" ? body.next : "/admin");
+  }
+  const response = Response.json(
+    { ok: true, redirectTo },
+    { headers: { "Cache-Control": "no-store" } },
   );
-  const response = Response.json({
-    ok: true,
-    redirectTo: safeReturnPath(
-      typeof body.next === "string" ? body.next : "/admin",
-    ),
-  });
-  response.headers.append("Set-Cookie", adminSessionCookie(token));
+  response.headers.append(
+    "Set-Cookie",
+    namedSession ? adminSessionCookie(token) : legacyAdminSessionCookie(token),
+  );
   return response;
 }

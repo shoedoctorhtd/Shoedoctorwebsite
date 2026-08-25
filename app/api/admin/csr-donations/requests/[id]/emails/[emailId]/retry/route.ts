@@ -1,5 +1,9 @@
 import { retryDonationEmailEvent } from "@/lib/csr-data";
-import { csrAdminJson, csrApiError, requireCsrAdminApi } from "@/lib/csr-api";
+import {
+  csrAdminJson,
+  csrApiError,
+  requireCsrAdminMutation,
+} from "@/lib/csr-api";
 import { parseCsrId } from "@/lib/csr-validation";
 
 export const dynamic = "force-dynamic";
@@ -9,14 +13,15 @@ type RouteContext = {
 };
 
 /** Retries only a previously failed donor email; sent/pending events are never resent. */
-export async function POST(_request: Request, context: RouteContext) {
-  const unauthorized = await requireCsrAdminApi();
-  if (unauthorized) return unauthorized;
+export async function POST(request: Request, context: RouteContext) {
+  const auth = await requireCsrAdminMutation(request);
+  if ("response" in auth) return auth.response;
   try {
     const { id: rawId, emailId: rawEmailId } = await context.params;
     const result = await retryDonationEmailEvent(
       parseCsrId(rawId, "request"),
       parseCsrId(rawEmailId, "email event"),
+      auth.user,
     );
     if (result.kind === "not_found") {
       return csrAdminJson({ message: "Donation email event not found." }, { status: 404 });

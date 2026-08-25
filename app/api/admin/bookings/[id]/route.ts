@@ -1,16 +1,18 @@
-import { getAdminUser } from "@/lib/admin-auth";
+import { requireAdminApi } from "@/lib/admin-auth";
 import { updateBookingStatus } from "@/lib/data";
-import { parseBookingStatus } from "@/lib/validation";
+import { parseAdminRecordVersion, parseBookingStatus } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const user = await getAdminUser();
-  if (!user) {
-    return Response.json({ message: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireAdminApi(request, {
+    action: "BOOKING_STATUS_CHANGED",
+    mutation: true,
+    entityType: "booking",
+  });
+  if (auth.response) return auth.response;
 
   try {
     const { id } = await context.params;
@@ -18,7 +20,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     const result = await updateBookingStatus(
       id,
       parseBookingStatus(body.status),
-      user.email,
+      auth.user,
+      parseAdminRecordVersion(body.recordVersion),
     );
     if (result.kind === "not_found") {
       return Response.json({ message: "Booking not found." }, { status: 404 });
@@ -40,7 +43,6 @@ export async function PATCH(request: Request, context: RouteContext) {
         message: "Booking status is already up to date.",
       });
     }
-
     return Response.json({
       ok: true,
       booking: result.booking,
@@ -49,8 +51,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       unchanged: false,
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unable to update booking.";
+    const message = error instanceof Error ? error.message : "Unable to update booking.";
     return Response.json({ message }, { status: 400 });
   }
 }

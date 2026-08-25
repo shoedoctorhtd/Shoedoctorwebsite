@@ -5,7 +5,7 @@ import { parseDonationRequestListOptions } from "@/lib/csr-validation";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const unauthorized = await requireCsrAdminApi();
+  const unauthorized = await requireCsrAdminApi(request);
   if (unauthorized) return unauthorized;
   try {
     const options = parseDonationRequestListOptions(new URL(request.url));

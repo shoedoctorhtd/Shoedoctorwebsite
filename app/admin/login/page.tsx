@@ -7,7 +7,7 @@ import { getAdminUser, safeReturnPath } from "@/lib/admin-auth";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Owner Login",
+  title: "Administrator Login",
   robots: { index: false, follow: false },
 };
 
@@ -28,8 +28,8 @@ export default async function AdminLoginPage({
           <span>SD+</span>
           <strong>Shoe Doctor</strong>
         </Link>
-        <p className="section-kicker">Private owner area</p>
-        <h1>YOUR BUSINESS.<br />ONE CONTROL ROOM.</h1>
+        <p className="section-kicker">Private administrator area</p>
+        <h1>SECURE<br />OPERATIONS.</h1>
         <p className="admin-login-intro">
           Sign in to manage services, prices and customer bookings. Your
           password is checked securely on Cloudflare and is never stored in

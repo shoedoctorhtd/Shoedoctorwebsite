@@ -1,5 +1,6 @@
 import CsrDonationsDashboard from "@/app/components/CsrDonationsDashboard";
-import { requireAdminUser } from "@/lib/admin-auth";
+import { requireSuperAdminUser } from "@/lib/admin-auth";
+import { redirect } from "next/navigation";
 import {
   getCsrAdminInitialData,
   type CommunityUpdate,
@@ -13,7 +14,8 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function CsrDonationsAdminPage() {
-  const user = await requireAdminUser("/admin/csr-donations");
+  const user = await requireSuperAdminUser("/admin/csr-donations");
+  if (user.mustChangePassword) redirect("/admin/change-password");
 
   let requests: DonationRequest[] = [];
   let drives: DonationDrive[] = [];
@@ -54,7 +56,7 @@ export default async function CsrDonationsAdminPage() {
       initialUpdates={updates}
       initialImpactStats={impactStats}
       initialSummary={summary}
-      ownerName={user.displayName}
+      ownerName={user.name}
       initialLoadError={initialLoadError}
     />
   );

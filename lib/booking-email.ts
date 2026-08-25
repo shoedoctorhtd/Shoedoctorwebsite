@@ -2,8 +2,6 @@ import type { Booking } from "./data";
 import { getBookingItems } from "./booking-items.js";
 import { getBookingPublicReference } from "./booking-reference.ts";
 
-const BOOKING_RECIPIENT = "shoedoctorhtd@gmail.com";
-
 type EmailBinding = {
   send(message: {
     from: string;
@@ -17,6 +15,8 @@ type EmailBinding = {
 export type EmailEnvironment = {
   BOOKING_EMAIL?: EmailBinding;
   BOOKING_NOTIFICATION_FROM?: string;
+  ADMIN_EMAIL?: string;
+  OWNER_ALERT_EMAIL?: string;
 };
 
 export type EmailNotificationResult =
@@ -49,27 +49,37 @@ export async function sendBookingEmailNotification(
   booking: Booking,
   environment?: EmailEnvironment,
 ): Promise<EmailNotificationResult> {
+  const content = bookingEmailContent(booking);
+  return sendOwnerEmail(content, environment);
+}
+
+/**
+ * The existing BOOKING_EMAIL binding remains the single owner-alert transport.
+ * Its recipient is supplied by deployment configuration, never embedded in a
+ * booking, audit record, migration, or application source file.
+ */
+export async function sendOwnerEmail(
+  content: { subject: string; text: string; html: string },
+  environment?: EmailEnvironment,
+): Promise<EmailNotificationResult> {
   try {
     const runtime = environment ?? (await getRuntimeEnvironment());
     const from = runtime.BOOKING_NOTIFICATION_FROM?.trim();
-    if (!runtime.BOOKING_EMAIL || !isEmailAddress(from)) {
+    const recipient = (runtime.OWNER_ALERT_EMAIL ?? runtime.ADMIN_EMAIL)?.trim();
+    if (!runtime.BOOKING_EMAIL || !isEmailAddress(from) || !isEmailAddress(recipient)) {
       return { status: "not_configured" };
     }
 
-    const content = bookingEmailContent(booking);
     await runtime.BOOKING_EMAIL.send({
       from,
-      to: BOOKING_RECIPIENT,
+      to: recipient,
       subject: content.subject,
       text: content.text,
       html: content.html,
     });
     return { status: "sent" };
   } catch (error) {
-    console.error(
-      `Booking ${getBookingPublicReference(booking)} was saved, but owner email notification failed:`,
-      error,
-    );
+    console.error("A persisted owner alert could not be delivered:", error);
     return { status: "failed" };
   }
 }
@@ -347,5 +357,7 @@ async function getRuntimeEnvironment(): Promise<EmailEnvironment> {
 
   return {
     BOOKING_NOTIFICATION_FROM: process.env.BOOKING_NOTIFICATION_FROM,
+    ADMIN_EMAIL: process.env.ADMIN_EMAIL,
+    OWNER_ALERT_EMAIL: process.env.OWNER_ALERT_EMAIL,
   };
 }

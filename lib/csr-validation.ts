@@ -392,6 +392,24 @@ export function parseDonationImpactStatsInput(
   };
 }
 
+/**
+ * CSR mutations use the exact D1 `updated_at` value as an optimistic-lock
+ * token. Accept only the canonical UTC format emitted by `toISOString()` so a
+ * caller cannot silently normalize a timestamp to another value.
+ */
+export function parseCsrExpectedUpdatedAt(value: unknown) {
+  const updatedAt = requiredText(value, "Record version", 40);
+  const parsed = new Date(updatedAt);
+  if (
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(updatedAt) ||
+    Number.isNaN(parsed.valueOf()) ||
+    parsed.toISOString() !== updatedAt
+  ) {
+    throw new Error("Record version is invalid. Reload and try again.");
+  }
+  return updatedAt;
+}
+
 export function parseCsrId(value: string, label = "record") {
   const id = cleanText(value, 100);
   if (!id || !/^[a-zA-Z0-9_-]+$/u.test(id)) {
