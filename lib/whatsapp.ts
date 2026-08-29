@@ -148,7 +148,7 @@ function digitsOnly(value: string) {
 
 async function getRuntimeEnvironment(): Promise<WhatsAppEnvironment> {
   try {
-    const workers = (await import("cloudflare:workers")) as {
+    const workers = (await import(/* @vite-ignore */ "cloudflare:workers")) as {
       env?: WhatsAppEnvironment;
     };
     if (workers.env) return workers.env;

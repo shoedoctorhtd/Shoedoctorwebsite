@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-html-link-for-pages */
 import type { Metadata } from "next";
 import SiteMotion from "../components/SiteMotion";
 import { SiteFooter, SiteHeader } from "../components/SiteChrome";
@@ -56,8 +55,8 @@ export default function PrivacyPolicyPage() {
               <div>
                 <h2>Who we are</h2>
                 <p>
-                  Shoe Doctor Pvt. Ltd., Hetauda-4, Makwanpur, Nepal ("Shoe
-                  Doctor", "we", "us" or "our") operates this website and its
+                  Shoe Doctor Pvt. Ltd., Hetauda-4, Makwanpur, Nepal (&quot;Shoe
+                  Doctor&quot;, &quot;we&quot;, &quot;us&quot; or &quot;our&quot;) operates this website and its
                   booking and shoe-donation services. This Privacy Policy
                   applies to information collected through those services and
                   our customer communications.
@@ -218,7 +217,7 @@ export default function PrivacyPolicyPage() {
                 <p>
                   We may update this Privacy Policy when our services or legal
                   obligations change. We will post the updated version on this
-                  page and change the "Last updated" date above. Please review
+                  page and change the &quot;Last updated&quot; date above. Please review
                   this page periodically for the latest information.
                 </p>
               </div>

@@ -1066,7 +1066,7 @@ async function getCustomerSecuritySecret() {
 
 async function getCustomerRuntimeEnvironment(): Promise<CustomerRuntimeEnvironment> {
   try {
-    const workers = (await import("cloudflare:workers")) as {
+    const workers = (await import(/* @vite-ignore */ "cloudflare:workers")) as {
       env?: CustomerRuntimeEnvironment;
     };
     if (workers.env) return workers.env;

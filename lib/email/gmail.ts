@@ -165,7 +165,7 @@ function networkErrorCode(error: unknown) {
 
 async function getRuntimeEnvironment(): Promise<GmailEnvironment> {
   try {
-    const workers = (await import("cloudflare:workers")) as {
+    const workers = (await import(/* @vite-ignore */ "cloudflare:workers")) as {
       env?: GmailEnvironment;
     };
     if (workers.env) return workers.env;

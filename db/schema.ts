@@ -623,3 +623,262 @@ export const donationImpactStats = sqliteTable("donation_impact_stats", {
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
+
+// Product catalogue tables are a Drizzle schema mirror of migration 0012.
+// Runtime product access intentionally uses D1 prepared statements to share
+// the Worker transaction and conditional-write patterns used by bookings.
+export const products = sqliteTable(
+  "products",
+  {
+    id: text("id").primaryKey(),
+    sku: text("sku").unique(),
+    slug: text("slug").unique(),
+    name: text("name").notNull(),
+    shortDescription: text("short_description"),
+    fullDescription: text("full_description"),
+    priceNpr: integer("price_npr"),
+    stockQuantity: integer("stock_quantity"),
+    lowStockThreshold: integer("low_stock_threshold").notNull().default(0),
+    status: text("status").notNull().default("draft"),
+    featured: integer("featured", { mode: "boolean" }).notNull().default(false),
+    lastInventoryMutationId: text("last_inventory_mutation_id"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("products_status_featured_updated_idx").on(
+      table.status,
+      table.featured,
+      table.updatedAt,
+    ),
+    index("products_stock_status_idx").on(
+      table.status,
+      table.stockQuantity,
+      table.lowStockThreshold,
+    ),
+  ],
+);
+
+export const productImages = sqliteTable(
+  "product_images",
+  {
+    id: text("id").primaryKey(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "restrict" }),
+    objectKey: text("object_key").notNull().unique(),
+    originalName: text("original_name"),
+    contentType: text("content_type").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    isPrimary: integer("is_primary", { mode: "boolean" }).notNull().default(false),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdByAdminId: text("created_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("product_images_product_order_idx").on(
+      table.productId,
+      table.sortOrder,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const productOrders = sqliteTable(
+  "product_orders",
+  {
+    id: text("id").primaryKey(),
+    publicReference: text("public_reference").notNull().unique(),
+    channel: text("channel").notNull(),
+    customerName: text("customer_name"),
+    customerPhone: text("customer_phone"),
+    customerEmail: text("customer_email"),
+    fulfillmentMethod: text("fulfillment_method").notNull(),
+    deliveryAddress: text("delivery_address"),
+    customerNote: text("customer_note"),
+    subtotal: integer("subtotal").notNull(),
+    deliveryCharge: integer("delivery_charge").notNull().default(0),
+    total: integer("total").notNull(),
+    status: text("status").notNull().default("pending"),
+    paymentStatus: text("payment_status").notNull().default("pending"),
+    checkoutIdempotencyToken: text("checkout_idempotency_token").unique(),
+    createdByAdminId: text("created_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    cancellationReason: text("cancellation_reason"),
+    cancelledAt: text("cancelled_at"),
+    cancelledByAdminId: text("cancelled_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    stockRestoredAt: text("stock_restored_at"),
+    stockRestoredByAdminId: text("stock_restored_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    lastInventoryMutationId: text("last_inventory_mutation_id"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("product_orders_created_idx").on(table.createdAt),
+    index("product_orders_channel_status_created_idx").on(
+      table.channel,
+      table.status,
+      table.createdAt,
+    ),
+    index("product_orders_payment_created_idx").on(
+      table.paymentStatus,
+      table.createdAt,
+    ),
+    index("product_orders_customer_phone_idx").on(table.customerPhone),
+    index("product_orders_customer_name_idx").on(table.customerName),
+  ],
+);
+
+export const productOrderItems = sqliteTable(
+  "product_order_items",
+  {
+    id: text("id").primaryKey(),
+    orderId: text("order_id")
+      .notNull()
+      .references(() => productOrders.id, { onDelete: "restrict" }),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "restrict" }),
+    skuSnapshot: text("sku_snapshot").notNull(),
+    productNameSnapshot: text("product_name_snapshot").notNull(),
+    unitPriceNpr: integer("unit_price_npr").notNull(),
+    quantity: integer("quantity").notNull(),
+    lineTotalNpr: integer("line_total_npr").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("product_order_items_order_product_uniq").on(
+      table.orderId,
+      table.productId,
+    ),
+    index("product_order_items_order_idx").on(table.orderId),
+    index("product_order_items_product_idx").on(table.productId, table.createdAt),
+  ],
+);
+
+export const inventoryMovements = sqliteTable(
+  "inventory_movements",
+  {
+    id: text("id").primaryKey(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "restrict" }),
+    stockChange: integer("stock_change").notNull(),
+    previousStock: integer("previous_stock").notNull(),
+    resultingStock: integer("resulting_stock").notNull(),
+    movementType: text("movement_type").notNull(),
+    relatedOrderId: text("related_order_id").references(() => productOrders.id, {
+      onDelete: "restrict",
+    }),
+    sourceId: text("source_id"),
+    adminUserId: text("admin_user_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    reason: text("reason").notNull(),
+    idempotencyKey: text("idempotency_key").notNull().unique(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("inventory_movements_product_created_idx").on(
+      table.productId,
+      table.createdAt,
+    ),
+    index("inventory_movements_order_created_idx").on(
+      table.relatedOrderId,
+      table.createdAt,
+    ),
+    index("inventory_movements_admin_created_idx").on(
+      table.adminUserId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const productOrderReturns = sqliteTable(
+  "product_order_returns",
+  {
+    id: text("id").primaryKey(),
+    orderId: text("order_id")
+      .notNull()
+      .references(() => productOrders.id, { onDelete: "restrict" }),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "restrict" }),
+    quantity: integer("quantity").notNull(),
+    restock: integer("restock", { mode: "boolean" }).notNull(),
+    reason: text("reason").notNull(),
+    adminUserId: text("admin_user_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    idempotencyKey: text("idempotency_key").notNull().unique(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("product_order_returns_order_product_idx").on(
+      table.orderId,
+      table.productId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const productOrderNotifications = sqliteTable(
+  "product_order_notifications",
+  {
+    id: text("id").primaryKey(),
+    orderId: text("order_id")
+      .notNull()
+      .references(() => productOrders.id, { onDelete: "restrict" }),
+    recipientKind: text("recipient_kind").notNull(),
+    recipientEmail: text("recipient_email"),
+    notificationType: text("notification_type").notNull(),
+    eventKey: text("event_key").notNull().unique(),
+    deliveryStatus: text("delivery_status").notNull().default("pending"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    errorSummary: text("error_summary"),
+    sentAt: text("sent_at"),
+    leaseToken: text("lease_token"),
+    leaseExpiresAt: text("lease_expires_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("product_order_notifications_recipient_type_uniq").on(
+      table.orderId,
+      table.recipientKind,
+      table.notificationType,
+    ),
+    index("product_order_notifications_delivery_updated_idx").on(
+      table.deliveryStatus,
+      table.updatedAt,
+    ),
+  ],
+);
+
+export const adminProductPermissions = sqliteTable(
+  "admin_product_permissions",
+  {
+    adminUserId: text("admin_user_id")
+      .notNull()
+      .references(() => adminUsers.id, { onDelete: "cascade" }),
+    permission: text("permission").notNull(),
+    grantedByAdminId: text("granted_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("admin_product_permissions_user_permission_uniq").on(
+      table.adminUserId,
+      table.permission,
+    ),
+    index("admin_product_permissions_permission_idx").on(table.permission),
+  ],
+);

@@ -1,0 +1,94 @@
+.page {
+  background: var(--paper);
+  min-height: 100vh;
+}
+
+.hero {
+  background: var(--ink);
+  color: var(--white);
+  padding: clamp(78px, 12vw, 162px) clamp(20px, 6vw, 96px) clamp(48px, 8vw, 100px);
+}
+
+.hero p { font-size: clamp(16px, 2vw, 21px); line-height: 1.55; margin: 0; max-width: 38rem; }
+.hero h1 { font-family: var(--font-geist-sans), Arial, sans-serif; font-size: clamp(3rem, 8vw, 7.5rem); font-weight: 950; letter-spacing: -.08em; line-height: .82; margin: 18px 0 28px; }
+.hero h1 span { color: var(--lime); font-family: Georgia, "Times New Roman", serif; font-weight: 500; }
+
+.catalogue { padding: clamp(48px, 7vw, 92px) clamp(20px, 6vw, 96px) clamp(72px, 10vw, 128px); }
+.catalogueHead { align-items: flex-end; display: flex; gap: 24px; justify-content: space-between; margin-bottom: 30px; }
+.catalogueHead h2 { font-size: clamp(2.1rem, 4vw, 4.6rem); letter-spacing: -.07em; line-height: .86; margin: 0; }
+.catalogueHead p { color: var(--muted); line-height: 1.5; margin: 0; max-width: 27rem; }
+
+.grid { display: grid; gap: clamp(16px, 2vw, 28px); grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.card { background: var(--white); border: 1px solid rgba(17,17,15,.16); display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+.cardImage { aspect-ratio: 1 / .85; background: #e7e4de; display: block; object-fit: cover; width: 100%; }
+.cardBody { display: flex; flex: 1; flex-direction: column; padding: 18px; }
+.cardMeta { align-items: flex-start; display: flex; gap: 8px; justify-content: space-between; }
+.card h2 { font-size: 20px; letter-spacing: -.04em; line-height: 1; margin: 0; }
+.cardDescription { color: var(--muted); font-size: 14px; line-height: 1.45; margin: 13px 0 20px; }
+.price { font-size: 18px; font-weight: 850; margin-top: auto; }
+.availability { color: #3f5d00; font-size: 12px; font-weight: 800; margin: 8px 0 0; }
+.availabilityLow { color: #8d4b00; }
+.availabilityOut { color: #9d2739; }
+.cardActions { display: grid; gap: 9px; grid-template-columns: 1fr 1fr; margin-top: 18px; }
+.cardActions a, .cardActions button, .quantityControl button, .checkoutButton, .cartActions a, .cartActions button { align-items: center; border: 1px solid var(--ink); cursor: pointer; display: inline-flex; font: inherit; font-size: 12px; font-weight: 800; justify-content: center; min-height: 42px; padding: 10px 12px; text-align: center; }
+.cardActions a { background: transparent; }
+.cardActions button, .checkoutButton { background: var(--ink); color: var(--white); }
+.cardActions button:disabled, .checkoutButton:disabled { cursor: not-allowed; opacity: .5; }
+.tag { background: var(--lime); color: var(--ink); font-size: 10px; font-weight: 850; letter-spacing: .04em; padding: 5px 7px; text-transform: uppercase; }
+.tagOut { background: #f2d2d8; color: #7b1738; }
+
+.empty { align-items: flex-start; background: var(--white); border: 1px dashed rgba(17,17,15,.35); display: flex; flex-direction: column; gap: 14px; min-height: 300px; justify-content: center; padding: clamp(28px, 6vw, 72px); }
+.empty h2 { font-size: clamp(2rem, 4vw, 4.2rem); letter-spacing: -.07em; line-height: .86; margin: 0; max-width: 14ch; }
+.empty p { color: var(--muted); line-height: 1.5; margin: 0; max-width: 34rem; }
+
+.detail { display: grid; gap: clamp(28px, 6vw, 92px); grid-template-columns: minmax(0, 1.1fr) minmax(280px, .9fr); padding: clamp(48px, 8vw, 120px) clamp(20px, 6vw, 96px) clamp(78px, 10vw, 138px); }
+.gallery { display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.gallery img { background: #e7e4de; height: 100%; min-width: 0; object-fit: cover; width: 100%; }
+.gallery img:first-child { grid-column: 1 / -1; max-height: 620px; }
+.detailInfo { align-self: center; }
+.detailInfo h1 { font-size: clamp(2.6rem, 5vw, 5.5rem); letter-spacing: -.08em; line-height: .84; margin: 12px 0 24px; }
+.detailInfo > p { color: var(--muted); line-height: 1.6; max-width: 42rem; }
+.detailPrice { font-size: 25px; font-weight: 900; margin: 30px 0 8px; }
+.detailAvailability { font-size: 14px; font-weight: 800; margin: 0 0 22px; }
+.purchaseRow { align-items: stretch; display: flex; gap: 12px; }
+.quantityControl { align-items: center; border: 1px solid var(--ink); display: inline-flex; }
+.quantityControl button { background: var(--white); border: 0; min-height: 48px; width: 45px; }
+.quantityControl span { font-weight: 850; min-width: 32px; text-align: center; }
+.purchaseRow > button { flex: 1; min-height: 48px; }
+
+.cartPage { padding: clamp(48px, 8vw, 112px) clamp(20px, 6vw, 96px) clamp(78px, 10vw, 138px); }
+.cartPage > h1, .checkoutPage > h1, .confirmation > h1 { font-size: clamp(2.8rem, 6vw, 6.4rem); letter-spacing: -.08em; line-height: .82; margin: 16px 0 38px; }
+.cartLayout { align-items: start; display: grid; gap: clamp(28px, 6vw, 80px); grid-template-columns: minmax(0, 1fr) minmax(260px, .38fr); }
+.cartLines { display: grid; gap: 1px; background: rgba(17,17,15,.16); border: 1px solid rgba(17,17,15,.16); }
+.cartLine { align-items: center; background: var(--white); display: grid; gap: 15px; grid-template-columns: 92px minmax(0, 1fr) auto; padding: 13px; }
+.cartLine img { background: #e7e4de; height: 92px; object-fit: cover; width: 92px; }
+.cartLine h2 { font-size: 18px; letter-spacing: -.04em; margin: 0 0 7px; }
+.cartLine p { color: var(--muted); font-size: 13px; margin: 0; }
+.cartLine aside { display: grid; gap: 8px; justify-items: end; }
+.cartLine aside strong { font-size: 16px; }
+.linkButton { background: none; border: 0; color: #7b1738; cursor: pointer; font: inherit; font-size: 12px; font-weight: 800; padding: 0; text-decoration: underline; }
+.stockChanged { color: #9d2739 !important; font-weight: 750; }
+.summary { background: var(--ink); color: var(--white); padding: 22px; position: sticky; top: 20px; }
+.summary h2 { font-size: 24px; letter-spacing: -.05em; margin: 0 0 22px; }
+.summary p { display: flex; justify-content: space-between; margin: 12px 0; }
+.summary strong { border-top: 1px solid rgba(255,255,255,.3); display: flex; font-size: 19px; justify-content: space-between; margin-top: 18px; padding-top: 18px; }
+.summary a { background: var(--lime); color: var(--ink); display: flex; font-size: 13px; font-weight: 850; justify-content: center; margin-top: 24px; padding: 14px; }
+
+.checkoutPage, .confirmation { margin: 0 auto; max-width: 850px; padding: clamp(48px, 8vw, 112px) clamp(20px, 6vw, 96px) clamp(78px, 10vw, 138px); }
+.checkoutGrid { display: grid; gap: 32px; grid-template-columns: 1fr minmax(240px, .45fr); }
+.form { background: var(--white); border: 1px solid rgba(17,17,15,.16); display: grid; gap: 15px; padding: clamp(20px, 4vw, 35px); }
+.form label { display: grid; font-size: 12px; font-weight: 800; gap: 7px; }
+.form input, .form textarea, .form select { background: var(--white); border: 1px solid rgba(17,17,15,.35); color: var(--ink); font: inherit; min-height: 44px; padding: 10px; }
+.form textarea { min-height: 92px; resize: vertical; }
+.form .full { grid-column: 1 / -1; }
+.formNotice { background: #eaf4cf; border-left: 3px solid #739200; font-size: 14px; line-height: 1.5; margin: 0; padding: 12px; }
+.formError { background: #f7e0e4; border-left-color: #9d2739; }
+.checkoutButton { min-height: 48px; width: 100%; }
+.confirmation { min-height: 62vh; }
+.confirmationBox { background: var(--white); border: 1px solid rgba(17,17,15,.16); padding: clamp(25px, 6vw, 54px); }
+.confirmationBox strong { background: var(--lime); display: inline-block; font-size: clamp(20px, 3vw, 34px); letter-spacing: .04em; padding: 10px 13px; }
+.confirmationBox p { color: var(--muted); line-height: 1.6; max-width: 44rem; }
+.confirmationBox a { display: inline-flex; margin-top: 16px; }
+
+@media (max-width: 960px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .detail, .cartLayout, .checkoutGrid { grid-template-columns: 1fr; } .summary { position: static; } }
+@media (max-width: 560px) { .grid { grid-template-columns: 1fr; } .catalogueHead { align-items: flex-start; flex-direction: column; } .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cartLine { grid-template-columns: 68px minmax(0, 1fr); } .cartLine img { height: 68px; width: 68px; } .cartLine aside { grid-column: 2; justify-items: start; } .cardActions { grid-template-columns: 1fr; } }

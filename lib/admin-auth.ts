@@ -21,6 +21,10 @@ import {
   safeAdminReturnPath,
 } from "./admin-policy";
 import {
+  hasProductAdminPermission,
+  type ProductAdminPermission,
+} from "./product-permissions";
+import {
   hashAdminPassword,
   performDummyAdminPasswordWork,
   verifyAdminPassword,
@@ -74,6 +78,7 @@ type AdminApiOptions = {
   entityType?: string;
   entityId?: string | null;
   bookingReference?: string | null;
+  productPermission?: ProductAdminPermission;
 };
 
 export async function getAdminUser(request?: Request): Promise<AuthenticatedAdmin | null> {
@@ -171,6 +176,11 @@ export async function requireAdminApi(
 
   if (!hasRequiredAdminRole(user.role, options.roles)) {
     await recordDeniedAttempt(user, options, "Role does not permit this action.");
+    return { response: Response.json({ message: "Forbidden" }, { status: 403 }) };
+  }
+
+  if (options.productPermission && !(await hasProductAdminPermission(user, options.productPermission))) {
+    await recordDeniedAttempt(user, options, "Product permission is not assigned to this administrator.");
     return { response: Response.json({ message: "Forbidden" }, { status: 403 }) };
   }
 
@@ -541,7 +551,7 @@ async function recordDeniedAudit(
 
 function isHighRiskDeniedAction(options: AdminApiOptions) {
   const action = options.action ?? "";
-  return /(?:DELETE|RESTORE|SERVICE_(?:CREATE|UPDATE|DELETE)|ADMIN_(?:USER|ACCESS)|CSR_(?:POST|PATCH|PUT|DELETE)|EXPORT|NOTIFICATION_RETRY|OWNER_ALERT_RETRY)/u.test(action);
+  return /(?:DELETE|RESTORE|SERVICE_(?:CREATE|UPDATE|DELETE)|ADMIN_(?:USER|ACCESS)|PRODUCT_PERMISSION|CSR_(?:POST|PATCH|PUT|DELETE)|EXPORT|NOTIFICATION_RETRY|OWNER_ALERT_RETRY)/u.test(action);
 }
 
 export function hasRequiredAdminRole(role: AdminRole, roles?: readonly AdminRole[]) {
@@ -700,7 +710,7 @@ async function getLegacyAuthConfig() {
 
 async function getRuntimeEnvironment(): Promise<AuthEnvironment> {
   try {
-    const workers = (await import("cloudflare:workers")) as { env?: AuthEnvironment };
+    const workers = (await import(/* @vite-ignore */ "cloudflare:workers")) as { env?: AuthEnvironment };
     if (workers.env) return workers.env;
   } catch {
     // Local tooling can use ignored development values.

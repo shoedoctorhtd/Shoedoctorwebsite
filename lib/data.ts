@@ -515,7 +515,10 @@ const seedServices: Array<
 let setupPromise: Promise<void> | null = null;
 
 export async function getDatabase() {
-  const { env } = await import("cloudflare:workers");
+  // Client-side RSC analysis can see server data modules. Keep the Workers
+  // runtime binding dynamic so Vite does not try to resolve it for a browser
+  // chunk; Workerd resolves this specifier when the server function runs.
+  const { env } = await import(/* @vite-ignore */ "cloudflare:workers");
   if (!env.DB) {
     throw new Error("D1 binding DB is unavailable.");
   }

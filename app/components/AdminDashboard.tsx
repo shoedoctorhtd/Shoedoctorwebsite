@@ -713,6 +713,9 @@ export default function AdminDashboard({
         <Link className="admin-view-site-link" href="/admin/bookings/new">
           + Counter booking
         </Link>
+        <Link className="admin-view-site-link" href="/admin/products">Products</Link>
+        <Link className="admin-view-site-link" href="/admin/product-orders">Product orders</Link>
+        <Link className="admin-view-site-link" href="/admin/inventory">Inventory</Link>
         {isSuperAdmin && (
           <>
             <Link className="admin-csr-nav-link" href="/admin/csr-donations" aria-label="Open CSR and Donations">
@@ -720,6 +723,7 @@ export default function AdminDashboard({
               <span>CSR &amp; Donations</span>
             </Link>
             <Link className="admin-view-site-link" href="/admin/users">Admin users</Link>
+            <Link className="admin-view-site-link" href="/admin/product-access">Product access</Link>
             <Link className="admin-view-site-link" href="/admin/activity">Admin activity</Link>
             <Link className="admin-view-site-link" href="/admin/deleted-bookings">Deleted bookings</Link>
           </>

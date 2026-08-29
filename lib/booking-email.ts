@@ -347,7 +347,7 @@ function isEmailAddress(value: string | undefined): value is string {
 
 async function getRuntimeEnvironment(): Promise<EmailEnvironment> {
   try {
-    const workers = (await import("cloudflare:workers")) as {
+    const workers = (await import(/* @vite-ignore */ "cloudflare:workers")) as {
       env?: EmailEnvironment;
     };
     if (workers.env) return workers.env;

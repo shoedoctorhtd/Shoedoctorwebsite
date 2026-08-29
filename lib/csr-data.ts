@@ -311,7 +311,7 @@ const MAX_LIST_LIMIT = 500;
 let csrSetupPromise: Promise<void> | null = null;
 
 async function getRawDatabase() {
-  const { env } = await import("cloudflare:workers");
+  const { env } = await import(/* @vite-ignore */ "cloudflare:workers");
   if (!env.DB) {
     throw new Error("Cloudflare D1 binding `DB` is unavailable.");
   }
