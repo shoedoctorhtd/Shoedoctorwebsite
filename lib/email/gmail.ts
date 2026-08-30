@@ -1,8 +1,13 @@
 import { isEmailAddress } from "./address";
-import { buildRawGmailMessage } from "./mime";
+import {
+  buildRawGmailMessage,
+  GmailMimeAttachmentError,
+  type GmailAttachment,
+} from "./mime";
 import type { StatusEmailContent } from "./statusTemplates";
 
-export { buildRawGmailMessage } from "./mime";
+export { buildRawGmailMessage, MAX_GMAIL_ATTACHMENT_BYTES } from "./mime";
+export type { GmailAttachment, GmailAttachmentContentType } from "./mime";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GMAIL_SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send";
@@ -17,12 +22,13 @@ type GmailEnvironment = {
 };
 
 export type GmailEmailResult =
-  | { status: "sent" }
+  | { status: "sent"; messageId?: string }
   | { status: "failed"; errorCode: string };
 
 export type GmailStatusEmailResult = GmailEmailResult;
 
 export type GmailEmailInput = {
+  attachments?: readonly GmailAttachment[];
   html: string;
   subject: string;
   text: string;
@@ -69,6 +75,7 @@ export async function sendGmailEmail(
       subject: input.subject,
       text: input.text,
       html: input.html,
+      attachments: input.attachments,
     });
     const response = await fetchWithTimeout(GMAIL_SEND_URL, {
       method: "POST",
@@ -85,8 +92,12 @@ export async function sendGmailEmail(
         errorCode: gmailHttpErrorCode("gmail_send", response.status),
       };
     }
-    return { status: "sent" };
+    const messageId = await readGmailMessageId(response);
+    return messageId ? { status: "sent", messageId } : { status: "sent" };
   } catch (error) {
+    if (error instanceof GmailMimeAttachmentError) {
+      return { status: "failed", errorCode: error.code };
+    }
     return { status: "failed", errorCode: networkErrorCode(error) };
   }
 }
@@ -138,6 +149,18 @@ async function getGoogleAccessToken(credentials: {
   return accessToken
     ? { ok: true, accessToken }
     : { ok: false, status: "failed", errorCode: "gmail_oauth_invalid_response" };
+}
+
+/** Gmail accepts a message before returning this opaque identifier. */
+async function readGmailMessageId(response: Response) {
+  try {
+    const body = await response.json() as { id?: unknown };
+    return typeof body.id === "string" && body.id.trim() ? body.id.trim() : null;
+  } catch {
+    // A successful send remains successful even if a proxy strips the JSON
+    // response body. The durable caller can record a null message ID.
+    return null;
+  }
 }
 
 async function fetchWithTimeout(url: string, init: RequestInit) {

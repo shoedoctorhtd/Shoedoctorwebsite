@@ -6,7 +6,9 @@ import { normalizeProductOrderReferenceSearch } from "@/lib/product-order-refere
 
 export const metadata: Metadata = { title: "Order received", robots: { index: false, follow: false } };
 
-export default async function OrderConfirmationPage({ searchParams }: { searchParams: Promise<{ reference?: string }> }) {
-  const reference = normalizeProductOrderReferenceSearch((await searchParams).reference ?? "") ?? "Order received";
-  return <main className={`public-site ${styles.page}`}><SiteHeader /><section className={styles.confirmation}><p className="sd-kicker">Shoe Doctor shop</p><h1>ORDER RECEIVED.</h1><div className={styles.confirmationBox}><strong>{reference}</strong><p>Thank you. Your product order has been saved. Payment is pending, and Shoe Doctor will confirm payment and delivery or collection with you shortly.</p><Link className="sd-primary-button" href="/products">Continue shopping <ArrowUpRight /></Link></div></section><SiteFooter /></main>;
+export default async function OrderConfirmationPage({ searchParams }: { searchParams: Promise<{ reference?: string; payment?: string }> }) {
+  const query = await searchParams;
+  const reference = normalizeProductOrderReferenceSearch(query.reference ?? "") ?? "Order received";
+  const isCod = query.payment === "cod";
+  return <main className={`public-site ${styles.page}`}><SiteHeader /><section className={styles.confirmation}><p className="sd-kicker">Shoe Doctor shop</p><h1>ORDER RECEIVED.</h1><div className={styles.confirmationBox}><strong>{reference}</strong><p>{isCod ? "Thank you. Your Cash on Delivery order has been saved. Payment will be collected when Shoe Doctor delivers your order or when you collect it." : "Thank you. Your product order has been saved. Shoe Doctor will confirm payment and delivery or collection with you shortly."}</p><Link className="sd-primary-button" href="/products">Continue shopping <ArrowUpRight /></Link></div></section><SiteFooter /></main>;
 }

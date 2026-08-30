@@ -6,6 +6,8 @@ import { canTransitionProductOrderStatus } from "./product-order-status";
 import {
   type ProductOrder,
   type ProductOrderItem,
+  type ProductPaymentReceipt,
+  type ProductPaymentReceiptDeliveryStatus,
   type ProductOrderStatus,
   type ProductPaymentStatus,
 } from "./product-types";
@@ -38,6 +40,48 @@ export async function getProductOrderByCheckoutToken(token: string) {
     .first<OrderRow>();
   if (!row) return null;
   return hydrateOrders([parseOrder(row)]).then((orders) => orders[0] ?? null);
+}
+
+export async function getProductOrderByPublicReference(reference: string) {
+  const normalized = normalizeProductOrderReferenceSearch(reference);
+  if (!normalized) return null;
+  const db = await getDatabase();
+  const row = await db
+    .prepare("SELECT * FROM product_orders WHERE public_reference = ?")
+    .bind(normalized)
+    .first<OrderRow>();
+  if (!row) return null;
+  return hydrateOrders([parseOrder(row)]).then((orders) => orders[0] ?? null);
+}
+
+export async function listProductPaymentReceipts(orderId: string): Promise<ProductPaymentReceipt[]> {
+  const db = await getDatabase();
+  const rows = await db
+    .prepare("SELECT * FROM product_payment_receipts WHERE order_id = ? ORDER BY created_at DESC, id DESC")
+    .bind(orderId)
+    .all<Record<string, unknown>>();
+  return rows.results.map(parsePaymentReceipt);
+}
+
+export async function listProductOrderAuditTrail(orderId: string) {
+  const db = await getDatabase();
+  const rows = await db
+    .prepare(`
+      SELECT action, administrator_name_snapshot AS administrator_name, actor_type,
+             previous_values, new_values, reason, created_at
+      FROM audit_logs
+      WHERE entity_type = 'product_order' AND entity_id = ?
+      ORDER BY created_at ASC, id ASC
+    `)
+    .bind(orderId)
+    .all<Record<string, unknown>>();
+  return rows.results.map((row) => ({
+    action: String(row.action),
+    administratorName: nullableText(row.administrator_name),
+    actorType: String(row.actor_type),
+    reason: nullableText(row.reason),
+    createdAt: String(row.created_at),
+  }));
 }
 
 export async function listProductOrders(filters: ProductOrderListFilters = {}) {
@@ -100,6 +144,12 @@ export async function updateProductOrderDetails(
   if (!before) return { kind: "not_found" as const };
   if (input.status === "cancelled") {
     throw new Error("Use the cancellation action so stock can be restored safely.");
+  }
+  if (before.paymentMethod && input.paymentStatus !== undefined) {
+    throw new Error("Use the dedicated payment verification controls for this order.");
+  }
+  if (before.paymentMethod === "qr" && before.paymentStatus !== "paid" && input.status && input.status !== before.status) {
+    throw new Error("Verify the QR payment before advancing this order.");
   }
   if (input.status && !canTransitionProductOrderStatus(before.status, input.status)) {
     throw new Error("That order-status transition is not allowed.");
@@ -190,11 +240,20 @@ function parseOrder(row: OrderRow): ProductOrder {
     deliveryCharge: integer(row.delivery_charge),
     total: integer(row.total),
     status: parseStatus(row.status),
+    paymentMethod: parsePaymentMethod(row.payment_method),
     paymentStatus: parsePaymentStatus(row.payment_status),
+    paymentAmount: integer(row.payment_amount),
+    paymentSubmittedAt: nullableText(row.payment_submitted_at),
+    paymentVerifiedAt: nullableText(row.payment_verified_at),
+    paymentVerifiedByAdminId: nullableText(row.payment_verified_by_admin_id),
+    paymentRejectionReason: nullableText(row.payment_rejection_reason),
+    codCollectedAt: nullableText(row.cod_collected_at),
+    codCollectedByAdminId: nullableText(row.cod_collected_by_admin_id),
     cancellationReason: nullableText(row.cancellation_reason),
     cancelledAt: nullableText(row.cancelled_at),
     stockRestoredAt: nullableText(row.stock_restored_at),
     createdByAdminId: nullableText(row.created_by_admin_id),
+    stockCommittedAt: nullableText(row.stock_committed_at),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     items: [],
@@ -217,15 +276,49 @@ function parseOrderItem(row: ItemRow) {
 }
 
 function parseStatus(value: unknown): ProductOrderStatus {
-  return value === "confirmed" || value === "processing" || value === "completed" || value === "cancelled"
+  return value === "awaiting_payment" || value === "payment_review" || value === "confirmed" || value === "processing" || value === "completed" || value === "cancelled"
     ? value
     : "pending";
 }
 
+function parsePaymentMethod(value: unknown) {
+  return value === "qr" || value === "cod" ? value : null;
+}
+
 function parsePaymentStatus(value: unknown): ProductPaymentStatus {
-  return value === "unpaid" || value === "partial" || value === "paid" || value === "refunded"
+  return value === "unpaid" || value === "submitted" || value === "rejected" || value === "cod_pending" || value === "partial" || value === "paid" || value === "refunded"
     ? value
     : "pending";
+}
+
+function parsePaymentReceipt(row: Record<string, unknown>): ProductPaymentReceipt {
+  const contentType = row.content_type === "image/jpeg" || row.content_type === "image/png" || row.content_type === "image/webp" || row.content_type === "application/pdf"
+    ? row.content_type
+    : "application/pdf";
+  return {
+    id: String(row.id),
+    orderId: String(row.order_id),
+    originalDisplayFilename: String(row.original_display_filename),
+    attachmentFilename: String(row.attachment_filename),
+    contentType,
+    byteSize: integer(row.byte_size),
+    sha256Checksum: String(row.sha256_checksum),
+    transactionReference: nullableText(row.transaction_reference),
+    emailDeliveryStatus: parseReceiptDeliveryStatus(row.email_delivery_status),
+    gmailMessageId: nullableText(row.gmail_message_id),
+    submittedAt: nullableText(row.submitted_at),
+    verifiedAt: nullableText(row.verified_at),
+    verifyingAdminId: nullableText(row.verifying_admin_id),
+    rejectionReason: nullableText(row.rejection_reason),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+function parseReceiptDeliveryStatus(value: unknown): ProductPaymentReceiptDeliveryStatus {
+  return value === "sending" || value === "email_failed" || value === "emailed" || value === "verified" || value === "rejected"
+    ? value
+    : "email_failed";
 }
 
 function nullableText(value: unknown) {

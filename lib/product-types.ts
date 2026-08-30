@@ -1,6 +1,8 @@
 export const PRODUCT_STATUSES = ["draft", "published", "archived"] as const;
 export const PRODUCT_ORDER_STATUSES = [
   "pending",
+  "awaiting_payment",
+  "payment_review",
   "confirmed",
   "processing",
   "completed",
@@ -9,16 +11,21 @@ export const PRODUCT_ORDER_STATUSES = [
 export const PRODUCT_PAYMENT_STATUSES = [
   "pending",
   "unpaid",
+  "submitted",
+  "rejected",
+  "cod_pending",
   "partial",
   "paid",
   "refunded",
 ] as const;
+export const PRODUCT_PAYMENT_METHODS = ["qr", "cod"] as const;
 export const PRODUCT_ORDER_CHANNELS = ["online", "offline"] as const;
 export const PRODUCT_FULFILLMENT_METHODS = ["delivery", "collection"] as const;
 
 export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
 export type ProductOrderStatus = (typeof PRODUCT_ORDER_STATUSES)[number];
 export type ProductPaymentStatus = (typeof PRODUCT_PAYMENT_STATUSES)[number];
+export type ProductPaymentMethod = (typeof PRODUCT_PAYMENT_METHODS)[number];
 export type ProductOrderChannel = (typeof PRODUCT_ORDER_CHANNELS)[number];
 export type ProductFulfillmentMethod = (typeof PRODUCT_FULFILLMENT_METHODS)[number];
 
@@ -94,14 +101,49 @@ export type ProductOrder = {
   deliveryCharge: number;
   total: number;
   status: ProductOrderStatus;
+  paymentMethod: ProductPaymentMethod | null;
   paymentStatus: ProductPaymentStatus;
+  paymentAmount: number;
+  paymentSubmittedAt: string | null;
+  paymentVerifiedAt: string | null;
+  paymentVerifiedByAdminId: string | null;
+  paymentRejectionReason: string | null;
+  codCollectedAt: string | null;
+  codCollectedByAdminId: string | null;
   cancellationReason: string | null;
   cancelledAt: string | null;
   stockRestoredAt: string | null;
   createdByAdminId: string | null;
+  stockCommittedAt: string | null;
   createdAt: string;
   updatedAt: string;
   items: ProductOrderItem[];
+};
+
+export type ProductPaymentReceiptDeliveryStatus =
+  | "sending"
+  | "email_failed"
+  | "emailed"
+  | "verified"
+  | "rejected";
+
+export type ProductPaymentReceipt = {
+  id: string;
+  orderId: string;
+  originalDisplayFilename: string;
+  attachmentFilename: string;
+  contentType: "image/jpeg" | "image/png" | "image/webp" | "application/pdf";
+  byteSize: number;
+  sha256Checksum: string;
+  transactionReference: string | null;
+  emailDeliveryStatus: ProductPaymentReceiptDeliveryStatus;
+  gmailMessageId: string | null;
+  submittedAt: string | null;
+  verifiedAt: string | null;
+  verifyingAdminId: string | null;
+  rejectionReason: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type InventoryMovementType =
@@ -143,6 +185,9 @@ export type ProductOrderRequest = {
   fulfillmentMethod: ProductFulfillmentMethod;
   deliveryAddress: string | null;
   customerNote: string | null;
+  paymentMethod: ProductPaymentMethod;
+  /** The browser creates this 256-bit bearer token and the server only stores its hash. */
+  paymentAccessToken: string | null;
   items: ProductOrderRequestItem[];
 };
 

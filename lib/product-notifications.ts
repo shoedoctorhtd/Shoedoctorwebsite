@@ -1,7 +1,6 @@
-import { sendOwnerEmail } from "./booking-email";
 import { sendGmailEmail } from "./email/gmail";
 import { getDatabase } from "./data";
-import { buildProductOrderCustomerEmail, buildProductOrderOwnerEmail } from "./product-order-email";
+import { buildProductCodOrderCustomerEmail, buildProductOrderCustomerEmail, buildProductOrderOwnerEmail } from "./product-order-email";
 import { getProductOrder } from "./product-order-data";
 
 type ProductNotification = {
@@ -12,6 +11,9 @@ type ProductNotification = {
   deliveryStatus: "pending" | "sending" | "sent" | "failed" | "skipped";
   leaseExpiresAt: string | null;
 };
+
+const PRODUCT_ORDER_OWNER_EMAIL = "shoedoctorhtd@gmail.com";
+const PRODUCT_ORDER_ADMIN_ORIGIN = "https://shoedoctor.com.np";
 
 type ProductNotificationStatement = {
   bind(...values: unknown[]): ProductNotificationStatement;
@@ -84,11 +86,19 @@ export async function deliverProductOrderNotification(id: string) {
   let status: ProductNotification["deliveryStatus"] = "failed";
   let error: string | null = "delivery_failed";
   if (notification.recipientKind === "owner") {
-    const result = await sendOwnerEmail(buildProductOrderOwnerEmail(order));
-    status = result.status === "sent" ? "sent" : result.status === "not_configured" ? "skipped" : "failed";
-    error = result.status === "sent" ? null : result.status === "not_configured" ? "owner_email_not_configured" : "owner_email_failed";
+    const result = await sendGmailEmail({
+      to: PRODUCT_ORDER_OWNER_EMAIL,
+      ...buildProductOrderOwnerEmail(order, {
+        adminOrderUrl: `${PRODUCT_ORDER_ADMIN_ORIGIN}/admin/product-orders?search=${encodeURIComponent(order.publicReference)}`,
+      }),
+    });
+    status = result.status === "sent" ? "sent" : "failed";
+    error = result.status === "sent" ? null : result.errorCode;
   } else if (notification.recipientEmail) {
-    const result = await sendGmailEmail({ to: notification.recipientEmail, ...buildProductOrderCustomerEmail(order) });
+    const content = order.paymentMethod === "cod"
+      ? buildProductCodOrderCustomerEmail(order)
+      : buildProductOrderCustomerEmail(order);
+    const result = await sendGmailEmail({ to: notification.recipientEmail, ...content });
     status = result.status === "sent" ? "sent" : "failed";
     error = result.status === "sent" ? null : result.errorCode;
   } else {

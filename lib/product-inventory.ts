@@ -5,6 +5,7 @@ import { orderExistsWithReference, getProductOrder, getProductOrderByCheckoutTok
 import { generatePublicProductOrderReference, isProductOrderReferenceCollision } from "./product-order-reference";
 import { canCancelProductOrderStatus } from "./product-order-status";
 import { buildProductOrderNotificationInsert, deliverProductOrderNotifications } from "./product-notifications";
+import { hashPaymentAccessToken } from "./product-payment-security";
 import {
   prepareCheckoutItems,
   type CheckoutProduct,
@@ -54,6 +55,9 @@ export type ProductOrderCreationResult =
 export async function createOnlineProductOrder(
   request: ProductOrderRequest,
 ): Promise<ProductOrderCreationResult> {
+  const paymentAccessTokenHash = request.paymentMethod === "qr" && request.paymentAccessToken
+    ? await hashPaymentAccessToken(request.paymentAccessToken)
+    : null;
   return createProductOrder({
     channel: "online",
     idempotencyToken: request.idempotencyToken,
@@ -63,7 +67,10 @@ export async function createOnlineProductOrder(
     fulfillmentMethod: request.fulfillmentMethod,
     deliveryAddress: request.deliveryAddress,
     customerNote: request.customerNote,
-    paymentStatus: "pending",
+    paymentMethod: request.paymentMethod,
+    paymentStatus: request.paymentMethod === "qr" ? "unpaid" : "cod_pending",
+    initialStatus: request.paymentMethod === "qr" ? "awaiting_payment" : "confirmed",
+    paymentAccessTokenHash,
     items: request.items,
     actor: null,
   });
@@ -82,7 +89,10 @@ export async function recordOfflineProductSale(
     fulfillmentMethod: "collection",
     deliveryAddress: null,
     customerNote: request.note,
+    paymentMethod: null,
     paymentStatus: request.paymentStatus,
+    initialStatus: "completed",
+    paymentAccessTokenHash: null,
     items: request.items,
     actor,
   });
@@ -97,7 +107,10 @@ async function createProductOrder(input: {
   fulfillmentMethod: "delivery" | "collection";
   deliveryAddress: string | null;
   customerNote: string | null;
-  paymentStatus: "pending" | "unpaid" | "partial" | "paid" | "refunded";
+  paymentMethod: "qr" | "cod" | null;
+  paymentStatus: "pending" | "unpaid" | "submitted" | "rejected" | "cod_pending" | "partial" | "paid" | "refunded";
+  initialStatus: "pending" | "awaiting_payment" | "payment_review" | "confirmed" | "processing" | "completed" | "cancelled";
+  paymentAccessTokenHash: string | null;
   items: Array<{ productSlug: string; quantity: number }>;
   actor: AdminActor | null;
 }): Promise<ProductOrderCreationResult> {
@@ -132,7 +145,10 @@ async function persistProductOrder(input: {
   fulfillmentMethod: "delivery" | "collection";
   deliveryAddress: string | null;
   customerNote: string | null;
-  paymentStatus: "pending" | "unpaid" | "partial" | "paid" | "refunded";
+  paymentMethod: "qr" | "cod" | null;
+  paymentStatus: "pending" | "unpaid" | "submitted" | "rejected" | "cod_pending" | "partial" | "paid" | "refunded";
+  initialStatus: "pending" | "awaiting_payment" | "payment_review" | "confirmed" | "processing" | "completed" | "cancelled";
+  paymentAccessTokenHash: string | null;
   items: NormalizedCheckoutItem[];
   actor: AdminActor | null;
   publicReference: string;
@@ -143,7 +159,7 @@ async function persistProductOrder(input: {
   const orderId = crypto.randomUUID();
   const uniqueCount = input.items.length;
   const subtotal = input.items.reduce((sum, item) => sum + item.lineTotal, 0);
-  const status = input.channel === "offline" ? "completed" : "pending";
+  const status = input.initialStatus;
   const stockUpdate = buildGuardedSaleUpdate(db, input.items, operationId, now, input.idempotencyToken);
   const marker = markerCondition(input.items, operationId);
   const ownerNotificationId = crypto.randomUUID();
@@ -156,15 +172,18 @@ async function persistProductOrder(input: {
         INSERT INTO product_orders (
           id, public_reference, channel, customer_name, customer_phone, customer_email,
           fulfillment_method, delivery_address, customer_note, subtotal, delivery_charge,
-          total, status, payment_status, checkout_idempotency_token, created_by_admin_id,
-          last_inventory_mutation_id, created_at, updated_at
-        ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?
+          total, status, payment_method, payment_status, payment_amount,
+          payment_access_token_hash, checkout_idempotency_token, created_by_admin_id,
+          stock_committed_at, stock_commit_operation_id, last_inventory_mutation_id,
+          created_at, updated_at
+        ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         WHERE ${marker.sql}
       `).bind(
         orderId, input.publicReference, input.channel, input.customerName,
         input.customerPhone, input.customerEmail, input.fulfillmentMethod,
         input.deliveryAddress, input.customerNote, subtotal, subtotal, status,
-        input.paymentStatus, input.idempotencyToken, input.actor?.id ?? null,
+        input.paymentMethod, input.paymentStatus, subtotal, input.paymentAccessTokenHash,
+        input.idempotencyToken, input.actor?.id ?? null, now, operationId,
         operationId, now, now, ...marker.bindings,
       ),
       ...input.items.map((item) => db.prepare(`
@@ -205,7 +224,9 @@ async function persistProductOrder(input: {
           channel: input.channel,
           itemCount: input.items.reduce((sum, item) => sum + item.quantity, 0),
           subtotal,
+          paymentMethod: input.paymentMethod,
           paymentStatus: input.paymentStatus,
+          status,
         },
         changedFields: ["created"],
         requestId: input.idempotencyToken,

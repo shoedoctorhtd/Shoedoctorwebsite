@@ -19,10 +19,11 @@ export async function POST(request: Request) {
   }
 }
 
-function toPublicOrderConfirmation(order: { publicReference: string; status: string; paymentStatus: string }) {
+function toPublicOrderConfirmation(order: { publicReference: string; status: string; paymentStatus: string; paymentMethod: "qr" | "cod" | null }) {
   return {
     publicReference: order.publicReference,
     status: order.status,
     paymentStatus: order.paymentStatus,
+    paymentMethod: order.paymentMethod,
   };
 }

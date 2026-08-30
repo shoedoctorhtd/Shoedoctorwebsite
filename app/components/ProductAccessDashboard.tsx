@@ -20,6 +20,7 @@ const labels: Record<ProductAdminPermission, string> = {
   view_product_orders: "View product orders",
   manage_product_orders: "Manage product orders",
   cancel_product_orders: "Cancel product orders",
+  verify_product_payments: "Verify product payments",
 };
 
 export default function ProductAccessDashboard({

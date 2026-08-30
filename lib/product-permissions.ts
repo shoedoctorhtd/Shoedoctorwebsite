@@ -13,6 +13,7 @@ export const PRODUCT_ADMIN_PERMISSIONS = [
   "view_product_orders",
   "manage_product_orders",
   "cancel_product_orders",
+  "verify_product_payments",
 ] as const;
 
 export type ProductAdminPermission = (typeof PRODUCT_ADMIN_PERMISSIONS)[number];

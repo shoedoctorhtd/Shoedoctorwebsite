@@ -215,6 +215,7 @@ test("checkout validation ignores browser prices, rejects invalid quantities, an
     customerName: "Test Customer",
     phone: "9812345678",
     fulfillmentMethod: "collection",
+    paymentMethod: "cod",
     items: [{ productSlug: "test-product", quantity: 1 }],
     total: 1,
   }), /calculated securely/i);
@@ -223,6 +224,7 @@ test("checkout validation ignores browser prices, rejects invalid quantities, an
     customerName: "Test Customer",
     phone: "9812345678",
     fulfillmentMethod: "collection",
+    paymentMethod: "cod",
     items: [{ productSlug: "test-product", quantity: 0 }],
   }), /whole number/i);
   const request = [{ productSlug: "test-product", quantity: 1 }];

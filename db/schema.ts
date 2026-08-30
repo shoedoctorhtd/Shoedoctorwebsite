@@ -702,7 +702,20 @@ export const productOrders = sqliteTable(
     deliveryCharge: integer("delivery_charge").notNull().default(0),
     total: integer("total").notNull(),
     status: text("status").notNull().default("pending"),
+    paymentMethod: text("payment_method"),
     paymentStatus: text("payment_status").notNull().default("pending"),
+    paymentAmount: integer("payment_amount").notNull().default(0),
+    paymentAccessTokenHash: text("payment_access_token_hash").unique(),
+    paymentSubmittedAt: text("payment_submitted_at"),
+    paymentVerifiedAt: text("payment_verified_at"),
+    paymentVerifiedByAdminId: text("payment_verified_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    paymentRejectionReason: text("payment_rejection_reason"),
+    codCollectedAt: text("cod_collected_at"),
+    codCollectedByAdminId: text("cod_collected_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
     checkoutIdempotencyToken: text("checkout_idempotency_token").unique(),
     createdByAdminId: text("created_by_admin_id").references(() => adminUsers.id, {
       onDelete: "set null",
@@ -712,6 +725,8 @@ export const productOrders = sqliteTable(
     cancelledByAdminId: text("cancelled_by_admin_id").references(() => adminUsers.id, {
       onDelete: "set null",
     }),
+    stockCommittedAt: text("stock_committed_at"),
+    stockCommitOperationId: text("stock_commit_operation_id"),
     stockRestoredAt: text("stock_restored_at"),
     stockRestoredByAdminId: text("stock_restored_by_admin_id").references(() => adminUsers.id, {
       onDelete: "set null",
@@ -728,6 +743,11 @@ export const productOrders = sqliteTable(
       table.createdAt,
     ),
     index("product_orders_payment_created_idx").on(
+      table.paymentStatus,
+      table.createdAt,
+    ),
+    index("product_orders_payment_method_status_created_idx").on(
+      table.paymentMethod,
       table.paymentStatus,
       table.createdAt,
     ),
@@ -859,6 +879,43 @@ export const productOrderNotifications = sqliteTable(
       table.deliveryStatus,
       table.updatedAt,
     ),
+  ],
+);
+
+/** Metadata only: payment-receipt bytes are emailed from Worker memory and
+ * are deliberately never persisted in D1, R2, KV, or a public URL. */
+export const productPaymentReceipts = sqliteTable(
+  "product_payment_receipts",
+  {
+    id: text("id").primaryKey(),
+    orderId: text("order_id")
+      .notNull()
+      .references(() => productOrders.id, { onDelete: "restrict" }),
+    originalDisplayFilename: text("original_display_filename").notNull(),
+    attachmentFilename: text("attachment_filename").notNull(),
+    contentType: text("content_type").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    sha256Checksum: text("sha256_checksum").notNull(),
+    transactionReference: text("transaction_reference"),
+    emailDeliveryStatus: text("email_delivery_status").notNull(),
+    gmailMessageId: text("gmail_message_id"),
+    submissionIdempotencyKey: text("submission_idempotency_key").notNull().unique(),
+    submittedAt: text("submitted_at"),
+    verifiedAt: text("verified_at"),
+    verifyingAdminId: text("verifying_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    rejectionReason: text("rejection_reason"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("product_payment_receipts_order_checksum_uniq").on(
+      table.orderId,
+      table.sha256Checksum,
+    ),
+    index("product_payment_receipts_order_created_idx").on(table.orderId, table.createdAt),
+    index("product_payment_receipts_delivery_status_idx").on(table.emailDeliveryStatus, table.updatedAt),
   ],
 );
 

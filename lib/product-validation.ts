@@ -1,6 +1,7 @@
 import { isEmailAddress } from "./email/address.ts";
 import {
   PRODUCT_FULFILLMENT_METHODS,
+  PRODUCT_PAYMENT_METHODS,
   PRODUCT_ORDER_STATUSES,
   PRODUCT_PAYMENT_STATUSES,
   PRODUCT_STATUSES,
@@ -8,6 +9,7 @@ import {
   type ProductInput,
   type ProductOrderRequest,
   type ProductOrderRequestItem,
+  type ProductPaymentMethod,
   type ProductOrderStatus,
   type ProductPaymentStatus,
   type ProductStatus,
@@ -114,6 +116,16 @@ function parseIdempotencyToken(value: unknown, label = "Idempotency token") {
   return token;
 }
 
+/** A 32-byte base64url bearer generated with browser Web Crypto. The server
+ * hashes it before persistence and never returns it from a stored order. */
+export function parsePaymentAccessToken(value: unknown) {
+  const token = cleanText(value, 64, "Payment access token");
+  if (!/^[A-Za-z0-9_-]{43}$/u.test(token)) {
+    throw new Error("The secure payment link is missing or invalid. Please place the order again.");
+  }
+  return token;
+}
+
 function parseCartItems(value: unknown): ProductOrderRequestItem[] {
   if (!Array.isArray(value) || value.length < 1 || value.length > MAX_CART_ITEMS) {
     throw new Error(`Your cart must contain between 1 and ${MAX_CART_ITEMS} products.`);
@@ -141,7 +153,7 @@ function parseCartItems(value: unknown): ProductOrderRequestItem[] {
 export function parseOnlineProductOrder(value: unknown): ProductOrderRequest {
   const input = (value ?? {}) as Record<string, unknown>;
   // Never accept any browser-calculated price or total, even if it is ignored.
-  for (const forbidden of ["price", "unitPrice", "subtotal", "total", "deliveryCharge", "stock"]) {
+  for (const forbidden of ["price", "unitPrice", "subtotal", "total", "deliveryCharge", "stock", "paymentAmount"]) {
     if (Object.prototype.hasOwnProperty.call(input, forbidden)) {
       throw new Error("Product prices and totals are calculated securely by Shoe Doctor.");
     }
@@ -150,6 +162,7 @@ export function parseOnlineProductOrder(value: unknown): ProductOrderRequest {
   const phone = cleanText(input.phone, 32, "Phone number");
   const email = optionalText(input.email, 160, "Email address");
   const fulfillmentMethod = cleanText(input.fulfillmentMethod, 20, "Fulfilment method");
+  const paymentMethod = cleanText(input.paymentMethod, 20, "Payment method") as ProductPaymentMethod;
   const deliveryAddress = optionalText(input.deliveryAddress, 500, "Delivery address");
   if (customerName.length < 2) throw new Error("Please enter your full name.");
   const phoneDigits = phone.replace(/\D/gu, "");
@@ -157,6 +170,15 @@ export function parseOnlineProductOrder(value: unknown): ProductOrderRequest {
   if (email && !isEmailAddress(email)) throw new Error("Please enter a valid email address.");
   if (!PRODUCT_FULFILLMENT_METHODS.includes(fulfillmentMethod as "delivery" | "collection")) {
     throw new Error("Choose delivery or shop collection.");
+  }
+  if (!PRODUCT_PAYMENT_METHODS.includes(paymentMethod)) {
+    throw new Error("Choose QR online payment or cash on delivery.");
+  }
+  const paymentAccessToken = paymentMethod === "qr"
+    ? parsePaymentAccessToken(input.paymentAccessToken)
+    : null;
+  if (paymentMethod === "cod" && input.paymentAccessToken !== undefined && input.paymentAccessToken !== null && String(input.paymentAccessToken).trim()) {
+    throw new Error("Cash on Delivery does not use a payment access token.");
   }
   if (fulfillmentMethod === "delivery" && !deliveryAddress) {
     throw new Error("Please enter a delivery address.");
@@ -169,7 +191,46 @@ export function parseOnlineProductOrder(value: unknown): ProductOrderRequest {
     fulfillmentMethod: fulfillmentMethod as "delivery" | "collection",
     deliveryAddress: fulfillmentMethod === "delivery" ? deliveryAddress : null,
     customerNote: optionalText(input.customerNote, 1000, "Customer note"),
+    paymentMethod,
+    paymentAccessToken,
     items: parseCartItems(input.items),
+  };
+}
+
+export function parsePaymentActionIdempotencyKey(value: unknown, label = "Payment action token") {
+  return parseIdempotencyToken(value, label);
+}
+
+export function parsePaymentReceiptSubmission(value: unknown) {
+  const input = (value ?? {}) as Record<string, unknown>;
+  return {
+    transactionReference: optionalText(input.transactionReference, 160, "Transaction/reference number"),
+    idempotencyKey: parsePaymentActionIdempotencyKey(input.idempotencyKey, "Receipt submission token"),
+  };
+}
+
+export function parsePaymentRejection(value: unknown) {
+  const input = (value ?? {}) as Record<string, unknown>;
+  const reason = cleanText(input.reason, 500, "Rejection reason").replace(/\s+/gu, " ");
+  if (reason.length < 3) throw new Error("A payment-rejection reason is required.");
+  return {
+    reason,
+    idempotencyKey: parsePaymentActionIdempotencyKey(input.idempotencyKey, "Payment rejection token"),
+  };
+}
+
+export function parsePaymentApproval(value: unknown) {
+  const input = (value ?? {}) as Record<string, unknown>;
+  if (input.confirmation !== true) throw new Error("Confirm the payment approval before continuing.");
+  return { idempotencyKey: parsePaymentActionIdempotencyKey(input.idempotencyKey, "Payment approval token") };
+}
+
+export function parseCodPaymentCollection(value: unknown) {
+  const input = (value ?? {}) as Record<string, unknown>;
+  if (input.confirmation !== true) throw new Error("Confirm the COD collection before continuing.");
+  return {
+    amountCollected: wholeNumber(input.amountCollected, 0, 10_000_000, "Amount collected"),
+    idempotencyKey: parsePaymentActionIdempotencyKey(input.idempotencyKey, "COD collection token"),
   };
 }
 
