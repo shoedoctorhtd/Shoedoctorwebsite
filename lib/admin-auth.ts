@@ -274,7 +274,7 @@ export async function verifyAdminCredentials(
     };
   } catch (error) {
     if (!isMissingAdminSchema(error)) {
-      console.error("Unable to validate administrator credentials.");
+      console.error("Unable to validate administrator credentials.", error);
       return { ok: false, reason: "configuration" };
     }
   }

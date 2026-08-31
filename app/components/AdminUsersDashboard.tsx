@@ -28,7 +28,8 @@ export default function AdminUsersDashboard({ initialUsers, signedInName, signed
 
   async function createUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     setBusy("create");
     setNotice(null);
     setTemporaryPassword(null);
@@ -37,17 +38,17 @@ export default function AdminUsersDashboard({ initialUsers, signedInName, signed
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          name: form.get("name"),
-          email: form.get("email"),
-          role: form.get("role"),
-          confirmation: form.get("confirmation"),
+          name: formData.get("name"),
+          email: formData.get("email"),
+          role: formData.get("role"),
+          confirmation: formData.get("confirmation"),
         }),
       });
       const result = (await response.json()) as { user?: ManagedAdminUser; temporaryPassword?: string; message?: string };
       if (!response.ok || !result.user || !result.temporaryPassword) throw new Error(result.message || "Unable to create administrator.");
       setUsers((current) => [...current, result.user!]);
       setTemporaryPassword(result.temporaryPassword);
-      event.currentTarget.reset();
+      form.reset();
       setNewRole("admin");
       setNotice("Administrator created. Give the temporary password to them through a secure channel.");
     } catch (error) {

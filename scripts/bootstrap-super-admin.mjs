@@ -77,8 +77,11 @@ async function bootstrap() {
 }
 
 function runWrangler(command) {
-  const executable = process.platform === "win32" ? "npx.cmd" : "npx";
-  return execFileSync(executable, ["wrangler", ...command], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  const options = { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] };
+  if (process.platform === "win32") {
+    return execFileSync(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", "npx.cmd", "wrangler", ...command], options);
+  }
+  return execFileSync("npx", ["wrangler", ...command], options);
 }
 
 function findValue(value, key) {
