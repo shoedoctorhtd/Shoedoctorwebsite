@@ -31,7 +31,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         <SiteHeader />
         <section className={styles.detail}>
           <div className={styles.gallery} aria-label={`${product.name} images`}>
-            {product.images.map((image) => <img src={image.url} alt={image.isPrimary ? product.name : `${product.name} view`} key={image.id} />)}
+            {product.images.map((image) => <img src={image.url} alt={image.altText ?? (image.isPrimary ? product.name : `${product.name} view`)} key={image.id} />)}
           </div>
           <div className={styles.detailInfo}>
             <p className="sd-kicker">Shoe Doctor shop</p>

@@ -307,9 +307,9 @@ test("public references, status transitions, image validation, and admin permiss
     arrayBuffer: async () => Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).buffer,
   }), /MIME type/i);
   await assert.rejects(() => validateProductImage({
-    name: "large.png", type: "image/png", size: 5 * 1024 * 1024 + 1,
+    name: "large.png", type: "image/png", size: 500 * 1024 + 1,
     arrayBuffer: async () => new ArrayBuffer(0),
-  }), /no larger than 5 MB/i);
+  }), /no larger than 500 KB/i);
   await assert.rejects(() => validateProductImage({
     name: "truncated.png", type: "image/png", size: 8,
     arrayBuffer: async () => Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).buffer,

@@ -25,7 +25,7 @@
     "dev": "cross-env WRANGLER_LOG_PATH=.wrangler/wrangler.log vite",
     "build": "vinext build",
     "start": "cross-env WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
-    "test": "npm run build && node --experimental-strip-types --test tests/booking-pricing.test.mjs tests/booking-reference.test.mjs tests/booking-items.test.mjs tests/rendered-html.test.mjs tests/status-notifications.test.mjs tests/donation-email.test.mjs tests/booking-owner-email.test.mjs tests/booking-confirmation-email.test.mjs tests/customer-verification-email.test.mjs tests/customer-security.test.mjs tests/admin-security.test.mjs tests/products.test.mjs tests/product-payments.test.mjs",
+    "test": "npm run build && node --experimental-strip-types --test tests/booking-pricing.test.mjs tests/booking-reference.test.mjs tests/booking-items.test.mjs tests/rendered-html.test.mjs tests/status-notifications.test.mjs tests/donation-email.test.mjs tests/booking-owner-email.test.mjs tests/booking-confirmation-email.test.mjs tests/customer-verification-email.test.mjs tests/customer-security.test.mjs tests/admin-security.test.mjs tests/products.test.mjs tests/product-image-blobs.test.mjs tests/product-payments.test.mjs",
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate",

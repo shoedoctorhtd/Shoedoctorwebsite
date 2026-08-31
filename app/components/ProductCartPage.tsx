@@ -24,7 +24,7 @@ export default function ProductCartPage({ products }: { products: ProductCard[] 
           const stockChanged = !product || product.stockQuantity === null || line.quantity > product.stockQuantity;
           return (
             <article className={styles.cartLine} key={line.productSlug}>
-              {product?.primaryImage ? <img src={product.primaryImage.url} alt={product.name} /> : <div aria-hidden="true" />}
+              {product?.primaryImage ? <img src={product.primaryImage.url} alt={product.primaryImage.altText ?? product.name} /> : <div aria-hidden="true" />}
               <div>
                 <h2>{product?.name ?? "This product is no longer available"}</h2>
                 <p>{product ? formatNpr(product.priceNpr) : "Remove this item to continue."}</p>

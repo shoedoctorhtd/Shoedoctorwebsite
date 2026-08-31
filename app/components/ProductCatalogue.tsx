@@ -23,7 +23,7 @@ export default function ProductCatalogue({ products }: { products: ProductCard[]
         return (
           <article className={styles.card} key={product.slug}>
             {product.primaryImage ? (
-              <img className={styles.cardImage} src={product.primaryImage.url} alt={product.name} />
+              <img className={styles.cardImage} src={product.primaryImage.url} alt={product.primaryImage.altText ?? product.name} />
             ) : null}
             <div className={styles.cardBody}>
               <div className={styles.cardMeta}>

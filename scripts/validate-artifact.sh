@@ -21,10 +21,25 @@ hosting="${SITES_PROJECT_ROOT}/dist/.openai/hosting.json"
 
 node --input-type=module - "${worker}" "${hosting}" <<'NODE'
 import { readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const [workerPath, hostingPath] = process.argv.slice(2);
-JSON.parse(await readFile(hostingPath, "utf8"));
+const hosting = JSON.parse(await readFile(hostingPath, "utf8"));
+if (Object.hasOwn(hosting, "r2") || JSON.stringify(hosting).includes("PRODUCT_IMAGES")) {
+  throw new Error("The packaged hosting manifest must not require an R2 binding.");
+}
+
+const wranglerPath = join(dirname(workerPath), "wrangler.json");
+const deployment = JSON.parse(await readFile(wranglerPath, "utf8"));
+const serializedDeployment = JSON.stringify(deployment);
+if (
+  (Array.isArray(deployment.r2_buckets) && deployment.r2_buckets.length > 0) ||
+  serializedDeployment.includes("PRODUCT_IMAGES") ||
+  serializedDeployment.includes("shoe-doctor-product-images")
+) {
+  throw new Error("The generated Worker deployment configuration must not require R2.");
+}
 
 const workerUrl = pathToFileURL(workerPath);
 workerUrl.searchParams.set("sites-validation", `${process.pid}-${Date.now()}`);

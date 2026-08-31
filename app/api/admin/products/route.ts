@@ -1,6 +1,6 @@
 import { requireAdminApi } from "@/lib/admin-auth";
 import { hasProductAdminPermission } from "@/lib/product-permissions";
-import { createDraftProduct, getAdminProduct, listAdminProducts } from "@/lib/product-data";
+import { createDraftProduct, getAdminProduct, getProductImageStorageSummary, listAdminProductPage } from "@/lib/product-data";
 import { setInitialProductStock } from "@/lib/product-inventory";
 import { parseInitialStockQuantity, parseProductInput } from "@/lib/product-validation";
 
@@ -12,12 +12,21 @@ export async function GET(request: Request) {
   const search = new URL(request.url).searchParams;
   const status = search.get("status");
   const stock = search.get("stock");
-  return Response.json({
-    products: await listAdminProducts({
+  const canManageImages = await hasProductAdminPermission(auth.user, "manage_product_images");
+  const [productPage, storage] = await Promise.all([
+    listAdminProductPage({
       search: search.get("search"),
       status: status === "draft" || status === "published" || status === "archived" ? status : null,
       stock: stock === "in_stock" || stock === "low_stock" || stock === "out_of_stock" ? stock : null,
+    }, {
+      page: positiveInteger(search.get("page")),
+      pageSize: positiveInteger(search.get("pageSize")),
     }),
+    canManageImages ? getProductImageStorageSummary() : Promise.resolve(null),
+  ]);
+  return Response.json({
+    ...productPage,
+    ...(storage ? { storage } : {}),
   }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
@@ -49,4 +58,9 @@ export async function POST(request: Request) {
   } catch (error) {
     return Response.json({ message: error instanceof Error ? error.message : "Unable to create product." }, { status: 400 });
   }
+}
+
+function positiveInteger(value: string | null) {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
 }

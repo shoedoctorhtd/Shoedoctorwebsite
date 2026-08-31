@@ -1,5 +1,5 @@
 import { requireAdminApi } from "@/lib/admin-auth";
-import { deleteProductImage, updateProductImage } from "@/lib/product-images";
+import { deleteProductImage, replaceProductImage, updateProductImage } from "@/lib/product-images";
 
 export const dynamic = "force-dynamic";
 
@@ -22,12 +22,44 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (body.isPrimary !== undefined && typeof body.isPrimary !== "boolean") {
       return Response.json({ message: "Primary image state is invalid." }, { status: 400 });
     }
-    const result = await updateProductImage(id, imageId, { isPrimary: body.isPrimary as boolean | undefined, sortOrder }, auth.user);
+    if (body.altText !== undefined && body.altText !== null && typeof body.altText !== "string") {
+      return Response.json({ message: "Image alt text is invalid." }, { status: 400 });
+    }
+    const result = await updateProductImage(id, imageId, {
+      isPrimary: body.isPrimary as boolean | undefined,
+      sortOrder,
+      altText: body.altText as string | null | undefined,
+    }, auth.user);
     return result.kind === "not_found"
       ? Response.json({ message: "Image not found." }, { status: 404 })
       : Response.json({ image: result.image }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     return Response.json({ message: error instanceof Error ? error.message : "Unable to update image." }, { status: 400 });
+  }
+}
+
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string; imageId: string }> }) {
+  const { id, imageId } = await params;
+  const auth = await requireAdminApi(request, {
+    action: "PRODUCT_IMAGE_REPLACED",
+    mutation: true,
+    entityType: "product_image",
+    entityId: imageId,
+    productPermission: "manage_product_images",
+  });
+  if (auth.response) return auth.response;
+  try {
+    const form = await request.formData();
+    const file = form.get("image");
+    if (!file || typeof file === "string" || typeof file.arrayBuffer !== "function") {
+      return Response.json({ message: "Choose an image file to replace this image." }, { status: 400 });
+    }
+    const result = await replaceProductImage(id, imageId, file, auth.user);
+    return result.kind === "not_found"
+      ? Response.json({ message: "Image not found." }, { status: 404 })
+      : Response.json({ image: result.image }, { headers: { "Cache-Control": "private, no-store" } });
+  } catch (error) {
+    return Response.json({ message: error instanceof Error ? error.message : "Unable to replace image." }, { status: 400 });
   }
 }
 

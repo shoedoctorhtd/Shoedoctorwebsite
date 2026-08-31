@@ -2,8 +2,10 @@
 -- constrained product-order tables because SQLite cannot extend CHECK lists
 -- in place. No receipt binary, object key, or public receipt URL is stored.
 
-PRAGMA foreign_keys = OFF;
-BEGIN;
+-- Wrangler executes each D1 migration atomically. Defer foreign-key checks
+-- during this table rebuild instead of opening a nested SQL transaction, which
+-- local Miniflare correctly rejects.
+PRAGMA defer_foreign_keys = true;
 
 DROP TRIGGER IF EXISTS product_order_items_prevent_update;
 DROP TRIGGER IF EXISTS product_order_items_prevent_delete;
@@ -264,6 +266,4 @@ DROP TABLE product_order_notifications_legacy;
 DROP TABLE admin_product_permissions_legacy;
 DROP TABLE product_orders_legacy;
 
-COMMIT;
-PRAGMA foreign_keys = ON;
 PRAGMA optimize;

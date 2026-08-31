@@ -20,5 +20,5 @@ export async function GET(
     productPermission: "view_products",
   });
   if (auth.response) return auth.response;
-  return getAdminProductImageResponse(id, imageId);
+  return getAdminProductImageResponse(request, id, imageId);
 }

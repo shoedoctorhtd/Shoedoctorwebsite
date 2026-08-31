@@ -33,6 +33,7 @@ function toPublicImage(image: NonNullable<Awaited<ReturnType<typeof listPublicPr
     id: image.id,
     url: image.url,
     contentType: image.contentType,
+    altText: image.altText,
     isPrimary: image.isPrimary,
     sortOrder: image.sortOrder,
     createdAt: image.createdAt,

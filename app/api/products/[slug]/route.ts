@@ -25,6 +25,7 @@ function toPublicProduct(product: NonNullable<Awaited<ReturnType<typeof getPubli
       id: image.id,
       url: image.url,
       contentType: image.contentType,
+      altText: image.altText,
       isPrimary: image.isPrimary,
       sortOrder: image.sortOrder,
       createdAt: image.createdAt,

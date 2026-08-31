@@ -239,6 +239,19 @@ Apply the D1 migration to the local database when needed:
 npx wrangler d1 migrations apply shoe-doctor-db --local
 ```
 
+## Product image storage
+
+Product images use the existing D1 database only; no R2 bucket or additional
+storage subscription is required. Administrators can upload up to three JPEG,
+PNG, or WebP images per product. The browser resizes and compresses uploads to
+500 KB or less, and the Worker repeats signature, dimensions, size, count, and
+50 MB application-cap checks before storing a BLOB. The Admin Products page
+shows current image count and approximate application-cap usage.
+
+Payment receipts are different: they are validated in Worker memory and sent
+as Gmail attachments to `shoedoctorhtd@gmail.com`. The website stores receipt
+metadata only, never the receipt binary.
+
 ## Useful commands
 
 ```bash

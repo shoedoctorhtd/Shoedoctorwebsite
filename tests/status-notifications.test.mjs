@@ -171,6 +171,8 @@ test("payment receipt and replacement emails contain only safe payment metadata"
   });
   assert.match(owner.subject, /^Payment receipt received \u2013 PO-260829-ABC \u2013 Asha <script>alert\('x'\)<\/script>$/);
   assert.match(owner.text, /Receipt SHA-256: a{64}/);
+  assert.match(owner.text, /CLEAN-001\) x1 at Rs 1,200 each/);
+  assert.match(owner.html, />Unit price</);
   assert.match(owner.html, /Asha &lt;script&gt;alert\(&#39;x&#39;\)&lt;\/script&gt;/);
   assert.doesNotMatch(owner.html, /<script>alert/);
   assert.match(owner.html, /href="https:\/\/shoedoctor\.example\/admin\/product-orders\/internal-order-id"/);

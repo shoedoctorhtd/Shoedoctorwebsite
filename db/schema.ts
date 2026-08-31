@@ -1,4 +1,6 @@
+import { sql } from "drizzle-orm";
 import {
+  blob,
   index,
   integer,
   sqliteTable,
@@ -666,13 +668,15 @@ export const productImages = sqliteTable(
     productId: text("product_id")
       .notNull()
       .references(() => products.id, { onDelete: "restrict" }),
-    objectKey: text("object_key").notNull().unique(),
+    imageData: blob("image_data", { mode: "buffer" }).notNull(),
+    mimeType: text("mime_type").notNull(),
+    sha256: text("sha256").notNull(),
     originalName: text("original_name"),
-    contentType: text("content_type").notNull(),
+    altText: text("alt_text"),
     byteSize: integer("byte_size").notNull(),
     isPrimary: integer("is_primary", { mode: "boolean" }).notNull().default(false),
     sortOrder: integer("sort_order").notNull().default(0),
-    createdByAdminId: text("created_by_admin_id").references(() => adminUsers.id, {
+    uploadedByAdminId: text("uploaded_by_admin_id").references(() => adminUsers.id, {
       onDelete: "set null",
     }),
     createdAt: text("created_at").notNull(),
@@ -683,6 +687,9 @@ export const productImages = sqliteTable(
       table.sortOrder,
       table.createdAt,
     ),
+    uniqueIndex("product_images_one_primary_per_product_idx")
+      .on(table.productId)
+      .where(sql`${table.isPrimary} = 1`),
   ],
 );
 

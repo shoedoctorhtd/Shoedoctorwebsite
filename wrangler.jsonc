@@ -15,12 +15,6 @@
       "migrations_dir": "migrations"
     }
   ],
-  "r2_buckets": [
-    {
-      "binding": "PRODUCT_IMAGES",
-      "bucket_name": "shoe-doctor-product-images"
-    }
-  ],
   "vars": {
     "ADMIN_EMAIL": "shoedoctorhtd@gmail.com",
     "BOOKING_NOTIFICATION_FROM": "bookings@shoedoctor.com.np",

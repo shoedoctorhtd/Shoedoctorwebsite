@@ -8,32 +8,42 @@ import {
   listImagesForAdminProduct,
 } from "./product-data";
 import {
+  assertProductImageUploadCapacity,
+  MAX_PRODUCT_IMAGE_STORAGE_BYTES,
+  MAX_PRODUCT_IMAGES_PER_PRODUCT,
+  PRODUCT_IMAGE_STORAGE_LIMIT_MESSAGE,
   type ProductImageUpload,
   validateProductImage,
 } from "./product-image-validation";
+import { buildProductImageResponse } from "./product-image-response";
 
-export { detectImageType, validateProductImage } from "./product-image-validation";
+export {
+  detectImageType,
+  MAX_PRODUCT_IMAGE_BYTES,
+  MAX_PRODUCT_IMAGE_DIMENSION,
+  MAX_PRODUCT_IMAGES_PER_PRODUCT,
+  MAX_PRODUCT_IMAGE_STORAGE_BYTES,
+  PRODUCT_IMAGE_STORAGE_LIMIT_MESSAGE,
+  assertProductImageUploadCapacity,
+  validateProductImage,
+} from "./product-image-validation";
+export { buildProductImageResponse } from "./product-image-response";
 
-type R2Object = {
-  body: ReadableStream;
-  httpMetadata?: { contentType?: string };
-  etag?: string;
-};
-
-type R2Bucket = {
-  get(key: string): Promise<R2Object | null>;
-  put(key: string, value: ArrayBuffer | Uint8Array, options?: { httpMetadata?: { contentType?: string } }): Promise<unknown>;
-  delete(keys: string | string[]): Promise<void>;
-};
-
-type ImageRow = {
+type ImageMetadataRow = {
   id: string;
   product_id: string;
-  object_key: string;
-  content_type: "image/jpeg" | "image/png" | "image/webp";
+  byte_size: number;
   is_primary: number;
   sort_order: number;
+  alt_text: string | null;
 };
+
+type ImageStorageState = {
+  image_count: number;
+  bytes_used: number;
+};
+
+const OPAQUE_IMAGE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
 export async function uploadProductImage(
   productId: string,
@@ -44,86 +54,131 @@ export async function uploadProductImage(
   const product = await getAdminProduct(productId);
   if (!product) return { kind: "not_found" as const };
   const validated = await validateProductImage(upload);
-  const bucket = await getProductImageBucket();
-  if (!bucket) throw new Error("Product image storage is not configured. Create and bind the PRODUCT_IMAGES bucket first.");
+  const db = await getDatabase();
+  const state = await getImageStorageState(db, productId);
+  assertUploadCapacity(state, validated.byteSize);
+
   const id = crypto.randomUUID();
-  const key = `products/${productId}/${crypto.randomUUID()}.${validated.extension}`;
   const now = new Date().toISOString();
-  const currentImages = product.images;
   const sortOrder = Number.isSafeInteger(options.sortOrder)
     ? Math.max(0, Math.min(100_000, Number(options.sortOrder)))
-    : currentImages.length ? Math.max(...currentImages.map((image) => image.sortOrder)) + 1 : 0;
-  const makePrimary = options.makePrimary === true || currentImages.length === 0;
-
-  await bucket.put(key, validated.bytes, { httpMetadata: { contentType: validated.contentType } });
-  try {
-    const db = await getDatabase();
-    const operationId = crypto.randomUUID();
-    const statements = [
-      ...(makePrimary
-        ? [db.prepare("UPDATE product_images SET is_primary = 0 WHERE product_id = ? AND is_primary = 1").bind(productId)]
-        : []),
-      db.prepare(`
-        INSERT INTO product_images (
-          id, product_id, object_key, original_name, content_type, byte_size,
-          is_primary, sort_order, created_by_admin_id, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(
-        id, productId, key, safeOriginalName(upload.name), validated.contentType,
-        validated.bytes.byteLength, makePrimary ? 1 : 0, sortOrder, actor.id, now,
-      ),
-      buildAuditLogInsert(db, {
-        actor,
-        action: "PRODUCT_IMAGE_UPLOADED",
-        entityType: "product_image",
-        entityId: id,
-        newValues: { productId, contentType: validated.contentType, byteSize: validated.bytes.byteLength, primary: makePrimary },
-        changedFields: ["image"],
-        requestId: operationId,
-        createdAt: now,
-        conditionalOn: {
-          sql: "EXISTS (SELECT 1 FROM product_images WHERE id = ?)",
-          bindings: [id],
-        },
-      }),
-    ];
-    const result = await db.batch(statements);
-    const imageInsertIndex = makePrimary ? 1 : 0;
-    if (!result[imageInsertIndex]?.meta.changes) throw new Error("Unable to save product image metadata.");
-  } catch (error) {
-    // Only the just-created random key is compensating-cleaned. No client key
-    // or other record is ever used as an R2 deletion target.
-    await bucket.delete(key).catch(() => undefined);
-    throw error;
+    : product.images.length ? Math.max(...product.images.map((image) => image.sortOrder)) + 1 : 0;
+  const makePrimary = options.makePrimary === true || product.images.length === 0;
+  const operationId = crypto.randomUUID();
+  const insert = db.prepare(`
+    INSERT INTO product_images (
+      id, product_id, image_data, mime_type, byte_size, sha256, original_name,
+      alt_text, is_primary, sort_order, uploaded_by_admin_id, created_at
+    )
+    SELECT ?, ?, ?, ?, ?, ?, ?, NULL, 0, ?, ?, ?
+    WHERE EXISTS (SELECT 1 FROM products WHERE id = ?)
+      AND (SELECT COUNT(*) FROM product_images WHERE product_id = ?) < ?
+      AND (SELECT COALESCE(SUM(byte_size), 0) FROM product_images) + ? <= ?
+  `).bind(
+    id,
+    productId,
+    validated.imageData,
+    validated.contentType,
+    validated.byteSize,
+    validated.sha256,
+    safeOriginalName(upload.name),
+    sortOrder,
+    actor.id,
+    now,
+    productId,
+    productId,
+    MAX_PRODUCT_IMAGES_PER_PRODUCT,
+    validated.byteSize,
+    MAX_PRODUCT_IMAGE_STORAGE_BYTES,
+  );
+  const statements = [
+    insert,
+    ...(makePrimary
+      ? [
+          db.prepare(`
+            UPDATE product_images
+            SET is_primary = 0
+            WHERE product_id = ? AND is_primary = 1
+              AND EXISTS (SELECT 1 FROM product_images WHERE id = ? AND product_id = ?)
+          `).bind(productId, id, productId),
+          db.prepare("UPDATE product_images SET is_primary = 1 WHERE id = ? AND product_id = ?")
+            .bind(id, productId),
+        ]
+      : []),
+    buildAuditLogInsert(db, {
+      actor,
+      action: "PRODUCT_IMAGE_UPLOADED",
+      entityType: "product_image",
+      entityId: id,
+      newValues: {
+        productId,
+        contentType: validated.contentType,
+        byteSize: validated.byteSize,
+        primary: makePrimary,
+        width: validated.width,
+        height: validated.height,
+      },
+      changedFields: ["image"],
+      requestId: operationId,
+      createdAt: now,
+      conditionalOn: {
+        sql: "EXISTS (SELECT 1 FROM product_images WHERE id = ?)",
+        bindings: [id],
+      },
+    }),
+  ];
+  const result = await db.batch(statements);
+  if (!result[0]?.meta.changes) {
+    const current = await getImageStorageState(db, productId);
+    assertUploadCapacity(current, validated.byteSize);
+    if (!(await getAdminProduct(productId))) return { kind: "not_found" as const };
+    throw new Error("Unable to save product image.");
   }
-  return { kind: "uploaded" as const, image: (await listImagesForAdminProduct(productId)).find((image) => image.id === id)! };
+  return {
+    kind: "uploaded" as const,
+    image: (await listImagesForAdminProduct(productId)).find((image) => image.id === id)!,
+  };
 }
 
 export async function updateProductImage(
   productId: string,
   imageId: string,
-  input: { isPrimary?: boolean; sortOrder?: number },
+  input: { isPrimary?: boolean; sortOrder?: number; altText?: string | null },
   actor: AdminActor,
 ) {
+  if (!isOpaqueImageId(imageId)) return { kind: "not_found" as const };
   const db = await getDatabase();
-  const image = await db.prepare("SELECT * FROM product_images WHERE id = ? AND product_id = ?").bind(imageId, productId).first<ImageRow>();
+  const image = await db
+    .prepare("SELECT id, product_id, byte_size, is_primary, sort_order, alt_text FROM product_images WHERE id = ? AND product_id = ?")
+    .bind(imageId, productId)
+    .first<ImageMetadataRow>();
   if (!image) return { kind: "not_found" as const };
   const nextSortOrder = input.sortOrder === undefined
     ? image.sort_order
     : Math.max(0, Math.min(100_000, Math.trunc(input.sortOrder)));
+  const nextAltText = input.altText === undefined ? image.alt_text : normalizeAltText(input.altText);
   const makePrimary = input.isPrimary === true;
+  const nextPrimary = makePrimary || image.is_primary === 1;
   const now = new Date().toISOString();
   const diff = auditValueDiff(
-    { primary: image.is_primary === 1, sortOrder: image.sort_order },
-    { primary: makePrimary || image.is_primary === 1, sortOrder: nextSortOrder },
+    { primary: image.is_primary === 1, sortOrder: image.sort_order, altText: image.alt_text },
+    { primary: nextPrimary, sortOrder: nextSortOrder, altText: nextAltText },
   );
-  const statements = [
-    ...(makePrimary ? [db.prepare("UPDATE product_images SET is_primary = 0 WHERE product_id = ? AND is_primary = 1").bind(productId)] : []),
-    db.prepare("UPDATE product_images SET is_primary = ?, sort_order = ? WHERE id = ? AND product_id = ?")
-      .bind(makePrimary ? 1 : image.is_primary, nextSortOrder, imageId, productId),
+  if (!diff.changedFields.length) {
+    return {
+      kind: "updated" as const,
+      image: (await listImagesForAdminProduct(productId)).find((candidate) => candidate.id === imageId)!,
+    };
+  }
+  await db.batch([
+    ...(makePrimary
+      ? [db.prepare("UPDATE product_images SET is_primary = 0 WHERE product_id = ? AND is_primary = 1").bind(productId)]
+      : []),
+    db.prepare("UPDATE product_images SET is_primary = ?, sort_order = ?, alt_text = ? WHERE id = ? AND product_id = ?")
+      .bind(nextPrimary ? 1 : 0, nextSortOrder, nextAltText, imageId, productId),
     buildAuditLogInsert(db, {
       actor,
-      action: makePrimary ? "PRODUCT_IMAGE_PRIMARY_CHANGED" : "PRODUCT_IMAGE_REORDERED",
+      action: makePrimary ? "PRODUCT_IMAGE_PRIMARY_CHANGED" : "PRODUCT_IMAGE_UPDATED",
       entityType: "product_image",
       entityId: imageId,
       previousValues: diff.previousValues,
@@ -135,16 +190,120 @@ export async function updateProductImage(
         bindings: [imageId],
       },
     }),
-  ];
-  await db.batch(statements);
-  return { kind: "updated" as const, image: (await listImagesForAdminProduct(productId)).find((candidate) => candidate.id === imageId)! };
+  ]);
+  return {
+    kind: "updated" as const,
+    image: (await listImagesForAdminProduct(productId)).find((candidate) => candidate.id === imageId)!,
+  };
+}
+
+export async function replaceProductImage(
+  productId: string,
+  imageId: string,
+  upload: ProductImageUpload,
+  actor: AdminActor,
+) {
+  if (!isOpaqueImageId(imageId)) return { kind: "not_found" as const };
+  const db = await getDatabase();
+  const [product, image, state] = await Promise.all([
+    getAdminProduct(productId),
+    db
+      .prepare("SELECT id, product_id, byte_size, is_primary, sort_order, alt_text FROM product_images WHERE id = ? AND product_id = ?")
+      .bind(imageId, productId)
+      .first<ImageMetadataRow>(),
+    getImageStorageState(db, productId),
+  ]);
+  if (!product || !image) return { kind: "not_found" as const };
+  const validated = await validateProductImage(upload);
+  if (state.bytes_used - image.byte_size + validated.byteSize > MAX_PRODUCT_IMAGE_STORAGE_BYTES) {
+    throw new Error(PRODUCT_IMAGE_STORAGE_LIMIT_MESSAGE);
+  }
+  const replacementId = crypto.randomUUID();
+  const now = new Date().toISOString();
+  const operationId = crypto.randomUUID();
+  const result = await db.batch([
+    db.prepare(`
+      INSERT INTO product_images (
+        id, product_id, image_data, mime_type, byte_size, sha256, original_name,
+        alt_text, is_primary, sort_order, uploaded_by_admin_id, created_at
+      )
+      SELECT ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?
+      WHERE EXISTS (SELECT 1 FROM products WHERE id = ?)
+        AND EXISTS (SELECT 1 FROM product_images WHERE id = ? AND product_id = ?)
+        AND (SELECT COUNT(*) FROM product_images WHERE product_id = ?) <= ?
+        AND (SELECT COALESCE(SUM(byte_size), 0) FROM product_images) - ? + ? <= ?
+    `).bind(
+      replacementId,
+      productId,
+      validated.imageData,
+      validated.contentType,
+      validated.byteSize,
+      validated.sha256,
+      safeOriginalName(upload.name),
+      image.alt_text,
+      image.sort_order,
+      actor.id,
+      now,
+      productId,
+      imageId,
+      productId,
+      productId,
+      MAX_PRODUCT_IMAGES_PER_PRODUCT,
+      image.byte_size,
+      validated.byteSize,
+      MAX_PRODUCT_IMAGE_STORAGE_BYTES,
+    ),
+    ...(image.is_primary === 1
+      ? [
+          db.prepare(`
+            UPDATE product_images SET is_primary = 0
+            WHERE id = ? AND product_id = ?
+              AND EXISTS (SELECT 1 FROM product_images WHERE id = ?)
+          `).bind(imageId, productId, replacementId),
+          db.prepare("UPDATE product_images SET is_primary = 1 WHERE id = ? AND product_id = ?")
+            .bind(replacementId, productId),
+        ]
+      : []),
+    db.prepare(`
+      DELETE FROM product_images
+      WHERE id = ? AND product_id = ?
+        AND EXISTS (SELECT 1 FROM product_images WHERE id = ? AND product_id = ?)
+    `).bind(imageId, productId, replacementId, productId),
+    buildAuditLogInsert(db, {
+      actor,
+      action: "PRODUCT_IMAGE_REPLACED",
+      entityType: "product_image",
+      entityId: replacementId,
+      previousValues: { replacedImageId: imageId, byteSize: image.byte_size },
+      newValues: { productId, contentType: validated.contentType, byteSize: validated.byteSize },
+      changedFields: ["image"],
+      requestId: operationId,
+      createdAt: now,
+      conditionalOn: {
+        sql: "EXISTS (SELECT 1 FROM product_images WHERE id = ?) AND NOT EXISTS (SELECT 1 FROM product_images WHERE id = ?)",
+        bindings: [replacementId, imageId],
+      },
+    }),
+  ]);
+  if (!result[0]?.meta.changes) {
+    if (!(await getAdminProduct(productId))) return { kind: "not_found" as const };
+    throw new Error("Unable to replace product image.");
+  }
+  return {
+    kind: "replaced" as const,
+    image: (await listImagesForAdminProduct(productId)).find((candidate) => candidate.id === replacementId)!,
+  };
 }
 
 export async function deleteProductImage(productId: string, imageId: string, actor: AdminActor) {
+  if (!isOpaqueImageId(imageId)) return { kind: "not_found" as const };
   const db = await getDatabase();
   const [product, image, count] = await Promise.all([
     getAdminProduct(productId),
-    db.prepare("SELECT * FROM product_images WHERE id = ? AND product_id = ?").bind(imageId, productId).first<ImageRow>(),
+    db
+      .prepare("SELECT id, product_id, byte_size, is_primary, sort_order, alt_text FROM product_images WHERE id = ? AND product_id = ?")
+      .bind(imageId, productId)
+      .first<ImageMetadataRow>(),
     db.prepare("SELECT COUNT(*) AS count FROM product_images WHERE product_id = ?").bind(productId).first<{ count: number }>(),
   ]);
   if (!product || !image) return { kind: "not_found" as const };
@@ -157,7 +316,10 @@ export async function deleteProductImage(productId: string, imageId: string, act
     : null;
   const result = await db.batch([
     ...(replacement
-      ? [db.prepare("UPDATE product_images SET is_primary = 0 WHERE id = ?").bind(imageId), db.prepare("UPDATE product_images SET is_primary = 1 WHERE id = ?").bind(replacement.id)]
+      ? [
+          db.prepare("UPDATE product_images SET is_primary = 0 WHERE id = ?").bind(imageId),
+          db.prepare("UPDATE product_images SET is_primary = 1 WHERE id = ?").bind(replacement.id),
+        ]
       : []),
     db.prepare("DELETE FROM product_images WHERE id = ? AND product_id = ?").bind(imageId, productId),
     buildAuditLogInsert(db, {
@@ -165,7 +327,7 @@ export async function deleteProductImage(productId: string, imageId: string, act
       action: "PRODUCT_IMAGE_DELETED",
       entityType: "product_image",
       entityId: imageId,
-      previousValues: { productId, primary: image.is_primary === 1 },
+      previousValues: { productId, primary: image.is_primary === 1, byteSize: image.byte_size },
       changedFields: ["image"],
       createdAt: now,
       conditionalOn: {
@@ -176,58 +338,55 @@ export async function deleteProductImage(productId: string, imageId: string, act
   ]);
   const deletedIndex = replacement ? 2 : 0;
   if (!result[deletedIndex]?.meta.changes) return { kind: "not_found" as const };
-  const bucket = await getProductImageBucket();
-  if (bucket) await bucket.delete(image.object_key).catch(() => undefined);
   return { kind: "deleted" as const };
 }
 
-export async function getPublicProductImageResponse(imageId: string) {
+export async function getPublicProductImageResponse(request: Request, imageId: string) {
+  if (!isOpaqueImageId(imageId)) return notFound();
   const image = await getPublishedProductImage(imageId);
   return image
-    ? getProductImageResponse(image, "public, max-age=86400, s-maxage=604800, immutable")
-    : new Response("Not found", { status: 404 });
+    ? buildProductImageResponse(image, request, "public, max-age=300, s-maxage=3600, must-revalidate")
+    : notFound();
 }
 
-/**
- * The route that calls this function requires a verified admin session and a
- * product-view grant. Unlike the public route, it may serve draft images.
- */
-export async function getAdminProductImageResponse(productId: string, imageId: string) {
+/** Draft images use this authenticated endpoint; the public endpoint only joins published products. */
+export async function getAdminProductImageResponse(request: Request, productId: string, imageId: string) {
+  if (!isOpaqueImageId(imageId)) return notFound();
   const image = await getAdminProductImage(productId, imageId);
-  return image
-    ? getProductImageResponse(image, "private, no-store")
-    : new Response("Not found", { status: 404 });
+  return image ? buildProductImageResponse(image, request, "private, no-store") : notFound();
 }
 
-async function getProductImageResponse(
-  image: { object_key: string; content_type: string },
-  cacheControl: string,
-) {
-  const bucket = await getProductImageBucket();
-  if (!bucket) return new Response("Image storage unavailable", { status: 503 });
-  const object = await bucket.get(image.object_key);
-  if (!object) return new Response("Not found", { status: 404 });
-  return new Response(object.body, {
-    headers: {
-      "Content-Type": object.httpMetadata?.contentType || image.content_type,
-      "Cache-Control": cacheControl,
-      ...(object.etag ? { ETag: object.etag } : {}),
-      "X-Content-Type-Options": "nosniff",
-    },
-  });
+function assertUploadCapacity(state: ImageStorageState, nextByteSize: number) {
+  assertProductImageUploadCapacity(state.image_count, state.bytes_used, nextByteSize);
 }
 
-async function getProductImageBucket(): Promise<R2Bucket | null> {
-  try {
-    const workers = (await import(/* @vite-ignore */ "cloudflare:workers")) as { env?: { PRODUCT_IMAGES?: R2Bucket } };
-    return workers.env?.PRODUCT_IMAGES ?? null;
-  } catch {
-    return null;
-  }
+async function getImageStorageState(db: Awaited<ReturnType<typeof getDatabase>>, productId: string): Promise<ImageStorageState> {
+  const [count, storage] = await Promise.all([
+    db.prepare("SELECT COUNT(*) AS image_count FROM product_images WHERE product_id = ?").bind(productId).first<{ image_count: number }>(),
+    db.prepare("SELECT COALESCE(SUM(byte_size), 0) AS bytes_used FROM product_images").first<{ bytes_used: number }>(),
+  ]);
+  return {
+    image_count: Math.max(0, Number(count?.image_count ?? 0)),
+    bytes_used: Math.max(0, Number(storage?.bytes_used ?? 0)),
+  };
+}
+
+function normalizeAltText(value: string | null) {
+  const normalized = String(value ?? "").replace(/\s+/gu, " ").trim();
+  if (normalized.length > 240) throw new Error("Image alt text must be 240 characters or fewer.");
+  return normalized || null;
 }
 
 function safeOriginalName(value: string) {
   const leaf = String(value ?? "").split(/[\\/]/u).pop() ?? "";
   const clean = leaf.replace(/[^a-zA-Z0-9._-]/gu, "_").replace(/^\.+/u, "").slice(0, 160);
   return clean || null;
+}
+
+function isOpaqueImageId(value: string) {
+  return OPAQUE_IMAGE_ID.test(value);
+}
+
+function notFound() {
+  return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
 }

@@ -1,6 +1,7 @@
 import { auditValueDiff, buildAuditLogInsert } from "./audit";
 import type { AdminActor } from "./admin-types";
 import { getDatabase } from "./data";
+import { MAX_PRODUCT_IMAGE_STORAGE_BYTES } from "./product-image-validation";
 import {
   type Product,
   type ProductCard,
@@ -16,10 +17,32 @@ type ProductImageAudience = "public" | "admin";
 type StoredProductImage = {
   id: string;
   product_id: string;
-  object_key: string;
-  content_type: string;
+  image_data: ArrayBuffer;
+  mime_type: string;
   byte_size: number;
+  sha256: string;
 };
+
+export type ProductImageStorageSummary = {
+  imageCount: number;
+  bytesUsed: number;
+  byteLimit: number;
+};
+
+export type ProductListPage = {
+  products: Product[];
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+};
+
+type ProductListPagination = {
+  page?: number;
+  pageSize?: number;
+};
+
+const DEFAULT_ADMIN_PRODUCT_PAGE_SIZE = 50;
+const MAX_ADMIN_PRODUCT_PAGE_SIZE = 100;
 
 const PRODUCT_SELECT = `
   SELECT p.id, p.sku, p.slug, p.name, p.short_description, p.full_description,
@@ -29,7 +52,7 @@ const PRODUCT_SELECT = `
 `;
 
 const IMAGE_SELECT = `
-  SELECT id, product_id, content_type, is_primary, sort_order, created_at
+  SELECT id, product_id, mime_type, alt_text, is_primary, sort_order, created_at
   FROM product_images
 `;
 
@@ -63,7 +86,7 @@ export async function getPublishedProductImage(imageId: string) {
   const db = await getDatabase();
   const row = await db
     .prepare(`
-      SELECT i.id, i.product_id, i.object_key, i.content_type, i.byte_size
+      SELECT i.id, i.product_id, i.image_data, i.mime_type, i.byte_size, i.sha256
       FROM product_images i
       INNER JOIN products p ON p.id = i.product_id
       WHERE i.id = ? AND p.status = 'published'
@@ -76,13 +99,13 @@ export async function getPublishedProductImage(imageId: string) {
 /**
  * This lookup deliberately does not require publication. Its caller is the
  * authenticated admin image endpoint, which verifies the product view grant
- * before an R2 object can be read.
+ * before an image BLOB can be read.
  */
 export async function getAdminProductImage(productId: string, imageId: string) {
   const db = await getDatabase();
   const row = await db
     .prepare(`
-      SELECT id, product_id, object_key, content_type, byte_size
+      SELECT id, product_id, image_data, mime_type, byte_size, sha256
       FROM product_images
       WHERE id = ? AND product_id = ?
     `)
@@ -91,8 +114,17 @@ export async function getAdminProductImage(productId: string, imageId: string) {
   return row ?? null;
 }
 
-export async function listAdminProducts(filters: ProductListFilters = {}): Promise<Product[]> {
+/**
+ * Metadata-only, bounded product list for the admin catalogue. Image bytes are
+ * loaded only by the dedicated image-content endpoints.
+ */
+export async function listAdminProductPage(
+  filters: ProductListFilters = {},
+  pagination: ProductListPagination = {},
+): Promise<ProductListPage> {
   const db = await getDatabase();
+  const page = clampPage(pagination.page);
+  const pageSize = clampPageSize(pagination.pageSize);
   const where: string[] = [];
   const values: unknown[] = [];
   const search = String(filters.search ?? "").trim().slice(0, 120);
@@ -112,12 +144,23 @@ export async function listAdminProducts(filters: ProductListFilters = {}): Promi
     where.push("p.stock_quantity = 0");
   }
   const rows = await db
-    .prepare(`${PRODUCT_SELECT} ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY p.updated_at DESC, p.name COLLATE NOCASE ASC`)
-    .bind(...values)
+    .prepare(`${PRODUCT_SELECT} ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY p.updated_at DESC, p.name COLLATE NOCASE ASC LIMIT ? OFFSET ?`)
+    .bind(...values, pageSize + 1, (page - 1) * pageSize)
     .all<ProductRow>();
-  const products = rows.results.map(parseProduct);
+  const hasMore = rows.results.length > pageSize;
+  const products = rows.results.slice(0, pageSize).map(parseProduct);
   const images = await listImagesForProducts(products.map((product) => product.id), "admin");
-  return products.map((product) => ({ ...product, images: images.get(product.id) ?? [] }));
+  return {
+    products: products.map((product) => ({ ...product, images: images.get(product.id) ?? [] })),
+    page,
+    pageSize,
+    hasMore,
+  };
+}
+
+/** Kept for admin pages that need a bounded first page of product metadata. */
+export async function listAdminProducts(filters: ProductListFilters = {}): Promise<Product[]> {
+  return (await listAdminProductPage(filters, { pageSize: MAX_ADMIN_PRODUCT_PAGE_SIZE })).products;
 }
 
 export async function getAdminProduct(id: string): Promise<Product | null> {
@@ -126,6 +169,19 @@ export async function getAdminProduct(id: string): Promise<Product | null> {
   if (!row) return null;
   const product = parseProduct(row);
   return { ...product, images: (await listImagesForProducts([id], "admin")).get(id) ?? [] };
+}
+
+/** The UI displays this application guard only to image-capable admins. */
+export async function getProductImageStorageSummary(): Promise<ProductImageStorageSummary> {
+  const db = await getDatabase();
+  const row = await db
+    .prepare("SELECT COUNT(*) AS image_count, COALESCE(SUM(byte_size), 0) AS bytes_used FROM product_images")
+    .first<{ image_count: number; bytes_used: number }>();
+  return {
+    imageCount: Math.max(0, Number(row?.image_count ?? 0)),
+    bytesUsed: Math.max(0, Number(row?.bytes_used ?? 0)),
+    byteLimit: MAX_PRODUCT_IMAGE_STORAGE_BYTES,
+  };
 }
 
 export async function createDraftProduct(input: ProductInput, actor: AdminActor) {
@@ -333,8 +389,8 @@ function parseProduct(row: ProductRow): Product {
 function parseImage(row: ProductImageRow, audience: ProductImageAudience): ProductImage {
   const id = String(row.id);
   const productId = String(row.product_id);
-  const contentType = row.content_type === "image/png" || row.content_type === "image/webp"
-    ? row.content_type
+  const contentType = row.mime_type === "image/png" || row.mime_type === "image/webp"
+    ? row.mime_type
     : "image/jpeg";
   return {
     id,
@@ -343,6 +399,7 @@ function parseImage(row: ProductImageRow, audience: ProductImageAudience): Produ
       ? `/api/admin/products/${encodeURIComponent(productId)}/images/${encodeURIComponent(id)}/content`
       : `/api/products/images/${encodeURIComponent(id)}`,
     contentType,
+    altText: nullableText(row.alt_text),
     isPrimary: Number(row.is_primary ?? 0) === 1,
     sortOrder: Math.max(0, Number(row.sort_order ?? 0)),
     createdAt: String(row.created_at),
@@ -374,4 +431,16 @@ function nullableText(value: unknown) {
 function nullableInteger(value: unknown) {
   const number = Number(value);
   return Number.isSafeInteger(number) ? number : null;
+}
+
+function clampPage(value: number | undefined) {
+  const numeric = Number(value);
+  if (!Number.isSafeInteger(numeric)) return 1;
+  return Math.max(1, Math.min(100_000, numeric));
+}
+
+function clampPageSize(value: number | undefined) {
+  const numeric = Number(value);
+  if (!Number.isSafeInteger(numeric)) return DEFAULT_ADMIN_PRODUCT_PAGE_SIZE;
+  return Math.max(1, Math.min(MAX_ADMIN_PRODUCT_PAGE_SIZE, numeric));
 }

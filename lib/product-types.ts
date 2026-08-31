@@ -34,6 +34,7 @@ export type ProductImage = {
   productId: string;
   url: string;
   contentType: "image/jpeg" | "image/png" | "image/webp";
+  altText: string | null;
   isPrimary: boolean;
   sortOrder: number;
   createdAt: string;
