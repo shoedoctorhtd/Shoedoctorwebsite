@@ -17,7 +17,7 @@ type ProductImageAudience = "public" | "admin";
 type StoredProductImage = {
   id: string;
   product_id: string;
-  image_data: ArrayBuffer;
+  image_data: ArrayBuffer | Uint8Array | number[];
   mime_type: string;
   byte_size: number;
   sha256: string;

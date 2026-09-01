@@ -246,6 +246,36 @@ test("binary image responses send safe headers and honor ETag revalidation", asy
   assert.equal(revalidated.status, 304);
 });
 
+test("binary image responses accept D1 BLOB byte arrays", async () => {
+  const expectedBytes = minimalPng();
+  const response = buildProductImageResponse(
+    {
+      id: "dc53b8ae-ea83-45be-a20f-24cfeb1f1a73",
+      image_data: [...expectedBytes],
+      mime_type: "image/png",
+      sha256: "c".repeat(64),
+    },
+    new Request("https://shoe.example/api/products/images/image"),
+    "public, max-age=60, immutable",
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(new Uint8Array(await response.arrayBuffer()), expectedBytes);
+  assert.equal(
+    buildProductImageResponse(
+      {
+        id: "dc53b8ae-ea83-45be-a20f-24cfeb1f1a73",
+        image_data: [0, 256],
+        mime_type: "image/png",
+        sha256: "c".repeat(64),
+      },
+      new Request("https://shoe.example/api/products/images/image"),
+      "public, max-age=60, immutable",
+    ).status,
+    404,
+  );
+});
+
 test("catalogue queries omit BLOB data and all source and generated deployment contracts are R2-free", async () => {
   const [productData, productImages, wrangler, hosting, worker, packageJson, validationScript, generatedHosting, generatedWorker] = await Promise.all([
     readFile(new URL("../lib/product-data.ts", import.meta.url), "utf8"),

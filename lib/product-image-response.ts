@@ -2,7 +2,7 @@
 export function buildProductImageResponse(
   image: {
     id: string;
-    image_data: ArrayBuffer | Uint8Array;
+    image_data: ArrayBuffer | Uint8Array | number[];
     mime_type: string;
     sha256: string;
   },
@@ -28,12 +28,13 @@ export function buildProductImageResponse(
   return new Response(body, { headers });
 }
 
-function imageBytes(value: ArrayBuffer | Uint8Array) {
-  if (value instanceof ArrayBuffer) return value;
+function imageBytes(value: ArrayBuffer | Uint8Array | number[]) {
+  if (value instanceof ArrayBuffer) return value.slice(0);
   if (ArrayBuffer.isView(value)) {
-    const copy = new ArrayBuffer(value.byteLength);
-    new Uint8Array(copy).set(new Uint8Array(value.buffer, value.byteOffset, value.byteLength));
-    return copy;
+    return Uint8Array.from(new Uint8Array(value.buffer, value.byteOffset, value.byteLength)).buffer;
+  }
+  if (Array.isArray(value) && value.every((byte) => Number.isInteger(byte) && byte >= 0 && byte <= 0xff)) {
+    return Uint8Array.from(value).buffer;
   }
   return null;
 }
