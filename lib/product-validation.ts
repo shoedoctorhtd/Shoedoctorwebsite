@@ -71,6 +71,25 @@ export function productSlugFromName(name: string) {
   return slug || null;
 }
 
+export function getMissingProductPublicationFields(input: Pick<
+  ProductInput,
+  "name" | "sku" | "slug" | "shortDescription" | "priceNpr"
+>) {
+  const missing: string[] = [];
+  if (input.name.trim().length < 2) missing.push("a product name");
+  if (!input.sku || input.sku.trim().length < 2) missing.push("SKU");
+  if (!input.slug || input.slug.trim().length < 2) missing.push("slug");
+  if (!input.shortDescription || input.shortDescription.trim().length < 2) missing.push("short description");
+  if (!input.priceNpr || input.priceNpr < 1) missing.push("a positive NPR price");
+  return missing;
+}
+
+function joinRequirements(requirements: string[]) {
+  if (requirements.length < 2) return requirements[0] ?? "the required catalogue fields";
+  if (requirements.length === 2) return `${requirements[0]} and ${requirements[1]}`;
+  return `${requirements.slice(0, -1).join(", ")}, and ${requirements.at(-1)}`;
+}
+
 export function parseProductInput(value: unknown): ProductInput {
   const input = (value ?? {}) as Record<string, unknown>;
   const name = cleanText(input.name, 120, "Product name");
@@ -91,8 +110,9 @@ export function parseProductInput(value: unknown): ProductInput {
     throw new Error("Featured must be true or false.");
   }
   if (status === "published") {
-    if (name.length < 2 || !sku || !slug || !shortDescription || !priceNpr) {
-      throw new Error("Published products need a name, SKU, slug, short description and positive NPR price.");
+    const missing = getMissingProductPublicationFields({ name, sku, slug, shortDescription, priceNpr });
+    if (missing.length) {
+      throw new Error(`Published products need ${joinRequirements(missing)}.`);
     }
   }
   return {

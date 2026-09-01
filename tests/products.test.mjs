@@ -9,9 +9,12 @@ import {
   normalizeProductOrderReferenceSearch,
 } from "../lib/product-order-reference.ts";
 import {
+  getMissingProductPublicationFields,
   parseInventoryAdjustment,
   parseInitialProductStock,
   parseOnlineProductOrder,
+  parseProductInput,
+  productSlugFromName,
 } from "../lib/product-validation.ts";
 import { prepareCheckoutItems } from "../lib/product-checkout.ts";
 import { canCancelProductOrderStatus, canTransitionProductOrderStatus } from "../lib/product-order-status.ts";
@@ -93,6 +96,26 @@ test("0012 seeds exactly the seven incomplete starter drafts and remains idempot
     assert.equal(row.price_npr, null);
     assert.equal(row.stock_quantity, null);
   }
+});
+
+test("publication validation identifies every missing catalogue field before a draft can be published", () => {
+  assert.equal(productSlugFromName("Shoe Wipes"), "shoe-wipes");
+  const missing = getMissingProductPublicationFields({
+    name: "Shoe Wipes",
+    sku: null,
+    slug: null,
+    shortDescription: "For quick cleaning.",
+    priceNpr: 599,
+  });
+  assert.deepEqual(missing, ["SKU", "slug"]);
+  assert.throws(() => parseProductInput({
+    name: "Shoe Wipes",
+    sku: "SW",
+    slug: "x",
+    shortDescription: "x",
+    priceNpr: 599,
+    status: "published",
+  }), /Published products need slug and short description\./i);
 });
 
 test("a seeded draft can receive its real catalogue data, stock, image, and publication state", async (t) => {

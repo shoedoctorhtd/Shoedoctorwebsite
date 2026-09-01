@@ -185,7 +185,7 @@ export async function getProductImageStorageSummary(): Promise<ProductImageStora
 }
 
 export async function createDraftProduct(input: ProductInput, actor: AdminActor) {
-  if (input.status === "published") {
+  if (input.status !== "draft") {
     throw new Error("Create this product as a draft, upload an image, then publish it.");
   }
   const db = await getDatabase();

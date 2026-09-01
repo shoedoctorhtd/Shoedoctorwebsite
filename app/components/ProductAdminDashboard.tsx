@@ -6,6 +6,7 @@ import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import type { ProductImageStorageSummary } from "@/lib/product-data";
 import type { Product, ProductImage, ProductInput } from "@/lib/product-types";
+import { getMissingProductPublicationFields, productSlugFromName } from "@/lib/product-validation";
 import {
   prepareProductImageForUpload,
   releasePreparedProductImage,
@@ -52,7 +53,7 @@ function productToInput(product: Product): ProductInput {
   return {
     name: product.name,
     sku: product.sku,
-    slug: product.slug,
+    slug: product.slug ?? productSlugFromName(product.name),
     shortDescription: product.shortDescription,
     fullDescription: product.fullDescription,
     priceNpr: product.priceNpr,
@@ -100,6 +101,15 @@ export default function ProductAdminDashboard({
   const storagePercent = storage.byteLimit > 0
     ? Math.min(100, Math.round((storage.bytesUsed / storage.byteLimit) * 1000) / 10)
     : 0;
+  const isPublishing = editing !== null && input.status === "published";
+  const publicationRequirements = isPublishing && editing
+    ? [
+        ...getMissingProductPublicationFields(input),
+        ...(editing.stockQuantity === null ? ["initial stock"] : []),
+        ...(editing.images.length === 0 ? ["at least one product image"] : []),
+      ]
+    : [];
+  const publicationBlocked = isPublishing && publicationRequirements.length > 0;
 
   function productPageUrl(page: number) {
     const params = new URLSearchParams({ page: String(page), pageSize: String(initialPageSize) });
@@ -162,6 +172,7 @@ export default function ProductAdminDashboard({
     try {
       const body = {
         ...input,
+        status: editing ? input.status : "draft",
         sku: input.sku || null,
         slug: input.slug || null,
         shortDescription: input.shortDescription || null,
@@ -376,16 +387,17 @@ export default function ProductAdminDashboard({
           {capabilities.canManage ? (
           <form className={styles.form} onSubmit={save}>
             <label>Product name<input required minLength={2} maxLength={120} value={input.name} onChange={(event) => change("name", event.target.value)} /></label>
-            <label>SKU<input maxLength={64} value={input.sku ?? ""} onChange={(event) => change("sku", event.target.value || null)} placeholder="Unique product SKU" /></label>
-            <label>Slug<input maxLength={100} value={input.slug ?? ""} onChange={(event) => change("slug", event.target.value || null)} placeholder="unique-product-slug" /></label>
-            <label>NPR price<input type="number" min="1" step="1" disabled={!capabilities.canChangePrice} value={input.priceNpr ?? ""} onChange={(event) => change("priceNpr", event.target.value === "" ? null : Number(event.target.value))} /></label>
+            <label>SKU<input required={isPublishing} minLength={isPublishing ? 2 : undefined} maxLength={64} value={input.sku ?? ""} onChange={(event) => change("sku", event.target.value || null)} placeholder="Unique product SKU" /></label>
+            <label>Slug<input required={isPublishing} minLength={isPublishing ? 2 : undefined} maxLength={100} value={input.slug ?? ""} onChange={(event) => change("slug", event.target.value || null)} placeholder="unique-product-slug" /></label>
+            <label>NPR price<input type="number" required={isPublishing} min="1" step="1" disabled={!capabilities.canChangePrice} value={input.priceNpr ?? ""} onChange={(event) => change("priceNpr", event.target.value === "" ? null : Number(event.target.value))} /></label>
             {!editing ? capabilities.canAdjustInventory ? <label>Initial stock <small>(optional for a draft)</small><input type="number" min="0" max="100000" step="1" value={initialStock} onChange={(event) => setInitialStock(event.target.value)} /></label> : <p className={styles.full}>Initial stock can be set later by an administrator with inventory-adjustment access.</p> : <label>Current stock<input value={editing.stockQuantity ?? "Not set"} disabled /></label>}
             <label>Low-stock threshold<input type="number" min="0" max="100000" step="1" value={input.lowStockThreshold} onChange={(event) => change("lowStockThreshold", Number(event.target.value))} /></label>
-            <label>Publication state<select value={input.status} onChange={(event) => change("status", event.target.value as ProductInput["status"])}><option value="draft">Draft</option><option value="published">Published</option><option value="archived">Archived</option></select></label>
+            {editing ? <label>Publication state<select value={input.status} onChange={(event) => change("status", event.target.value as ProductInput["status"])}><option value="draft">Draft</option><option value="published">Published</option><option value="archived">Archived</option></select></label> : <p className={styles.full}>New products are always created as drafts. Add an image and stock, then edit the draft to publish it.</p>}
             <label className={styles.check}><input type="checkbox" checked={input.featured} onChange={(event) => change("featured", event.target.checked)} />Featured product</label>
-            <label className={styles.full}>Short description<textarea required={input.status === "published"} maxLength={320} value={input.shortDescription ?? ""} onChange={(event) => change("shortDescription", event.target.value || null)} /></label>
+            <label className={styles.full}>Short description<textarea required={isPublishing} minLength={isPublishing ? 2 : undefined} maxLength={320} value={input.shortDescription ?? ""} onChange={(event) => change("shortDescription", event.target.value || null)} /></label>
             <label className={styles.full}>Full description<textarea maxLength={5000} value={input.fullDescription ?? ""} onChange={(event) => change("fullDescription", event.target.value || null)} /></label>
-            <div className={styles.full}><button className={styles.primary} type="submit" disabled={busy}>{busy ? "Saving…" : editing ? "Save product" : "Create draft"}</button></div>
+            {isPublishing ? <p className={`${styles.full} ${styles.publicationReadiness}`} role="status">{publicationRequirements.length ? <>Before publishing, complete: {publicationRequirements.join(", ")}.</> : "Ready to publish: this product has its catalogue details, stock, and image."}</p> : null}
+            <div className={styles.full}><button className={styles.primary} type="submit" disabled={busy || publicationBlocked}>{busy ? "Saving…" : !editing ? "Create draft" : isPublishing ? "Publish product" : "Save product"}</button></div>
           </form>
           ) : <p className={styles.full}>{editing ? "Use the controls below to manage this product's images." : "Choose a product below to manage its images."}</p>}
 

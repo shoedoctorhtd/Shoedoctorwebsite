@@ -22,6 +22,7 @@
 .primary:disabled, .secondary:disabled, .danger:disabled { cursor: not-allowed; opacity: .5; }
 .notice { background: #eaf4cf; border-left: 3px solid #739200; line-height: 1.45; margin: 14px 0; padding: 11px; }
 .error { background: #f7e0e4; border-left-color: #9d2739; }
+.publicationReadiness { background: #f4f2ec; border-left: 3px solid #739200; line-height: 1.45; margin: 0; padding: 11px; }
 .storagePanel { align-items: center; display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr) minmax(260px, .7fr); }
 .storagePanel h2 { margin: 6px 0; }
 .storagePanel p { color: #625d57; line-height: 1.5; margin: 0; }
