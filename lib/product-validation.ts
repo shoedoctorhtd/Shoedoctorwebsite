@@ -67,7 +67,8 @@ export function productSlugFromName(name: string) {
     .normalize("NFKD")
     .replace(/[^a-z0-9]+/gu, "-")
     .replace(/^-+|-+$/gu, "")
-    .slice(0, 100);
+    .slice(0, 100)
+    .replace(/-+$/u, "");
   return slug || null;
 }
 
@@ -77,11 +78,27 @@ export function getMissingProductPublicationFields(input: Pick<
 >) {
   const missing: string[] = [];
   if (input.name.trim().length < 2) missing.push("a product name");
-  if (!input.sku || input.sku.trim().length < 2) missing.push("SKU");
-  if (!input.slug || input.slug.trim().length < 2) missing.push("slug");
+  if (!isValidPublicationSku(input.sku)) missing.push("a valid SKU");
+  if (!isValidPublicationSlug(input.slug)) missing.push("a valid slug");
   if (!input.shortDescription || input.shortDescription.trim().length < 2) missing.push("short description");
-  if (!input.priceNpr || input.priceNpr < 1) missing.push("a positive NPR price");
+  if (!Number.isSafeInteger(input.priceNpr) || input.priceNpr < 1) missing.push("a positive whole-number NPR price");
   return missing;
+}
+
+function isValidPublicationSku(value: string | null) {
+  try {
+    return (normalizeProductSku(value)?.length ?? 0) >= 2;
+  } catch {
+    return false;
+  }
+}
+
+function isValidPublicationSlug(value: string | null) {
+  try {
+    return (normalizeProductSlug(value)?.length ?? 0) >= 2;
+  } catch {
+    return false;
+  }
 }
 
 function joinRequirements(requirements: string[]) {
@@ -96,7 +113,7 @@ export function parseProductInput(value: unknown): ProductInput {
   const status = cleanText(input.status ?? "draft", 20, "Product status") as ProductStatus;
   if (!PRODUCT_STATUSES.includes(status)) throw new Error("Choose a valid product status.");
   const sku = normalizeProductSku(input.sku);
-  const slug = normalizeProductSlug(input.slug);
+  const slug = normalizeProductSlug(input.slug) ?? (status === "published" && name.length >= 2 ? productSlugFromName(name) : null);
   const shortDescription = optionalText(input.shortDescription, 320, "Short description");
   const fullDescription = optionalText(input.fullDescription, 5000, "Full description");
   const rawPrice = input.priceNpr;

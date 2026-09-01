@@ -100,6 +100,7 @@ test("0012 seeds exactly the seven incomplete starter drafts and remains idempot
 
 test("publication validation identifies every missing catalogue field before a draft can be published", () => {
   assert.equal(productSlugFromName("Shoe Wipes"), "shoe-wipes");
+  assert.equal(productSlugFromName(`${"a".repeat(99)} b`), "a".repeat(99));
   const missing = getMissingProductPublicationFields({
     name: "Shoe Wipes",
     sku: null,
@@ -107,7 +108,31 @@ test("publication validation identifies every missing catalogue field before a d
     shortDescription: "For quick cleaning.",
     priceNpr: 599,
   });
-  assert.deepEqual(missing, ["SKU", "slug"]);
+  assert.deepEqual(missing, ["a valid SKU", "a valid slug"]);
+  assert.equal(parseProductInput({
+    name: "Shoe Wipes",
+    sku: "SW-001",
+    slug: null,
+    shortDescription: "For quick cleaning.",
+    priceNpr: 599,
+    status: "published",
+  }).slug, "shoe-wipes");
+  assert.equal(parseProductInput({
+    name: "Shoe Wipes",
+    sku: "SW-001",
+    slug: "   ",
+    shortDescription: "For quick cleaning.",
+    priceNpr: 599,
+    status: "published",
+  }).slug, "shoe-wipes");
+  assert.equal(parseProductInput({
+    name: "Shoe Wipes",
+    sku: "SW-001",
+    slug: "shoe-wipes-refill",
+    shortDescription: "For quick cleaning.",
+    priceNpr: 599,
+    status: "published",
+  }).slug, "shoe-wipes-refill");
   assert.throws(() => parseProductInput({
     name: "Shoe Wipes",
     sku: "SW",
@@ -115,7 +140,7 @@ test("publication validation identifies every missing catalogue field before a d
     shortDescription: "x",
     priceNpr: 599,
     status: "published",
-  }), /Published products need slug and short description\./i);
+  }), /Published products need a valid slug and short description\./i);
 });
 
 test("a seeded draft can receive its real catalogue data, stock, image, and publication state", async (t) => {

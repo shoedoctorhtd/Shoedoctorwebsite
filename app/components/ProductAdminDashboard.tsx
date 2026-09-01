@@ -53,7 +53,7 @@ function productToInput(product: Product): ProductInput {
   return {
     name: product.name,
     sku: product.sku,
-    slug: product.slug ?? productSlugFromName(product.name),
+    slug: product.slug?.trim() || productSlugFromName(product.name),
     shortDescription: product.shortDescription,
     fullDescription: product.fullDescription,
     priceNpr: product.priceNpr,
@@ -120,7 +120,15 @@ export default function ProductAdminDashboard({
   }
 
   function change<K extends keyof ProductInput>(key: K, value: ProductInput[K]) {
-    setInput((current) => ({ ...current, [key]: value }));
+    setInput((current) => {
+      const next: ProductInput = { ...current, [key]: value };
+      const shouldGenerateSlug = !next.slug?.trim() && (
+        (key === "status" && value === "published")
+        || (key === "name" && current.status === "published")
+      );
+      if (shouldGenerateSlug) next.slug = productSlugFromName(next.name);
+      return next;
+    });
   }
 
   async function reload() {
