@@ -172,6 +172,15 @@ test("server validation accepts bounded JPEG, PNG, WebP and rejects invalid, ove
     assert.equal(image.contentType, type);
     assert.ok(image.sha256.match(/^[a-f0-9]{64}$/));
   }
+  for (const [name, type, bytes] of [
+    ["receipt-alt.jpg", "image/jpg", minimalJpeg()],
+    ["receipt-alt.png", "image/x-png", minimalPng()],
+    ["receipt-alt.webp", "", minimalWebp()],
+  ]) {
+    const image = await validateProductImage({ name, type, size: bytes.byteLength, arrayBuffer: async () => bytes.buffer });
+    assert.ok(image.contentType.startsWith("image/"));
+    assert.ok(image.sha256.match(/^[a-f0-9]{64}$/));
+  }
   await assert.rejects(
     validateProductImage({ name: "bad.gif", type: "image/gif", size: 6, arrayBuffer: async () => Uint8Array.from([0x47, 0x49, 0x46, 0x38, 0x39, 0x61]).buffer }),
     /Only valid JPEG, PNG, and WebP/i,

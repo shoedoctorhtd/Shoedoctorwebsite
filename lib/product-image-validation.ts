@@ -45,7 +45,8 @@ export async function validateProductImage(upload: ProductImageUpload) {
   const bytes = new Uint8Array(imageData);
   const detected = detectImageType(bytes);
   if (!detected) throw new Error("Only valid JPEG, PNG, and WebP image files can be uploaded.");
-  if (String(upload.type).toLowerCase() !== detected.contentType) {
+  const declaredType = normalizeProductImageMimeType(upload.type);
+  if (declaredType && declaredType !== detected.contentType) {
     throw new Error("The image MIME type does not match its file contents.");
   }
   const dimensions = readImageDimensions(bytes, detected.contentType);
@@ -83,6 +84,17 @@ export function detectImageType(bytes: Uint8Array): DetectedImageType | null {
     return { contentType: "image/webp", extension: "webp" };
   }
   return null;
+}
+
+function normalizeProductImageMimeType(value: string | undefined | null) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (!normalized) return null;
+  if (normalized === "image/jpg" || normalized === "image/pjpeg") return "image/jpeg";
+  if (normalized === "image/x-png") return "image/png";
+  if (normalized === "image/x-webp" || normalized === "image/webp") return "image/webp";
+  if (normalized === "image/jpeg") return "image/jpeg";
+  if (normalized === "image/png") return "image/png";
+  return normalized;
 }
 
 function readImageDimensions(bytes: Uint8Array, contentType: ProductImageContentType): ImageDimensions | null {
