@@ -5,6 +5,7 @@ import { HOMEPAGE_PRODUCT_LIMIT, selectHomepageProducts } from "./product-home";
 import { MAX_PRODUCT_IMAGE_STORAGE_BYTES } from "./product-image-validation";
 import {
   getMissingProductPublicationRequirements,
+  nullableInteger,
   parseProductDetails,
   productPublicationRequirementsMessage,
 } from "./product-validation";
@@ -47,6 +48,13 @@ export type ProductListPage = {
   pageSize: number;
   hasMore: boolean;
 };
+
+export type PublishProductResult =
+  | { kind: "not_found" }
+  | { kind: "archived"; product: Product }
+  | { kind: "unchanged"; product: Product }
+  | { kind: "conflict"; product: Product }
+  | { kind: "updated"; product: Product };
 
 type ProductListPagination = {
   page?: number;
@@ -416,6 +424,82 @@ export async function updateProduct(
   return { kind: "updated" as const, product: (await getAdminProduct(id))! };
 }
 
+/**
+ * Publishes only the latest draft status. It deliberately never resubmits an
+ * older browser snapshot, so a concurrent edit cannot be overwritten.
+ */
+export async function publishProduct(id: string, actor: AdminActor): Promise<PublishProductResult> {
+  const db = await getDatabase();
+  let latest: Product | null = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const before = await getAdminProduct(id);
+    if (!before) return { kind: "not_found" };
+    if (before.status === "published") return { kind: "unchanged", product: before };
+    if (before.status === "archived") return { kind: "archived", product: before };
+
+    const missing = getMissingProductPublicationRequirements(before, {
+      stockQuantity: before.stockQuantity,
+      imageCount: before.images.length,
+    });
+    if (missing.length) throw new Error(productPublicationRequirementsMessage(missing));
+
+    const now = new Date().toISOString();
+    const nextSnapshot = productAuditSnapshot({ ...before, status: "published" });
+    const diff = auditValueDiff(productAuditSnapshot(before), nextSnapshot);
+    const operationId = crypto.randomUUID();
+    try {
+      const result = await db.batch([
+        db
+          .prepare(`
+            UPDATE products SET status = 'published', updated_at = ?
+            WHERE id = ? AND status = 'draft' AND updated_at = ?
+          `)
+          .bind(now, id, before.updatedAt),
+        buildAuditLogInsert(db, {
+          actor,
+          action: "PRODUCT_PUBLISHED",
+          entityType: "product",
+          entityId: id,
+          previousValues: diff.previousValues,
+          newValues: diff.newValues,
+          changedFields: diff.changedFields,
+          createdAt: now,
+          requestId: operationId,
+          conditionalOn: {
+            sql: "EXISTS (SELECT 1 FROM products WHERE id = ? AND status = 'published' AND updated_at = ?)",
+            bindings: [id, now],
+          },
+        }),
+      ]);
+      if (result[0]?.meta.changes && result[1]?.meta.changes) {
+        const product = await getAdminProduct(id);
+        return product ? { kind: "updated", product } : { kind: "not_found" };
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!/published products require/iu.test(message)) throw error;
+      latest = await getAdminProduct(id);
+      if (!latest) return { kind: "not_found" };
+      if (latest.status === "published") return { kind: "unchanged", product: latest };
+      if (latest.status === "archived") return { kind: "archived", product: latest };
+      const currentMissing = getMissingProductPublicationRequirements(latest, {
+        stockQuantity: latest.stockQuantity,
+        imageCount: latest.images.length,
+      });
+      if (currentMissing.length) throw new Error(productPublicationRequirementsMessage(currentMissing));
+      if (attempt === 2) throw new Error("Unable to publish product. Please try again.");
+      continue;
+    }
+
+    latest = await getAdminProduct(id);
+    if (!latest) return { kind: "not_found" };
+    if (latest.status === "published") return { kind: "unchanged", product: latest };
+    if (latest.status === "archived") return { kind: "archived", product: latest };
+  }
+  if (!latest) return { kind: "not_found" };
+  return { kind: "conflict", product: latest };
+}
+
 export async function archiveProduct(id: string, actor: AdminActor) {
   const existing = await getAdminProduct(id);
   if (!existing) return { kind: "not_found" as const };
@@ -705,11 +789,6 @@ async function listImagesForProducts(productIds: string[], audience: ProductImag
 function nullableText(value: unknown) {
   const text = typeof value === "string" ? value.trim() : "";
   return text || null;
-}
-
-function nullableInteger(value: unknown) {
-  const number = Number(value);
-  return Number.isSafeInteger(number) ? number : null;
 }
 
 function parseProductCategory(value: unknown): ProductCategory | null {

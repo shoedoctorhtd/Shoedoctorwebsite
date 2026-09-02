@@ -55,6 +55,9 @@
 .low { background: #fff0bd; color: #744800; }
 .rowActions { display: flex; flex-wrap: wrap; gap: 7px; justify-content: flex-end; }
 .rowActions a, .rowActions button { border: 1px solid rgba(17,17,15,.35); background: transparent; color: inherit; cursor: pointer; font: inherit; font-size: 12px; font-weight: 800; padding: 7px 9px; }
+.rowActions button:disabled { cursor: not-allowed; opacity: .5; }
+.rowActions .rowPublish { background: #171412; border-color: #171412; color: #fffef8; }
+.publishHint { color: #744800; font-size: 11px; font-weight: 800; max-width: 12rem; }
 .rowActions .rowDanger { background: #7b1738; border-color: #7b1738; color: #fff; }
 .rowActions .rowDanger:disabled { cursor: not-allowed; opacity: .5; }
 .deleteOverlay { align-items: center; background: rgba(17,17,15,.58); display: flex; inset: 0; justify-content: center; padding: 18px; position: fixed; z-index: 80; }

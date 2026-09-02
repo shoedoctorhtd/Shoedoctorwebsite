@@ -4,6 +4,7 @@ import { getDatabase } from "./data";
 import { orderExistsWithReference, getProductOrder, getProductOrderByCheckoutToken } from "./product-order-data";
 import { generatePublicProductOrderReference, isProductOrderReferenceCollision } from "./product-order-reference";
 import { canCancelProductOrderStatus } from "./product-order-status";
+import { nullableInteger } from "./product-validation";
 import { buildProductOrderNotificationInsert, deliverProductOrderNotifications } from "./product-notifications";
 import { hashPaymentAccessToken } from "./product-payment-security";
 import {
@@ -754,9 +755,4 @@ function inventoryAuditAction(type: string) {
 function nullableText(value: unknown) {
   const text = typeof value === "string" ? value.trim() : "";
   return text || null;
-}
-
-function nullableInteger(value: unknown) {
-  const number = Number(value);
-  return Number.isSafeInteger(number) ? number : null;
 }

@@ -56,11 +56,20 @@ function hasOwn(input: Record<string, unknown>, key: string) {
 }
 
 function wholeNumber(value: unknown, min: number, max: number, label: string) {
-  const number = typeof value === "number" ? value : Number(value);
+  const number = typeof value === "number"
+    ? value
+    : typeof value === "string" && value.trim() ? Number(value) : Number.NaN;
   if (!Number.isSafeInteger(number) || number < min || number > max) {
     throw new Error(`${label} must be a whole number between ${min} and ${max}.`);
   }
   return number;
+}
+
+/** Convert a nullable D1 integer without treating SQL NULL as the number zero. */
+export function nullableInteger(value: unknown) {
+  if (value === null || value === undefined || (typeof value === "string" && !value.trim())) return null;
+  const number = typeof value === "number" ? value : typeof value === "string" ? Number(value) : Number.NaN;
+  return Number.isSafeInteger(number) ? number : null;
 }
 
 export function parseInitialStockQuantity(value: unknown) {

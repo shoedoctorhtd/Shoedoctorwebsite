@@ -271,7 +271,32 @@ export default function ProductAdminDashboard({
     }
   }
 
+  async function publish(product: Product) {
+    if (!capabilities.canManage || product.status !== "draft") return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/admin/products/${encodeURIComponent(product.id)}/publish`, { method: "POST" });
+      const result = await response.json() as { product?: Product; message?: string };
+      if (!response.ok || !result.product) throw new Error(result.message ?? "Unable to publish product.");
+      const updated = result.product;
+      setProducts((current) => current.map((candidate) => candidate.id === product.id ? updated : candidate));
+      if (editing?.id === product.id) {
+        setEditing(updated);
+        setInput(productToInput(updated));
+      }
+      setNotice(`${updated.name} published.`);
+      void reload().catch(() => undefined);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to publish product.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function archive(product: Product) {
+    if (busy) return;
     if (!window.confirm(`Archive ${product.name}? It will remain in historical orders and cannot be publicly purchased.`)) return;
     setBusy(true);
     setError(null);
@@ -629,6 +654,12 @@ export default function ProductAdminDashboard({
           {products.map((product) => {
             const image = product.images.find((candidate) => candidate.isPrimary) ?? product.images[0];
             const low = product.stockQuantity !== null && product.stockQuantity > 0 && product.stockQuantity <= product.lowStockThreshold;
+            const publicationRequirements = product.status === "draft"
+              ? getMissingProductPublicationRequirements(product, {
+                  stockQuantity: product.stockQuantity,
+                  imageCount: product.images.length,
+                })
+              : [];
             return <article className={styles.productRow} key={product.id}>
               {image ? <img src={image.url} alt="" /> : <span className={styles.imagePlaceholder} aria-hidden="true" />}
               <div><strong>{product.name}</strong><small>{product.sku ?? "SKU pending"} · {product.slug ?? "slug pending"}</small></div>
@@ -638,8 +669,9 @@ export default function ProductAdminDashboard({
               <div className={styles.rowActions}>
                 {low ? <span className={`${styles.status} ${styles.low}`}>Low stock</span> : product.stockQuantity === 0 ? <span className={`${styles.status} ${styles.out}`}>Out</span> : null}
                 {capabilities.canManage || capabilities.canManageImages ? <button type="button" onClick={() => editProduct(product)}>{capabilities.canManage ? "Edit" : "Manage images"}</button> : null}
+                {capabilities.canManage && product.status === "draft" ? <><button className={styles.rowPublish} type="button" disabled={busy || publicationRequirements.length > 0} onClick={() => void publish(product)}>{busy ? "Publishing…" : "Publish"}</button>{publicationRequirements.length ? <span className={styles.publishHint}>Needs: {publicationRequirements.join(", ")}</span> : null}</> : null}
                 {product.status !== "archived" ? <Link href={`/admin/inventory?product=${encodeURIComponent(product.id)}`}>Inventory</Link> : null}
-                {capabilities.canManage && product.status !== "archived" ? <button type="button" onClick={() => void archive(product)}>Archive</button> : null}
+                {capabilities.canManage && product.status !== "archived" ? <button type="button" disabled={busy} onClick={() => void archive(product)}>Archive</button> : null}
                 {capabilities.canManage && product.status === "archived" ? <button type="button" disabled={busy} onClick={() => void restore(product)}>Restore</button> : null}
                 {capabilities.canPermanentlyDelete && (product.status === "archived" || product.status === "draft") ? (
                   <button className={styles.rowDanger} type="button" disabled={busy} onClick={() => openPermanentDeletion(product)}>Delete permanently</button>

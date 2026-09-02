@@ -11,7 +11,9 @@ import {
 import {
   getMissingProductPublicationFields,
   getMissingProductPublicationRequirements,
+  nullableInteger,
   parseInventoryAdjustment,
+  parseInitialStockQuantity,
   parseInitialProductStock,
   parseOnlineProductOrder,
   parseProductInput,
@@ -261,6 +263,12 @@ test("publication validation identifies every missing catalogue field before a d
     priceNpr: 599,
   });
   assert.deepEqual(missing, ["a valid SKU", "a valid slug"]);
+  assert.equal(nullableInteger(null), null);
+  assert.equal(nullableInteger(undefined), null);
+  assert.equal(nullableInteger(0), 0);
+  assert.equal(nullableInteger("0"), 0);
+  assert.equal(parseInitialStockQuantity(0), 0);
+  assert.throws(() => parseInitialStockQuantity(null), /Initial stock/i);
   const completeWithoutCompareAtPrice = {
     name: "Shoe Wipes",
     sku: "SW-001",
@@ -272,7 +280,7 @@ test("publication validation identifies every missing catalogue field before a d
   };
   assert.equal(parseProductInput(completeWithoutCompareAtPrice).compareAtPriceNpr, null);
   assert.deepEqual(
-    getMissingProductPublicationRequirements(completeWithoutCompareAtPrice, { stockQuantity: null, imageCount: 1 }),
+    getMissingProductPublicationRequirements(completeWithoutCompareAtPrice, { stockQuantity: nullableInteger(null), imageCount: 1 }),
     ["initial stock"],
   );
   assert.deepEqual(
@@ -635,6 +643,8 @@ test("homepage care essentials and permanent product deletion keep their public 
   assert.match(dashboard, /Delete permanently/);
   assert.match(dashboard, /\/permanent-delete/);
   assert.match(dashboard, /\/restore/);
+  assert.match(dashboard, /\/publish/);
+  assert.match(dashboard, /rowPublish/);
   assert.match(dashboard, /deletionConfirmation !== "DELETE"/);
   assert.match(dashboard, /Set initial stock in Inventory/);
   assert.match(dashboard, /never required to publish/);
@@ -647,12 +657,13 @@ test("homepage care essentials and permanent product deletion keep their public 
 });
 
 test("public and admin routes enforce the catalogue, image-access, SEO, header, permission, and atomic-write contracts", async () => {
-  const [catalogue, publicApi, productApi, publicImageRoute, adminImageRoute, checkoutApi, adminProductsApi, inventoryApi, globalInventoryApi, inventoryPage, inventory, permissions, header, migration, productData, productImages, sitemap, productStructuredData, blog, recommendation] = await Promise.all([
+  const [catalogue, publicApi, productApi, publicImageRoute, adminImageRoute, publishRoute, checkoutApi, adminProductsApi, inventoryApi, globalInventoryApi, inventoryPage, inventory, permissions, header, migration, productData, productImages, sitemap, productStructuredData, blog, recommendation] = await Promise.all([
     readFile(new URL("../app/products/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/products/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/products/[slug]/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/products/images/[imageId]/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/products/[id]/images/[imageId]/content/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/admin/products/[id]/publish/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/product-orders/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/products/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/products/[id]/inventory/route.ts", import.meta.url), "utf8"),
@@ -696,8 +707,14 @@ test("public and admin routes enforce the catalogue, image-access, SEO, header, 
   assert.match(adminImageRoute, /requireAdminApi/);
   assert.match(adminImageRoute, /productPermission: "view_products"/);
   assert.match(adminImageRoute, /getAdminProductImageResponse/);
+  assert.match(publishRoute, /requireAdminApi/);
+  assert.match(publishRoute, /productPermission: "manage_products"/);
+  assert.match(publishRoute, /publishProduct/);
   assert.match(productImages, /getPublishedProductImage/);
   assert.match(productImages, /private, no-store/);
+  assert.match(productData, /export async function publishProduct/);
+  assert.match(productData, /SET status = 'published', updated_at = \?/);
+  assert.match(productData, /status = 'draft' AND updated_at = \?/);
   assert.match(checkoutApi, /toPublicOrderConfirmation/);
   assert.doesNotMatch(checkoutApi, /\{ order: result\.order,/);
   assert.match(adminProductsApi, /hasProductAdminPermission\(auth\.user, "adjust_inventory"\)/);
