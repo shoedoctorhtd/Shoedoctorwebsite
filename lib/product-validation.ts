@@ -174,6 +174,24 @@ export function getMissingProductPublicationFields(input: Pick<
   return missing;
 }
 
+/**
+ * Publication additionally depends on the persisted inventory and image data,
+ * which are intentionally not accepted through the product-content payload.
+ */
+export function getMissingProductPublicationRequirements(
+  input: Pick<ProductInput, "name" | "sku" | "slug" | "shortDescription" | "priceNpr">,
+  persisted: { stockQuantity: number | null | undefined; imageCount: number | undefined },
+) {
+  const missing = getMissingProductPublicationFields(input);
+  if (!Number.isSafeInteger(persisted.stockQuantity) || persisted.stockQuantity < 0) missing.push("initial stock");
+  if (!Number.isSafeInteger(persisted.imageCount) || persisted.imageCount < 1) missing.push("at least one product image");
+  return missing;
+}
+
+export function productPublicationRequirementsMessage(requirements: readonly string[]) {
+  return `Before publishing, complete: ${joinRequirements([...requirements])}.`;
+}
+
 function isValidPublicationSku(value: string | null) {
   try {
     return (normalizeProductSku(value)?.length ?? 0) >= 2;
@@ -228,7 +246,7 @@ export function parseProductInput(value: unknown): ProductInput {
   if (status === "published") {
     const missing = getMissingProductPublicationFields({ name, sku, slug, shortDescription, priceNpr });
     if (missing.length) {
-      throw new Error(`Published products need ${joinRequirements(missing)}.`);
+      throw new Error(productPublicationRequirementsMessage(missing));
     }
   }
   return {

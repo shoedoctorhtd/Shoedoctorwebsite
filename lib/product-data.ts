@@ -3,7 +3,11 @@ import type { AdminActor } from "./admin-types";
 import { getDatabase } from "./data";
 import { HOMEPAGE_PRODUCT_LIMIT, selectHomepageProducts } from "./product-home";
 import { MAX_PRODUCT_IMAGE_STORAGE_BYTES } from "./product-image-validation";
-import { parseProductDetails } from "./product-validation";
+import {
+  getMissingProductPublicationRequirements,
+  parseProductDetails,
+  productPublicationRequirementsMessage,
+} from "./product-validation";
 import {
   PRODUCT_BADGES,
   PRODUCT_CATEGORIES,
@@ -335,6 +339,13 @@ export async function updateProduct(
     badge: input.badge === undefined ? before.badge : input.badge,
     details: input.details === undefined ? before.details : input.details,
   };
+  if (next.status === "published") {
+    const missing = getMissingProductPublicationRequirements(next, {
+      stockQuantity: next.stockQuantity,
+      imageCount: before.images.length,
+    });
+    if (missing.length) throw new Error(productPublicationRequirementsMessage(missing));
+  }
   if (next.compareAtPriceNpr !== null && (next.priceNpr === null || next.compareAtPriceNpr <= next.priceNpr)) {
     throw new Error("Compare-at NPR price must be higher than the current NPR price.");
   }
@@ -387,7 +398,15 @@ export async function updateProduct(
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (/published products require/iu.test(message)) {
-      throw new Error("Upload an image and complete all required fields before publishing this product.");
+      const current = await getAdminProduct(id);
+      if (current) {
+        const missing = getMissingProductPublicationRequirements(current, {
+          stockQuantity: current.stockQuantity,
+          imageCount: current.images.length,
+        });
+        if (missing.length) throw new Error(productPublicationRequirementsMessage(missing));
+      }
+      throw new Error("This product changed before it could be published. Refresh and try again.");
     }
     if (/unique constraint failed:\s*products\.(?:sku|slug)/iu.test(message)) {
       throw new Error("SKU and slug must each be unique.");

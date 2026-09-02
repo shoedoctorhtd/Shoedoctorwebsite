@@ -14,7 +14,7 @@ import {
   type ProductImage,
   type ProductInput,
 } from "@/lib/product-types";
-import { getMissingProductPublicationFields, productSlugFromName } from "@/lib/product-validation";
+import { getMissingProductPublicationRequirements, productSlugFromName } from "@/lib/product-validation";
 import {
   prepareProductImageForUpload,
   releasePreparedProductImage,
@@ -145,14 +145,22 @@ export default function ProductAdminDashboard({
     : 0;
   const isPublishing = editing !== null && input.status === "published";
   const publicationRequirements = isPublishing && editing
-    ? [
-        ...getMissingProductPublicationFields(input),
-        ...(editing.stockQuantity === null ? ["initial stock"] : []),
-        ...(editing.images.length === 0 ? ["at least one product image"] : []),
-      ]
+    ? getMissingProductPublicationRequirements(input, {
+        stockQuantity: editing.stockQuantity,
+        imageCount: editing.images.length,
+      })
     : [];
   const publicationBlocked = isPublishing && publicationRequirements.length > 0;
   const details = input.details ?? emptyProductDetails();
+  const stockField = !editing
+    ? capabilities.canAdjustInventory
+      ? <label>Initial stock <small>(optional for a draft)</small><input type="number" min="0" max="100000" step="1" value={initialStock} onChange={(event) => setInitialStock(event.target.value)} /></label>
+      : <p className={styles.full}>Initial stock can be set later by an administrator with inventory-adjustment access.</p>
+    : editing.status === "draft" && editing.stockQuantity === null
+      ? capabilities.canAdjustInventory
+        ? <p className={styles.full}>This draft needs initial stock before publishing. <Link href={`/admin/inventory?product=${encodeURIComponent(editing.id)}`}>Set initial stock in Inventory.</Link></p>
+        : <p className={styles.full}>This draft needs initial stock before publishing. An administrator with inventory-adjustment access can set it in Inventory.</p>
+      : <label>Current stock<input value={editing.stockQuantity ?? "Not set"} disabled /></label>;
 
   function productPageUrl(page: number) {
     const params = new URLSearchParams({ page: String(page), pageSize: String(initialPageSize) });
@@ -524,9 +532,9 @@ export default function ProductAdminDashboard({
             <label>SKU<input required={isPublishing} minLength={isPublishing ? 2 : undefined} maxLength={64} value={input.sku ?? ""} onChange={(event) => change("sku", event.target.value || null)} placeholder="Unique product SKU" /></label>
             <label>Slug<input required={isPublishing} minLength={isPublishing ? 2 : undefined} maxLength={100} value={input.slug ?? ""} disabled={editing?.status === "published"} onChange={(event) => change("slug", event.target.value || null)} placeholder="unique-product-slug" />{editing?.status === "published" ? <small>Published slugs are locked to preserve existing links.</small> : null}</label>
             <label>NPR price<input type="number" required={isPublishing} min="1" step="1" disabled={!capabilities.canChangePrice} value={input.priceNpr ?? ""} onChange={(event) => change("priceNpr", event.target.value === "" ? null : Number(event.target.value))} /></label>
-            <label>Compare-at NPR price <small>(optional original price)</small><input type="number" min="1" step="1" disabled={!capabilities.canChangePrice} value={input.compareAtPriceNpr ?? ""} onChange={(event) => change("compareAtPriceNpr", event.target.value === "" ? null : Number(event.target.value))} /></label>
+            <label>Compare-at NPR price <small>(optional; never required to publish)</small><input type="number" min="1" step="1" disabled={!capabilities.canChangePrice} value={input.compareAtPriceNpr ?? ""} onChange={(event) => change("compareAtPriceNpr", event.target.value === "" ? null : Number(event.target.value))} /></label>
             <label>Category<select value={input.category ?? ""} onChange={(event) => change("category", (event.target.value || null) as ProductInput["category"])}><option value="">Not set</option>{PRODUCT_CATEGORIES.map((category) => <option value={category} key={category}>{categoryLabels[category]}</option>)}</select></label>
-            {!editing ? capabilities.canAdjustInventory ? <label>Initial stock <small>(optional for a draft)</small><input type="number" min="0" max="100000" step="1" value={initialStock} onChange={(event) => setInitialStock(event.target.value)} /></label> : <p className={styles.full}>Initial stock can be set later by an administrator with inventory-adjustment access.</p> : <label>Current stock<input value={editing.stockQuantity ?? "Not set"} disabled /></label>}
+            {stockField}
             <label>Low-stock threshold<input type="number" min="0" max="100000" step="1" value={input.lowStockThreshold} onChange={(event) => change("lowStockThreshold", Number(event.target.value))} /></label>
             {editing ? <label>Publication state<select value={input.status} onChange={(event) => change("status", event.target.value as ProductInput["status"])}><option value="draft">Draft</option><option value="published">Published</option><option value="archived">Archived</option></select></label> : <p className={styles.full}>New products are always created as drafts. Add an image and stock, then edit the draft to publish it.</p>}
             <label className={styles.check}><input type="checkbox" checked={input.featured} onChange={(event) => change("featured", event.target.checked)} />Featured product</label>

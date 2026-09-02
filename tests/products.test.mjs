@@ -10,10 +10,12 @@ import {
 } from "../lib/product-order-reference.ts";
 import {
   getMissingProductPublicationFields,
+  getMissingProductPublicationRequirements,
   parseInventoryAdjustment,
   parseInitialProductStock,
   parseOnlineProductOrder,
   parseProductInput,
+  productPublicationRequirementsMessage,
   productSlugFromName,
 } from "../lib/product-validation.ts";
 import { prepareCheckoutItems } from "../lib/product-checkout.ts";
@@ -259,6 +261,25 @@ test("publication validation identifies every missing catalogue field before a d
     priceNpr: 599,
   });
   assert.deepEqual(missing, ["a valid SKU", "a valid slug"]);
+  const completeWithoutCompareAtPrice = {
+    name: "Shoe Wipes",
+    sku: "SW-001",
+    slug: "shoe-wipes",
+    shortDescription: "For quick cleaning.",
+    priceNpr: 599,
+    compareAtPriceNpr: null,
+    status: "published",
+  };
+  assert.equal(parseProductInput(completeWithoutCompareAtPrice).compareAtPriceNpr, null);
+  assert.deepEqual(
+    getMissingProductPublicationRequirements(completeWithoutCompareAtPrice, { stockQuantity: null, imageCount: 1 }),
+    ["initial stock"],
+  );
+  assert.deepEqual(
+    getMissingProductPublicationRequirements(completeWithoutCompareAtPrice, { stockQuantity: 0, imageCount: 1 }),
+    [],
+  );
+  assert.equal(productPublicationRequirementsMessage(["initial stock"]), "Before publishing, complete: initial stock.");
   assert.equal(parseProductInput({
     name: "Shoe Wipes",
     sku: "SW-001",
@@ -290,7 +311,7 @@ test("publication validation identifies every missing catalogue field before a d
     shortDescription: "x",
     priceNpr: 599,
     status: "published",
-  }), /Published products need a valid slug and short description\./i);
+  }), /Before publishing, complete: a valid slug and short description\./i);
 });
 
 test("product content input is bounded, price-protected, and participates in audit snapshots", () => {
@@ -603,6 +624,8 @@ test("homepage care essentials and permanent product deletion keep their public 
   assert.match(productData, /inventory_movements/);
   assert.match(productData, /product_images_legacy_r2/);
   assert.match(productData, /db\.batch\(/);
+  assert.match(productData, /getMissingProductPublicationRequirements/);
+  assert.doesNotMatch(productData, /Upload an image and complete all required fields before publishing this product\./);
   assert.match(permanentDeleteRoute, /roles: \["super_admin"\]/);
   assert.match(permanentDeleteRoute, /productPermission: "manage_products"/);
   assert.match(permanentDeleteRoute, /body\.confirmation !== "DELETE"/);
@@ -613,6 +636,8 @@ test("homepage care essentials and permanent product deletion keep their public 
   assert.match(dashboard, /\/permanent-delete/);
   assert.match(dashboard, /\/restore/);
   assert.match(dashboard, /deletionConfirmation !== "DELETE"/);
+  assert.match(dashboard, /Set initial stock in Inventory/);
+  assert.match(dashboard, /never required to publish/);
   assert.match(adminProductsPage, /user\.role === "super_admin" && canManage/);
   assert.match(lifecycleMigration, /DROP TRIGGER IF EXISTS inventory_movements_prevent_delete/);
   assert.match(lifecycleMigration, /OLD\.movement_type = 'initial_stock'/);
