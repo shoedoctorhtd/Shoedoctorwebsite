@@ -158,7 +158,7 @@ export default function ProductAdminDashboard({
       : <p className={styles.full}>Initial stock can be set later by an administrator with inventory-adjustment access.</p>
     : editing.status === "draft" && editing.stockQuantity === null
       ? capabilities.canAdjustInventory
-        ? <p className={styles.full}>This draft needs initial stock before publishing. <Link href={`/admin/inventory?product=${encodeURIComponent(editing.id)}`}>Set initial stock in Inventory.</Link></p>
+        ? <label>Initial stock<input type="number" min="0" max="100000" step="1" value={initialStock} onChange={(event) => setInitialStock(event.target.value)} required={isPublishing} /><small>Set this before publishing. You can also manage it in <Link href={`/admin/inventory?product=${encodeURIComponent(editing.id)}`}>Inventory</Link>.</small></label>
         : <p className={styles.full}>This draft needs initial stock before publishing. An administrator with inventory-adjustment access can set it in Inventory.</p>
       : <label>Current stock<input value={editing.stockQuantity ?? "Not set"} disabled /></label>;
 
@@ -248,6 +248,15 @@ export default function ProductAdminDashboard({
         fullDescription: input.fullDescription || null,
         initialStock: editing || !capabilities.canAdjustInventory ? undefined : initialStock,
       };
+      if (editing && editing.status === "draft" && editing.stockQuantity === null && initialStock !== "") {
+        const inventoryResponse = await fetch(`/api/admin/products/${encodeURIComponent(editing.id)}/inventory`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ initialStock, idempotencyKey: crypto.randomUUID() }),
+        });
+        const inventoryResult = await inventoryResponse.json() as { message?: string };
+        if (!inventoryResponse.ok) throw new Error(inventoryResult.message ?? "Unable to set initial stock.");
+      }
       const response = await fetch(
         editing ? `/api/admin/products/${encodeURIComponent(editing.id)}` : "/api/admin/products",
         {
