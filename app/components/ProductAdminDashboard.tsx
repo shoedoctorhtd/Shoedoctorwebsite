@@ -672,6 +672,8 @@ export default function ProductAdminDashboard({
                   imageCount: product.images.length,
                 })
               : [];
+            const needsInitialStock = publicationRequirements.includes("initial stock");
+            const otherPublicationRequirements = publicationRequirements.filter((requirement) => requirement !== "initial stock");
             return <article className={styles.productRow} key={product.id}>
               {image ? <img src={image.url} alt="" /> : <span className={styles.imagePlaceholder} aria-hidden="true" />}
               <div><strong>{product.name}</strong><small>{product.sku ?? "SKU pending"} · {product.slug ?? "slug pending"}</small></div>
@@ -681,7 +683,7 @@ export default function ProductAdminDashboard({
               <div className={styles.rowActions}>
                 {low ? <span className={`${styles.status} ${styles.low}`}>Low stock</span> : product.stockQuantity === 0 ? <span className={`${styles.status} ${styles.out}`}>Out</span> : null}
                 {capabilities.canManage || capabilities.canManageImages ? <button type="button" onClick={() => editProduct(product)}>{capabilities.canManage ? "Edit" : "Manage images"}</button> : null}
-                {capabilities.canManage && product.status === "draft" ? <><button className={styles.rowPublish} type="button" disabled={busy || publicationRequirements.length > 0} onClick={() => void publish(product)}>{busy ? "Publishing…" : "Publish"}</button>{publicationRequirements.length ? <span className={styles.publishHint}>Needs: {publicationRequirements.join(", ")}</span> : null}</> : null}
+                {capabilities.canManage && product.status === "draft" ? <><button className={styles.rowPublish} type="button" disabled={busy || otherPublicationRequirements.length > 0} onClick={() => needsInitialStock ? editProduct(product) : void publish(product)}>{busy ? "Publishing…" : needsInitialStock ? "Set stock" : "Publish"}</button>{publicationRequirements.length ? <span className={styles.publishHint}>Needs: {publicationRequirements.join(", ")}</span> : null}</> : null}
                 {product.status !== "archived" ? <Link href={`/admin/inventory?product=${encodeURIComponent(product.id)}`}>Inventory</Link> : null}
                 {capabilities.canManage && product.status !== "archived" ? <button type="button" disabled={busy} onClick={() => void archive(product)}>Archive</button> : null}
                 {capabilities.canManage && product.status === "archived" ? <button type="button" disabled={busy} onClick={() => void restore(product)}>Restore</button> : null}
