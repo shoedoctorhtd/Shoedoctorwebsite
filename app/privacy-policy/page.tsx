@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <main className="public-site inner-site privacy-policy-page">
+    <main id="main-content" className="public-site inner-site privacy-policy-page">
       <SiteMotion />
       <SiteHeader />
 

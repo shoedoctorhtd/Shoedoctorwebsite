@@ -25,7 +25,7 @@ export default async function ProductsPage() {
   }
   return (
     <ProductCartProvider>
-      <main className={`public-site ${styles.page}`}>
+      <main id="main-content" className={`public-site ${styles.page}`}>
         <SiteHeader />
         <section className={styles.hero}>
           <p className="sd-kicker">The Shoe Doctor care cabinet</p>

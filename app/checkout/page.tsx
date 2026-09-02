@@ -12,5 +12,5 @@ export const metadata: Metadata = { title: "Checkout", robots: { index: false, f
 export default async function CheckoutPage() {
   let products: ProductCard[] = [];
   try { products = await listPublicProducts(); } catch { /* no public D1 error */ }
-  return <ProductCartProvider><main className={`public-site ${styles.page}`}><SiteHeader /><section className={styles.checkoutPage}><p className="sd-kicker">Shoe Doctor shop</p><h1>CHECK OUT.</h1><ProductCheckoutForm products={products} /></section><SiteFooter /></main></ProductCartProvider>;
+  return <ProductCartProvider><main id="main-content" className={`public-site ${styles.page}`}><SiteHeader /><section className={styles.checkoutPage}><p className="sd-kicker">Shoe Doctor shop</p><h1>CHECK OUT.</h1><ProductCheckoutForm products={products} /></section><SiteFooter /></main></ProductCartProvider>;
 }

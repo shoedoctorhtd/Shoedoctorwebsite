@@ -5,6 +5,7 @@ import {
   calculateBookingTotals,
   calculateBookingTotal,
   calculatePickupDeliveryFee,
+  formatNprPriceLabel,
   getExactNprPrice,
   qualifiesForFreeHetaudaDelivery,
 } from "../lib/booking-pricing.ts";
@@ -40,6 +41,13 @@ test("adds fixed admin prices entered without an Rs prefix", () => {
     serviceSubtotal: 1596,
     total: 1745,
   });
+});
+
+test("adds an NPR prefix only to bare whole-number display labels", () => {
+  assert.equal(formatNprPriceLabel("499"), "Rs 499");
+  assert.equal(formatNprPriceLabel("1,299"), "Rs 1,299");
+  assert.equal(formatNprPriceLabel("From Rs 599"), "From Rs 599");
+  assert.equal(formatNprPriceLabel("Price after inspection"), "Price after inspection");
 });
 
 test("calculates the screenshot mix when every service has one price", () => {

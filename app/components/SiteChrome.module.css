@@ -1,21 +1,50 @@
+.steamNavTrigger {
+  position: relative;
+}
+
+.steamNewBadge {
+  align-items: center;
+  background: var(--lime);
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  display: inline-flex;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 6px;
+  font-weight: 900;
+  justify-content: center;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  padding: 2px 4px;
+  pointer-events: none;
+  position: absolute;
+  text-transform: uppercase;
+}
+
 @media (min-width: 881px) {
   :global(.sd-desktop-nav) .steamNavTrigger {
-    padding: 0 !important;
+    padding-top: 12px !important;
+  }
+
+  :global(.sd-desktop-nav) .steamNewBadge {
+    inset-inline-start: 0;
+    top: 0;
   }
 }
 
 @media (max-width: 640px) {
   :global(.sd-mobile-nav) .steamNavTrigger {
-    font-size: clamp(10px, 2.9vw, 11px) !important;
-    letter-spacing: 0;
-    font-weight: 800;
-    padding: 5px 3px !important;
-    white-space: nowrap !important;
+    min-height: 44px;
+    padding: 15px 3px 4px !important;
+    white-space: nowrap;
   }
 
-  :global(.sd-mobile-nav) .steamNavTrigger span {
-    inset-inline-start: 3px !important;
-    top: 0 !important;
-    transform: translateX(-100%);
+  :global(.sd-mobile-nav) .steamNewBadge {
+    inset-inline-start: 4px;
+    top: 3px;
+    transform: none;
+  }
+
+  :global(.sd-mobile-nav) .steamNavTrigger[data-current="true"] .steamNewBadge {
+    background: var(--lime);
   }
 }
