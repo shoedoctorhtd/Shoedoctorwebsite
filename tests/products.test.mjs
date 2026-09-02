@@ -20,8 +20,12 @@ import { prepareCheckoutItems } from "../lib/product-checkout.ts";
 import { canCancelProductOrderStatus, canTransitionProductOrderStatus } from "../lib/product-order-status.ts";
 import { detectImageType, validateProductImage } from "../lib/product-image-validation.ts";
 import { clearSessionRetryToken, getSessionRetryToken } from "../app/components/ProductRetryToken.ts";
+import { auditValueDiff } from "../lib/audit.ts";
 
 const migrationUrl = new URL("../migrations/0012_product_catalogue_inventory.sql", import.meta.url);
+const migration0013Url = new URL("../migrations/0013_product_order_payments.sql", import.meta.url);
+const migration0014Url = new URL("../migrations/0014_product_image_blobs.sql", import.meta.url);
+const migration0015Url = new URL("../migrations/0015_product_content_fields.sql", import.meta.url);
 const now = "2026-08-29T08:00:00.000Z";
 
 async function createCatalogueDatabase() {
@@ -29,6 +33,17 @@ async function createCatalogueDatabase() {
   db.exec("PRAGMA foreign_keys = ON; CREATE TABLE admin_users (id TEXT PRIMARY KEY);");
   const migration = await readFile(migrationUrl, "utf8");
   db.exec(migration);
+  return db;
+}
+
+async function createProductContentDatabase({ includeProductContentMigration = true } = {}) {
+  const db = new DatabaseSync(":memory:");
+  db.exec("PRAGMA foreign_keys = ON; CREATE TABLE admin_users (id TEXT PRIMARY KEY);");
+  const migrations = [migrationUrl, migration0013Url, migration0014Url];
+  if (includeProductContentMigration) migrations.push(migration0015Url);
+  for (const migration of migrations) {
+    db.exec(await readFile(migration, "utf8"));
+  }
   return db;
 }
 
@@ -98,6 +113,50 @@ test("0012 seeds exactly the seven incomplete starter drafts and remains idempot
   }
 });
 
+test("0015 adds nullable product-content fields without changing existing product states", async (t) => {
+  const db = await createProductContentDatabase({ includeProductContentMigration: false });
+  t.after(() => db.close());
+  db.prepare(`
+    INSERT INTO products (
+      id, sku, slug, name, short_description, price_npr, stock_quantity,
+      low_stock_threshold, status, featured, created_at, updated_at
+    ) VALUES ('published-before-0015', 'PUBLISHED-001', 'published-before-0015', 'Published before 0015', 'Existing published record.', 99, 2, 0, 'draft', 0, ?, ?)
+  `).run(now, now);
+  db.prepare(`
+    INSERT INTO product_images (
+      id, product_id, image_data, mime_type, byte_size, sha256, original_name,
+      alt_text, is_primary, sort_order, uploaded_by_admin_id, created_at
+    ) VALUES ('a19c8c99-1e92-4e82-9d7a-6a14a336b3d6', 'published-before-0015', X'89504E470D0A1A0A', 'image/png', 8, ?, 'product.png', NULL, 1, 0, NULL, ?)
+  `).run("a".repeat(64), now);
+  assert.equal(db.prepare("UPDATE products SET status = 'published' WHERE id = 'published-before-0015'").run().changes, 1);
+
+  db.exec(await readFile(migration0015Url, "utf8"));
+  const starter = db.prepare("SELECT status, category, compare_at_price_npr, details_json, badge FROM products WHERE id = 'starter-shoe-bag'").get();
+  assert.deepEqual({ ...starter }, {
+    status: "draft",
+    category: null,
+    compare_at_price_npr: null,
+    details_json: null,
+    badge: null,
+  });
+  assert.deepEqual(
+    { ...db.prepare("SELECT status, category, compare_at_price_npr, details_json, badge FROM products WHERE id = 'published-before-0015'").get() },
+    { status: "published", category: null, compare_at_price_npr: null, details_json: null, badge: null },
+  );
+
+  assert.throws(() => db.prepare("UPDATE products SET badge = 'best_seller' WHERE id = 'published-before-0015'").run(), /CHECK constraint failed/i);
+  assert.throws(() => db.prepare("UPDATE products SET category = 'medical_claims' WHERE id = 'published-before-0015'").run(), /CHECK constraint failed/i);
+  assert.throws(() => db.prepare("UPDATE products SET compare_at_price_npr = 99 WHERE id = 'published-before-0015'").run(), /CHECK constraint failed/i);
+  assert.throws(() => db.prepare("UPDATE products SET details_json = '{not-json' WHERE id = 'published-before-0015'").run(), /CHECK constraint failed/i);
+
+  const details = JSON.stringify({ brand: "Shoe Doctor", keyBenefits: ["Quick clean"] });
+  db.prepare("UPDATE products SET category = 'quick_clean', compare_at_price_npr = 149, details_json = ?, badge = 'doctors_pick' WHERE id = 'published-before-0015'").run(details);
+  assert.deepEqual(
+    { ...db.prepare("SELECT status, category, compare_at_price_npr, details_json, badge FROM products WHERE id = 'published-before-0015'").get() },
+    { status: "published", category: "quick_clean", compare_at_price_npr: 149, details_json: details, badge: "doctors_pick" },
+  );
+});
+
 test("publication validation identifies every missing catalogue field before a draft can be published", () => {
   assert.equal(productSlugFromName("Shoe Wipes"), "shoe-wipes");
   assert.equal(productSlugFromName(`${"a".repeat(99)} b`), "a".repeat(99));
@@ -141,6 +200,66 @@ test("publication validation identifies every missing catalogue field before a d
     priceNpr: 599,
     status: "published",
   }), /Published products need a valid slug and short description\./i);
+});
+
+test("product content input is bounded, price-protected, and participates in audit snapshots", () => {
+  const input = parseProductInput({
+    name: "Shoe Wipes",
+    sku: "SSW-080-001",
+    slug: "shoe-wipes",
+    shortDescription: "For fresh marks between professional cleans.",
+    fullDescription: "Use only according to the supplied product guidance.",
+    category: "quick_clean",
+    priceNpr: 99,
+    compareAtPriceNpr: 149,
+    lowStockThreshold: 5,
+    status: "draft",
+    featured: false,
+    badge: "doctors_pick",
+    details: {
+      valueProposition: "A quick clean for fresh marks.",
+      keyBenefits: ["Quick clean", "Quick clean"],
+      suitableMaterials: ["Canvas"],
+      howToUse: ["Test a hidden area first."],
+      brand: "Shoe Doctor",
+      seoTitle: "Shoe Wipes in Nepal | Shoe Doctor",
+    },
+  });
+  assert.equal(input.category, "quick_clean");
+  assert.equal(input.compareAtPriceNpr, 149);
+  assert.equal(input.badge, "doctors_pick");
+  assert.deepEqual(input.details?.keyBenefits, ["Quick clean"]);
+  assert.equal(input.details?.seoDescription, null);
+  assert.throws(() => parseProductInput({
+    ...input,
+    compareAtPriceNpr: 99,
+  }), /higher than the current NPR price/i);
+  assert.throws(() => parseProductInput({
+    ...input,
+    category: "medical_claims",
+  }), /valid product category/i);
+  assert.throws(() => parseProductInput({
+    ...input,
+    details: { unsafeFreeForm: "Not allowed" },
+  }), /unsupported field/i);
+
+  const productDetails = input.details ?? {};
+  const before = {
+    fullDescription: input.fullDescription,
+    category: input.category ?? null,
+    compareAtPriceNpr: input.compareAtPriceNpr ?? null,
+    badge: input.badge ?? null,
+    details: productDetails,
+    stockQuantity: 10,
+  };
+  const after = {
+    ...before,
+    fullDescription: "Updated factual product guidance.",
+    details: { ...productDetails, seoDescription: "A concise factual description." },
+  };
+  const diff = auditValueDiff(before, after);
+  assert.deepEqual(diff.changedFields, ["fullDescription", "details"]);
+  assert.equal(diff.newValues.fullDescription, "Updated factual product guidance.");
 });
 
 test("a seeded draft can receive its real catalogue data, stock, image, and publication state", async (t) => {
@@ -364,8 +483,8 @@ test("public references, status transitions, image validation, and admin permiss
   }), /incomplete/i);
 });
 
-test("public and admin routes enforce the catalogue, image-access, header, permission, and atomic-write contracts", async () => {
-  const [catalogue, publicApi, productApi, publicImageRoute, adminImageRoute, checkoutApi, adminProductsApi, inventoryApi, globalInventoryApi, inventoryPage, inventory, permissions, header, migration, productData, productImages] = await Promise.all([
+test("public and admin routes enforce the catalogue, image-access, SEO, header, permission, and atomic-write contracts", async () => {
+  const [catalogue, publicApi, productApi, publicImageRoute, adminImageRoute, checkoutApi, adminProductsApi, inventoryApi, globalInventoryApi, inventoryPage, inventory, permissions, header, migration, productData, productImages, sitemap, productStructuredData, blog, recommendation] = await Promise.all([
     readFile(new URL("../app/products/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/products/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/products/[slug]/route.ts", import.meta.url), "utf8"),
@@ -382,14 +501,34 @@ test("public and admin routes enforce the catalogue, image-access, header, permi
     readFile(migrationUrl, "utf8"),
     readFile(new URL("../lib/product-data.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/product-images.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/sitemap.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/ProductStructuredData.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/blog/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/ProductRecommendation.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(catalogue, /listPublicProducts/);
   assert.match(catalogue, /ProductCatalogue/);
   assert.match(publicApi, /listPublicProducts/);
   assert.match(productData, /p\.status = 'published'/);
+  assert.match(productData, /before\.status === "published" && input\.slug !== before\.slug/);
+  assert.match(productData, /fullDescription: value\.fullDescription/);
+  assert.match(productData, /category: value\.category/);
+  assert.match(productData, /compareAtPriceNpr: value\.compareAtPriceNpr/);
+  assert.match(productData, /badge: value\.badge/);
+  assert.match(productData, /details: value\.details/);
   assert.match(productData, /audience === "admin"/);
   assert.match(productData, /\/api\/admin\/products\/\$\{encodeURIComponent\(productId\)\}\/images/);
   assert.match(productApi, /images: product\.images\.map/);
+  assert.match(productApi, /getPublicProductBySlug\(slug\)\.catch\(\(\) => null\)/);
+  assert.match(sitemap, /listPublicProducts/);
+  assert.match(sitemap, /filter\(\(product\) => Boolean\(product\.slug\)\)/);
+  assert.match(productStructuredData, /"@type": "Product"/);
+  assert.match(productStructuredData, /"@type": "BreadcrumbList"/);
+  assert.doesNotMatch(productStructuredData, /aggregateRating|review/iu);
+  assert.match(blog, /product\.badge === "doctors_pick"/);
+  assert.match(blog, /product\.stockQuantity !== 0/);
+  assert.match(recommendation, /product\.badge !== "doctors_pick"/);
+  assert.match(recommendation, /product\.stockQuantity === 0/);
   assert.match(publicImageRoute, /getPublicProductImageResponse/);
   assert.match(adminImageRoute, /requireAdminApi/);
   assert.match(adminImageRoute, /productPermission: "view_products"/);
@@ -399,6 +538,7 @@ test("public and admin routes enforce the catalogue, image-access, header, permi
   assert.match(checkoutApi, /toPublicOrderConfirmation/);
   assert.doesNotMatch(checkoutApi, /\{ order: result\.order,/);
   assert.match(adminProductsApi, /hasProductAdminPermission\(auth\.user, "adjust_inventory"\)/);
+  assert.match(adminProductsApi, /input\.compareAtPriceNpr !== undefined/);
   assert.match(inventoryApi, /parseInitialProductStock/);
   assert.match(globalInventoryApi, /listInventoryMovements\(undefined, \{ page \}\)/);
   assert.match(inventoryPage, /initialCompletedOrders/);

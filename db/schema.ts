@@ -626,7 +626,8 @@ export const donationImpactStats = sqliteTable("donation_impact_stats", {
   updatedAt: text("updated_at").notNull(),
 });
 
-// Product catalogue tables are a Drizzle schema mirror of migration 0012.
+// Product catalogue tables are a Drizzle schema mirror of migrations 0012,
+// 0014, and 0015.
 // Runtime product access intentionally uses D1 prepared statements to share
 // the Worker transaction and conditional-write patterns used by bookings.
 export const products = sqliteTable(
@@ -638,11 +639,15 @@ export const products = sqliteTable(
     name: text("name").notNull(),
     shortDescription: text("short_description"),
     fullDescription: text("full_description"),
+    category: text("category"),
     priceNpr: integer("price_npr"),
+    compareAtPriceNpr: integer("compare_at_price_npr"),
     stockQuantity: integer("stock_quantity"),
     lowStockThreshold: integer("low_stock_threshold").notNull().default(0),
     status: text("status").notNull().default("draft"),
     featured: integer("featured", { mode: "boolean" }).notNull().default(false),
+    detailsJson: text("details_json"),
+    badge: text("badge"),
     lastInventoryMutationId: text("last_inventory_mutation_id"),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
@@ -657,6 +662,11 @@ export const products = sqliteTable(
       table.status,
       table.stockQuantity,
       table.lowStockThreshold,
+    ),
+    index("products_status_category_updated_idx").on(
+      table.status,
+      table.category,
+      table.updatedAt,
     ),
   ],
 );

@@ -1,11 +1,17 @@
 import { isEmailAddress } from "./email/address.ts";
 import {
+  PRODUCT_BADGES,
+  PRODUCT_CATEGORIES,
   PRODUCT_FULFILLMENT_METHODS,
   PRODUCT_PAYMENT_METHODS,
   PRODUCT_ORDER_STATUSES,
   PRODUCT_PAYMENT_STATUSES,
   PRODUCT_STATUSES,
+  emptyProductDetails,
   type OfflineSaleRequest,
+  type ProductBadge,
+  type ProductCategory,
+  type ProductDetails,
   type ProductInput,
   type ProductOrderRequest,
   type ProductOrderRequestItem,
@@ -17,6 +23,20 @@ import {
 
 const MAX_CART_ITEMS = 20;
 const MAX_PER_PRODUCT_QUANTITY = 100;
+const PRODUCT_DETAIL_KEYS = new Set([
+  "valueProposition",
+  "keyBenefits",
+  "bestFor",
+  "suitableMaterials",
+  "materialsToAvoid",
+  "howToUse",
+  "warnings",
+  "packSize",
+  "brand",
+  "careInstructions",
+  "seoTitle",
+  "seoDescription",
+]);
 
 function cleanText(value: unknown, maxLength: number, label: string) {
   if (value !== undefined && value !== null && typeof value !== "string") {
@@ -29,6 +49,10 @@ function cleanText(value: unknown, maxLength: number, label: string) {
 
 function optionalText(value: unknown, maxLength: number, label: string) {
   return cleanText(value, maxLength, label) || null;
+}
+
+function hasOwn(input: Record<string, unknown>, key: string) {
+  return Object.prototype.hasOwnProperty.call(input, key);
 }
 
 function wholeNumber(value: unknown, min: number, max: number, label: string) {
@@ -72,6 +96,71 @@ export function productSlugFromName(name: string) {
   return slug || null;
 }
 
+export function normalizeProductCategory(value: unknown): ProductCategory | null {
+  const category = cleanText(value, 40, "Product category").toLowerCase();
+  if (!category) return null;
+  if (!PRODUCT_CATEGORIES.includes(category as ProductCategory)) {
+    throw new Error("Choose a valid product category.");
+  }
+  return category as ProductCategory;
+}
+
+export function normalizeProductBadge(value: unknown): ProductBadge | null {
+  const badge = cleanText(value, 40, "Product badge").toLowerCase();
+  if (!badge) return null;
+  if (!PRODUCT_BADGES.includes(badge as ProductBadge)) {
+    throw new Error("Choose a valid product badge.");
+  }
+  return badge as ProductBadge;
+}
+
+function productDetailList(value: unknown, maxItems: number, maxLength: number, label: string) {
+  if (value === undefined || value === null || value === "") return [];
+  if (!Array.isArray(value)) throw new Error(`${label} must be a list.`);
+  if (value.length > maxItems) throw new Error(`${label} may contain up to ${maxItems} entries.`);
+  const seen = new Set<string>();
+  const values: string[] = [];
+  value.forEach((item) => {
+    const text = cleanText(item, maxLength, label).replace(/\s+/gu, " ");
+    if (!text) return;
+    const key = text.toLocaleLowerCase("en-US");
+    if (seen.has(key)) return;
+    seen.add(key);
+    values.push(text);
+  });
+  return values;
+}
+
+/**
+ * The DB stores one JSON document, but only this bounded, known shape can be
+ * written. That avoids an arbitrary-content bucket while letting admins leave
+ * unknown product facts empty.
+ */
+export function parseProductDetails(value: unknown): ProductDetails {
+  if (value === undefined || value === null || value === "") return emptyProductDetails();
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Product details must be a structured object.");
+  }
+  const input = value as Record<string, unknown>;
+  for (const key of Object.keys(input)) {
+    if (!PRODUCT_DETAIL_KEYS.has(key)) throw new Error("Product details contain an unsupported field.");
+  }
+  return {
+    valueProposition: optionalText(input.valueProposition, 220, "Value proposition"),
+    keyBenefits: productDetailList(input.keyBenefits, 8, 180, "Key benefits"),
+    bestFor: productDetailList(input.bestFor, 8, 180, "Best-for guidance"),
+    suitableMaterials: productDetailList(input.suitableMaterials, 12, 120, "Suitable materials"),
+    materialsToAvoid: productDetailList(input.materialsToAvoid, 12, 120, "Materials to avoid"),
+    howToUse: productDetailList(input.howToUse, 12, 320, "Usage instructions"),
+    warnings: productDetailList(input.warnings, 8, 320, "Warnings"),
+    packSize: optionalText(input.packSize, 120, "Pack size"),
+    brand: optionalText(input.brand, 120, "Brand"),
+    careInstructions: productDetailList(input.careInstructions, 8, 320, "Care instructions"),
+    seoTitle: optionalText(input.seoTitle, 160, "SEO title"),
+    seoDescription: optionalText(input.seoDescription, 320, "SEO description"),
+  };
+}
+
 export function getMissingProductPublicationFields(input: Pick<
   ProductInput,
   "name" | "sku" | "slug" | "shortDescription" | "priceNpr"
@@ -81,7 +170,7 @@ export function getMissingProductPublicationFields(input: Pick<
   if (!isValidPublicationSku(input.sku)) missing.push("a valid SKU");
   if (!isValidPublicationSlug(input.slug)) missing.push("a valid slug");
   if (!input.shortDescription || input.shortDescription.trim().length < 2) missing.push("short description");
-  if (!Number.isSafeInteger(input.priceNpr) || input.priceNpr < 1) missing.push("a positive whole-number NPR price");
+  if (typeof input.priceNpr !== "number" || !Number.isSafeInteger(input.priceNpr) || input.priceNpr < 1) missing.push("a positive whole-number NPR price");
   return missing;
 }
 
@@ -120,6 +209,16 @@ export function parseProductInput(value: unknown): ProductInput {
   const priceNpr = rawPrice === "" || rawPrice === null || rawPrice === undefined
     ? null
     : wholeNumber(rawPrice, 1, 10_000_000, "NPR price");
+  const rawCompareAtPrice = input.compareAtPriceNpr;
+  const compareAtPriceNpr = rawCompareAtPrice === "" || rawCompareAtPrice === null || rawCompareAtPrice === undefined
+    ? null
+    : wholeNumber(rawCompareAtPrice, 1, 10_000_000, "Compare-at NPR price");
+  if (compareAtPriceNpr !== null && priceNpr === null) {
+    throw new Error("Set the current NPR price before adding a compare-at price.");
+  }
+  if (compareAtPriceNpr !== null && priceNpr !== null && compareAtPriceNpr <= priceNpr) {
+    throw new Error("Compare-at NPR price must be higher than the current NPR price.");
+  }
   const lowStockThreshold = input.lowStockThreshold === "" || input.lowStockThreshold === null || input.lowStockThreshold === undefined
     ? 0
     : wholeNumber(input.lowStockThreshold, 0, 100_000, "Low-stock threshold");
@@ -142,6 +241,10 @@ export function parseProductInput(value: unknown): ProductInput {
     lowStockThreshold,
     status,
     featured: input.featured === true,
+    ...(hasOwn(input, "category") ? { category: normalizeProductCategory(input.category) } : {}),
+    ...(hasOwn(input, "compareAtPriceNpr") ? { compareAtPriceNpr } : {}),
+    ...(hasOwn(input, "badge") ? { badge: normalizeProductBadge(input.badge) } : {}),
+    ...(hasOwn(input, "details") ? { details: parseProductDetails(input.details) } : {}),
   };
 }
 

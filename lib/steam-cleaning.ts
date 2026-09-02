@@ -1,13 +1,13 @@
 export const STEAM_ASSISTED_DEEP_CLEAN_ID = "steam-assisted-deep-clean";
 
 export const steamCleaningContent = {
-  homeBadge: "NEW AT SHOE DOCTOR · FIRST IN NEPAL",
+  homeBadge: "NEW AT SHOE DOCTOR",
   homeHeading: "STEAM-POWERED CARE FOR A DEEPER CLEAN.",
   homeDescription:
-    "Shoe Doctor introduces Nepal’s first professional steam-assisted shoe-cleaning experience. Our controlled steam brush helps loosen stubborn surface grime and reach textured areas, stitching lines, sole grooves and difficult corners with less aggressive scrubbing.",
+    "Shoe Doctor introduces a professional steam-assisted shoe-cleaning experience. Our controlled steam brush helps loosen stubborn surface grime and reach textured areas, stitching lines, sole grooves and difficult corners with less aggressive scrubbing.",
   homeSupporting:
     "Steam is used as part of our professional cleaning process—not as a one-method solution. Every pair is inspected first, and our technicians decide whether steam treatment is suitable for its material, adhesive and construction.",
-  serviceBadge: "NEPAL’S FIRST",
+  serviceBadge: "NEW AT SHOE DOCTOR",
   serviceName: "Steam-Assisted Deep Clean",
   serviceTitle: "STEAM-ASSISTED DEEP CLEAN",
   serviceIntro:

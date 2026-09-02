@@ -17,8 +17,8 @@ export default async function AdminProductOrdersPage({ searchParams }: { searchP
   const filter: ProductOrderListFilters = {
     search: query.search,
     channel: query.channel === "online" || query.channel === "offline" ? query.channel : undefined,
-    status: query.status === "pending" || query.status === "confirmed" || query.status === "processing" || query.status === "completed" || query.status === "cancelled" ? query.status : undefined,
-    paymentStatus: query.paymentStatus === "pending" || query.paymentStatus === "unpaid" || query.paymentStatus === "partial" || query.paymentStatus === "paid" || query.paymentStatus === "refunded" ? query.paymentStatus : undefined,
+    status: query.status === "pending" || query.status === "awaiting_payment" || query.status === "payment_review" || query.status === "confirmed" || query.status === "processing" || query.status === "completed" || query.status === "cancelled" ? query.status : undefined,
+    paymentStatus: query.paymentStatus === "pending" || query.paymentStatus === "unpaid" || query.paymentStatus === "submitted" || query.paymentStatus === "rejected" || query.paymentStatus === "cod_pending" || query.paymentStatus === "partial" || query.paymentStatus === "paid" || query.paymentStatus === "refunded" ? query.paymentStatus : undefined,
     date: query.date,
     page: parsePage(query.page ?? null),
   };

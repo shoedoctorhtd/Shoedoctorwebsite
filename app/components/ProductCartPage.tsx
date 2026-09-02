@@ -4,8 +4,9 @@
 
 import Link from "next/link";
 import type { ProductCard } from "@/lib/product-types";
+import { formatNpr } from "@/lib/money";
 import { useProductCart } from "./ProductCart";
-import { availabilityCopy, formatNpr } from "./ProductCatalogue";
+import { productAvailabilityCopy } from "./product-presentation";
 import styles from "./ProductShop.module.css";
 
 export default function ProductCartPage({ products }: { products: ProductCard[] }) {
@@ -24,14 +25,14 @@ export default function ProductCartPage({ products }: { products: ProductCard[] 
           const stockChanged = !product || product.stockQuantity === null || line.quantity > product.stockQuantity;
           return (
             <article className={styles.cartLine} key={line.productSlug}>
-              {product?.primaryImage ? <img src={product.primaryImage.url} alt={product.primaryImage.altText ?? product.name} /> : <div aria-hidden="true" />}
+              {product?.primaryImage ? <img alt={product.primaryImage.altText ?? product.name} loading="lazy" src={product.primaryImage.url} /> : <div aria-hidden="true" />}
               <div>
                 <h2>{product?.name ?? "This product is no longer available"}</h2>
-                <p>{product ? formatNpr(product.priceNpr) : "Remove this item to continue."}</p>
-                {stockChanged ? <p className={styles.stockChanged}>Stock changed — {product ? availabilityCopy(product.stockQuantity, product.lowStockThreshold) : "no longer available"}</p> : null}
+                <p>{product ? formatNpr(product.priceNpr ?? 0) : "Remove this item to continue."}</p>
+                {stockChanged ? <p className={styles.stockChanged}>Stock changed — {product ? productAvailabilityCopy(product.stockQuantity, product.lowStockThreshold) : "no longer available"}</p> : null}
               </div>
               <aside>
-                {product ? <div className={styles.quantityControl} aria-label={`Quantity for ${product.name}`}><button type="button" aria-label={`Decrease ${product.name}`} onClick={() => setQuantity(line.productSlug, line.quantity - 1, product.stockQuantity ?? 0)}>−</button><span>{line.quantity}</span><button type="button" aria-label={`Increase ${product.name}`} disabled={line.quantity >= (product.stockQuantity ?? 0)} onClick={() => setQuantity(line.productSlug, line.quantity + 1, product.stockQuantity ?? 0)}>+</button></div> : null}
+                {product ? <div className={styles.quantityControl} aria-label={`Quantity for ${product.name}`}><button type="button" aria-label={`Decrease ${product.name}`} onClick={() => setQuantity(line.productSlug, line.quantity - 1, product.stockQuantity ?? 0)}>−</button><span aria-live="polite">{line.quantity}</span><button type="button" aria-label={`Increase ${product.name}`} disabled={line.quantity >= (product.stockQuantity ?? 0)} onClick={() => setQuantity(line.productSlug, line.quantity + 1, product.stockQuantity ?? 0)}>+</button></div> : null}
                 <strong>{formatNpr(product ? (product.priceNpr ?? 0) * line.quantity : 0)}</strong>
                 <button className={styles.linkButton} type="button" onClick={() => remove(line.productSlug)}>Remove</button>
               </aside>
@@ -41,10 +42,13 @@ export default function ProductCartPage({ products }: { products: ProductCard[] 
       </section>
       <aside className={styles.summary}>
         <h2>Order summary</h2>
-        <p><span>Subtotal</span><span>{formatNpr(subtotal)}</span></p>
-        <p><span>Delivery</span><span>Confirmed later</span></p>
-        <strong><span>Estimated total</span><span>{formatNpr(subtotal)}</span></strong>
-        {linesWithProducts.some(({ line, product }) => !product || product.stockQuantity === null || line.quantity > product.stockQuantity) ? <p className={styles.stockChanged}>Resolve stock changes before checkout.</p> : <Link href="/checkout">Continue to checkout</Link>}
+        <p><span>Product subtotal</span><span>{formatNpr(subtotal)}</span></p>
+        <p><span>Delivery or collection</span><span>Confirmed for your order</span></p>
+        <strong><span>Current total</span><span>{formatNpr(subtotal)}</span></strong>
+        {linesWithProducts.some(({ line, product }) => !product || product.stockQuantity === null || line.quantity > product.stockQuantity)
+          ? <p className={styles.stockChanged}>Resolve stock changes before checkout.</p>
+          : <Link href="/checkout">Checkout securely</Link>}
+        <Link className={styles.continueShopping} href="/products">Continue shopping</Link>
       </aside>
     </div>
   );

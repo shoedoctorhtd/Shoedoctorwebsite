@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     const input = parseProductInput(body);
     const hasInitialStock = body.initialStock !== undefined && body.initialStock !== "";
     const initialStock = hasInitialStock ? parseInitialStockQuantity(body.initialStock) : null;
-    if (input.priceNpr !== null && !(await hasProductAdminPermission(auth.user, "change_product_prices"))) {
+    if ((input.priceNpr !== null || (input.compareAtPriceNpr !== undefined && input.compareAtPriceNpr !== null)) && !(await hasProductAdminPermission(auth.user, "change_product_prices"))) {
       return Response.json({ message: "You do not have permission to set product prices." }, { status: 403 });
     }
     if (hasInitialStock && !(await hasProductAdminPermission(auth.user, "adjust_inventory"))) {

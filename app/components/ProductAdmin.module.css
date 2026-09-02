@@ -13,6 +13,14 @@
 .form input, .form textarea, .form select { background: #fffef8; border: 1px solid rgba(17,17,15,.35); color: inherit; font: inherit; min-height: 42px; padding: 9px; }
 .form textarea { min-height: 90px; resize: vertical; }
 .full { grid-column: 1 / -1; }
+.optionalDetails { background: #f4f2ec; border: 1px solid rgba(17,17,15,.2); padding: 14px; }
+.optionalDetails summary { cursor: pointer; font-size: 13px; font-weight: 850; }
+.optionalDetails summary small { color: #625d57; font-weight: 600; }
+.optionalDetails > p { color: #625d57; font-size: 13px; line-height: 1.5; margin: 12px 0; max-width: 58rem; }
+.detailsGrid { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.detailsGrid label { display: grid; font-size: 12px; font-weight: 800; gap: 6px; }
+.detailsGrid input, .detailsGrid textarea { background: #fffef8; border: 1px solid rgba(17,17,15,.35); color: inherit; font: inherit; min-height: 42px; padding: 9px; }
+.detailsGrid textarea { min-height: 92px; resize: vertical; }
 .check { align-items: center; display: flex !important; flex-direction: row; gap: 8px; padding-top: 23px; }
 .check input { min-height: auto; }
 .primary, .secondary, .danger { border: 1px solid #171412; cursor: pointer; font: inherit; font-size: 13px; font-weight: 850; min-height: 40px; padding: 9px 12px; }
@@ -83,4 +91,4 @@
 .permissionRow fieldset { border: 0; display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 0; padding: 0; }
 .permissionRow label { font-size: 12px; font-weight: 750; }
 @media (max-width: 1000px) { .productRow { grid-template-columns: 62px minmax(180px, 1fr) auto; } .productRow > :nth-child(3), .productRow > :nth-child(4), .productRow > :nth-child(5) { display: none; } .split, .storagePanel { grid-template-columns: 1fr; } .movement, .order { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 620px) { .shell { padding-inline: 13px; } .form, .filters, .detailGrid { grid-template-columns: 1fr; } .full { grid-column: auto; } .productRow { grid-template-columns: 52px minmax(0, 1fr); } .productRow img, .imagePlaceholder { height: 52px; width: 52px; } .rowActions { grid-column: 1 / -1; justify-content: flex-start; } .movement, .order { grid-template-columns: 1fr; } .permissionRow { grid-template-columns: 1fr; } .preparedImage { grid-template-columns: 74px minmax(0, 1fr); } .panelHead { align-items: start; flex-direction: column; } .limitNotice { text-align: left; } }
+@media (max-width: 620px) { .shell { padding-inline: 13px; } .form, .filters, .detailGrid, .detailsGrid { grid-template-columns: 1fr; } .full { grid-column: auto; } .productRow { grid-template-columns: 52px minmax(0, 1fr); } .productRow img, .imagePlaceholder { height: 52px; width: 52px; } .rowActions { grid-column: 1 / -1; justify-content: flex-start; } .movement, .order { grid-template-columns: 1fr; } .permissionRow { grid-template-columns: 1fr; } .preparedImage { grid-template-columns: 74px minmax(0, 1fr); } .panelHead { align-items: start; flex-direction: column; } .limitNotice { text-align: left; } }

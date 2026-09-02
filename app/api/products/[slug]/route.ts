@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const product = await getPublicProductBySlug(slug);
+  const product = await getPublicProductBySlug(slug).catch(() => null);
   return product
     ? Response.json({ product: toPublicProduct(product) }, { headers: { "Cache-Control": "public, max-age=30, s-maxage=60" } })
     : Response.json({ message: "Product not found." }, { status: 404 });
@@ -17,10 +17,14 @@ function toPublicProduct(product: NonNullable<Awaited<ReturnType<typeof getPubli
     name: product.name,
     shortDescription: product.shortDescription,
     fullDescription: product.fullDescription,
+    category: product.category,
     priceNpr: product.priceNpr,
+    compareAtPriceNpr: product.compareAtPriceNpr,
     stockQuantity: product.stockQuantity,
     lowStockThreshold: product.lowStockThreshold,
     featured: product.featured,
+    badge: product.badge,
+    details: product.details,
     images: product.images.map((image) => ({
       id: image.id,
       url: image.url,

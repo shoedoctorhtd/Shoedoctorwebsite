@@ -311,7 +311,7 @@ const seedServices: Array<
       "Material-safe cleaning and drying",
       "Price confirmed after diagnosis",
     ],
-    badge: "First time in Nepal",
+    badge: "New at Shoe Doctor",
     tone: "blue",
     icon: "≋",
     active: true,

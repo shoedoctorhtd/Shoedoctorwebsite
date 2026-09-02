@@ -143,7 +143,10 @@ export function SiteFooter() {
               {item.label}
             </a>
           ))}
+          <a href="/shipping-delivery">Shipping &amp; Delivery</a>
+          <a href="/returns-refunds">Returns &amp; Refunds</a>
           <a href="/privacy-policy">Privacy Policy</a>
+          <a href="/terms">Terms</a>
         </div>
         <div className="sd-footer-contact">
           <span>Talk to the Doctor</span>

@@ -1,14 +1,44 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
+import type { Metadata } from "next";
 import SiteMotion from "../components/SiteMotion";
 import {
   ArrowUpRight,
   SiteFooter,
   SiteHeader,
 } from "../components/SiteChrome";
+import ProductRecommendation from "../components/ProductRecommendation";
+import { listPublicProducts } from "@/lib/product-data";
+import type { ProductCard, ProductCategory } from "@/lib/product-types";
 
 export const dynamic = "force-dynamic";
 
-export default function BlogPage() {
+export const metadata: Metadata = {
+  title: { absolute: "Shoe Care Guides | Shoe Doctor" },
+  description:
+    "Practical shoe-care guidance from Shoe Doctor on cleaning, storage, suede care and knowing when to book professional treatment.",
+  alternates: { canonical: "/blog" },
+};
+
+function firstDoctorsPickInCategory(products: ProductCard[], category: ProductCategory) {
+  return products.find((product) => (
+    product.category === category
+    && product.badge === "doctors_pick"
+    && product.stockQuantity !== 0
+  )) ?? null;
+}
+
+export default async function BlogPage() {
+  let products: ProductCard[] = [];
+  try {
+    products = await listPublicProducts();
+  } catch {
+    // Blog education remains available if the optional catalogue query cannot load.
+  }
+  const quickCleanRecommendation = firstDoctorsPickInCategory(products, "quick_clean");
+  const storageRecommendation = firstDoctorsPickInCategory(products, "storage")
+    ?? firstDoctorsPickInCategory(products, "protection");
+  const suedeRecommendation = firstDoctorsPickInCategory(products, "suede_nubuck");
+  const kitRecommendation = firstDoctorsPickInCategory(products, "cleaning_kits");
   return (
     <main className="public-site inner-site">
       <SiteMotion />
@@ -76,6 +106,10 @@ export default function BlogPage() {
               <li>Let every pair dry naturally in shade.</li>
             </ul>
             <p>Small cleanups keep big stains away.</p>
+            <ProductRecommendation
+              explanation="For fresh marks and everyday upkeep between professional visits."
+              product={quickCleanRecommendation}
+            />
           </div>
         </article>
 
@@ -100,6 +134,10 @@ export default function BlogPage() {
               A little preparation can save your favourite pair from
               unnecessary cleaning and damage.
             </p>
+            <ProductRecommendation
+              explanation="For the published storage or protection option currently selected by Shoe Doctor."
+              product={storageRecommendation}
+            />
           </article>
 
           <article className="sd-blog-card coral" data-reveal>
@@ -122,6 +160,10 @@ export default function BlogPage() {
               The right treatment protects the material. The wrong one may make
               the damage permanent.
             </p>
+            <ProductRecommendation
+              explanation="Only use an item when its own published guidance confirms it is appropriate for your pair."
+              product={suedeRecommendation}
+            />
           </article>
         </div>
 
@@ -177,6 +219,10 @@ export default function BlogPage() {
               <strong>Important:</strong> Avoid using the same brush on the
               dirty outsole and the upper part of the sneaker.
             </p>
+            <ProductRecommendation
+              explanation="A currently published kit can support this at-home routine when its product guidance matches your footwear."
+              product={kitRecommendation}
+            />
           </div>
         </article>
       </section>
@@ -195,14 +241,14 @@ export default function BlogPage() {
 
       <section className="sd-page-cta">
         <p>
-          Everything your sneakers need between professional visits&mdash;shoe
-          wipes, suede erasers, protective shoe covers, shoe bags and complete
-          cleaning kits.
+          Explore the Shoe Doctor care essentials that are currently ready to
+          order, or book professional help for a difficult pair.
         </p>
         <h2>CLEAN WITH CARE.<br />WEAR WITH CONFIDENCE.</h2>
-        <a className="sd-primary-button" href="/#book">
-          Book your pair <ArrowUpRight />
-        </a>
+        <div>
+          <a className="sd-primary-button" href="/products">Shop care products <ArrowUpRight /></a>
+          <a href="/#book">Book professional shoe care →</a>
+        </div>
       </section>
 
       <SiteFooter />

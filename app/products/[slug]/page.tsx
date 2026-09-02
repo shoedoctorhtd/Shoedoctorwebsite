@@ -1,47 +1,74 @@
-/* eslint-disable @next/next/no-img-element */
-
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteFooter, SiteHeader } from "../../components/SiteChrome";
 import ProductDetailPurchase from "../../components/ProductDetailPurchase";
 import { ProductCartProvider } from "../../components/ProductCart";
-import { availabilityCopy, formatNpr } from "../../components/ProductCatalogue";
+import ProductGallery from "../../components/ProductGallery";
+import ProductCareGuide from "../../components/ProductCareGuide";
+import ProfessionalCleaningCTA from "../../components/ProfessionalCleaningCTA";
+import ProductStructuredData from "../../components/ProductStructuredData";
 import styles from "../../components/ProductShop.module.css";
 import { getPublicProductBySlug } from "@/lib/product-data";
+import { formatNpr } from "@/lib/money";
+import { productAvailabilityCopy, productCategoryLabel } from "../../components/product-presentation";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const product = await getPublicProductBySlug((await params).slug).catch(() => null);
-  if (!product) return { title: "Product" };
+  if (!product || !product.slug) return { title: "Product", robots: { index: false, follow: false } };
+  const title = product.details.seoTitle ?? `${product.name} in Nepal | Shoe Doctor`;
+  const description = product.details.seoDescription ?? product.shortDescription ?? product.fullDescription ?? "Shoe Doctor care essential.";
+  const imageUrls = product.images.map((image) => ({ url: image.url, alt: image.altText ?? product.name }));
   return {
-    title: product.name,
-    description: product.shortDescription ?? "Shoe Doctor care essential.",
-    openGraph: product.images[0] ? { images: [{ url: product.images[0].url }] } : { images: [] },
-    twitter: product.images[0] ? { images: [product.images[0].url] } : { images: [] },
+    title: { absolute: title },
+    description,
+    alternates: { canonical: `/products/${encodeURIComponent(product.slug)}` },
+    openGraph: { title, description, url: `/products/${encodeURIComponent(product.slug)}`, images: imageUrls },
+    twitter: { card: "summary_large_image", title, description, images: imageUrls.map((image) => image.url) },
   };
 }
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const product = await getPublicProductBySlug((await params).slug).catch(() => null);
   if (!product || !product.slug || product.priceNpr === null) notFound();
+  const valueProposition = product.details.valueProposition ?? product.shortDescription;
+  const category = productCategoryLabel(product.category);
+  const hasCompareAtPrice = product.compareAtPriceNpr !== null && product.compareAtPriceNpr > product.priceNpr;
   return (
     <ProductCartProvider>
       <main className={`public-site ${styles.page}`}>
         <SiteHeader />
+        <ProductStructuredData product={product} />
         <section className={styles.detail}>
-          <div className={styles.gallery} aria-label={`${product.name} images`}>
-            {product.images.map((image) => <img src={image.url} alt={image.altText ?? (image.isPrimary ? product.name : `${product.name} view`)} key={image.id} />)}
-          </div>
+          <ProductGallery key={product.slug} productName={product.name} images={product.images} />
           <div className={styles.detailInfo}>
-            <p className="sd-kicker">Shoe Doctor shop</p>
+            <p className="sd-kicker">{category ?? "Shoe Doctor shop"}</p>
             <h1>{product.name}</h1>
-            <p>{product.fullDescription ?? product.shortDescription}</p>
+            {valueProposition ? <p>{valueProposition}</p> : null}
             <p className={styles.detailPrice}>{formatNpr(product.priceNpr)}</p>
-            <p className={styles.detailAvailability}>{availabilityCopy(product.stockQuantity, product.lowStockThreshold)}</p>
+            {hasCompareAtPrice ? <p className={styles.detailComparePrice}>Was {formatNpr(product.compareAtPriceNpr!)}</p> : null}
+            <p className={styles.detailAvailability}>{productAvailabilityCopy(product.stockQuantity, product.lowStockThreshold)}</p>
             <ProductDetailPurchase productSlug={product.slug} stockQuantity={product.stockQuantity} />
+            <ul className={styles.detailReassurance}>
+              <li>QR payment and Cash on Delivery are available at checkout.</li>
+              <li>Delivery availability and any charge are confirmed for the order.</li>
+              <li><Link href="/contact">Need help choosing? Contact Shoe Doctor.</Link></li>
+            </ul>
           </div>
         </section>
+        <div className={styles.detailSections}>
+          {product.fullDescription && product.fullDescription !== valueProposition ? (
+            <section className={styles.careGuide} aria-labelledby="product-description-title">
+              <p className="sd-kicker">More about this product</p>
+              <h2 id="product-description-title">DETAILS, NOT GUESSWORK.</h2>
+              <p>{product.fullDescription}</p>
+            </section>
+          ) : null}
+          <ProductCareGuide product={product} />
+          <ProfessionalCleaningCTA />
+        </div>
         <SiteFooter />
       </main>
     </ProductCartProvider>

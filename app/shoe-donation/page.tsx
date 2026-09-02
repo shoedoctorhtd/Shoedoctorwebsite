@@ -15,6 +15,7 @@ export const metadata: Metadata = {
   title: { absolute: "Shoe Donation Program | Shoe Doctor Hetauda" },
   description:
     "Donate wearable shoes through Shoe Doctor. We clean, restore and help pass footwear forward in Hetauda, Nepal.",
+  alternates: { canonical: "/shoe-donation" },
 };
 
 export const dynamic = "force-dynamic";

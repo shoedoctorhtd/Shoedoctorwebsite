@@ -18,8 +18,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const story = await getPublicRestorationStoryBySlug(slug).catch(() => null);
   return story
-    ? { title: story.title, description: story.description }
-    : { title: "Restoration Story" };
+    ? {
+      title: story.title,
+      description: story.description,
+      alternates: { canonical: `/shoe-donation/restorations/${encodeURIComponent(story.slug)}` },
+    }
+    : { title: "Restoration Story", robots: { index: false, follow: false } };
 }
 
 export default async function RestorationDetailPage({ params }: PageProps) {

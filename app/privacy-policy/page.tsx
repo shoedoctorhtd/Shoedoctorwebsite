@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   },
   description:
     "How Shoe Doctor collects, uses and protects customer and Google-authorised data.",
+  alternates: { canonical: "/privacy-policy" },
 };
 
 export default function PrivacyPolicyPage() {

@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
+import type { Metadata } from "next";
 import SiteMotion from "../components/SiteMotion";
 import {
   ArrowUpRight,
@@ -7,6 +8,13 @@ import {
 } from "../components/SiteChrome";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: { absolute: "Contact Shoe Doctor | Hetauda" },
+  description:
+    "Contact Shoe Doctor in Hetauda for shoe cleaning, repair, restoration, booking support and product-order help.",
+  alternates: { canonical: "/contact" },
+};
 
 export default function ContactPage() {
   return (
@@ -48,8 +56,8 @@ export default function ContactPage() {
         </article>
         <article>
           <span>Visit</span>
-          <strong>Hetauda, Nepal</strong>
-          <p>The exact studio address is confirmed with your booking.</p>
+          <strong>Hetauda-4, Makwanpur, Nepal</strong>
+          <p>The exact studio handover details are confirmed with your booking.</p>
         </article>
         <article>
           <span>Instagram & TikTok</span>

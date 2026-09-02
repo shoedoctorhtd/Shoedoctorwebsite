@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ProductCard } from "@/lib/product-types";
 import { useProductCart } from "./ProductCart";
-import { formatNpr } from "./ProductCatalogue";
+import { formatNpr } from "@/lib/money";
 import { clearSessionRetryToken, getSessionRetryToken } from "./ProductRetryToken";
 import styles from "./ProductShop.module.css";
 
@@ -104,12 +104,16 @@ export default function ProductCheckoutForm({ products }: { products: ProductCar
   return (
     <div className={styles.checkoutGrid}>
       <form className={styles.form} onSubmit={submit}>
+        <h2 className={styles.checkoutSectionTitle}>Your details</h2>
         <label>Full name<input required minLength={2} maxLength={120} name="customerName" autoComplete="name" /></label>
         <label>Phone number<input required minLength={7} maxLength={32} name="phone" inputMode="tel" autoComplete="tel" /></label>
         <label className={styles.full}>Email <small>(optional — for your confirmation)</small><input maxLength={160} name="email" type="email" autoComplete="email" /></label>
+        <h2 className={`${styles.checkoutSectionTitle} ${styles.full}`}>Collection or delivery</h2>
         <label className={styles.full}>Fulfilment method<select name="fulfillmentMethod" value={fulfillmentMethod} onChange={(event) => setFulfillmentMethod(event.target.value as "collection" | "delivery")}><option value="collection">Shop collection</option><option value="delivery">Delivery</option></select></label>
         {fulfillmentMethod === "delivery" ? <label className={styles.full}>Delivery address<textarea required maxLength={500} name="deliveryAddress" /></label> : null}
+        <p className={`${styles.formNotice} ${styles.full}`}>Delivery availability, timing and any charge are confirmed for your order before fulfilment.</p>
         <label className={styles.full}>Order note <small>(optional)</small><textarea maxLength={1000} name="customerNote" placeholder="Anything Shoe Doctor should know?" /></label>
+        <h2 className={`${styles.checkoutSectionTitle} ${styles.full}`}>Payment</h2>
         <fieldset className={`${styles.paymentChoices} ${styles.full}`}>
           <legend>Payment method</legend>
           <label className={paymentMethod === "qr" ? styles.paymentChoiceSelected : ""}>
@@ -128,7 +132,8 @@ export default function ProductCheckoutForm({ products }: { products: ProductCar
       <aside className={styles.summary}>
         <h2>Your order</h2>
         {activeLines.map(({ line, product }) => <p key={line.productSlug}><span>{product?.name ?? "Unavailable"} × {line.quantity}</span><span>{formatNpr((product?.priceNpr ?? 0) * line.quantity)}</span></p>)}
-        <strong><span>Estimated total</span><span>{formatNpr(subtotal)}</span></strong>
+        <p><span>Delivery</span><span>Confirmed before fulfilment</span></p>
+        <strong><span>Current total</span><span>{formatNpr(subtotal)}</span></strong>
       </aside>
     </div>
   );

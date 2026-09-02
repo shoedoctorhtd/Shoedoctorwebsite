@@ -1,4 +1,14 @@
 export const PRODUCT_STATUSES = ["draft", "published", "archived"] as const;
+export const PRODUCT_CATEGORIES = [
+  "quick_clean",
+  "cleaning_kits",
+  "suede_nubuck",
+  "protection",
+  "storage",
+  "restoration",
+  "accessories",
+] as const;
+export const PRODUCT_BADGES = ["doctors_pick"] as const;
 export const PRODUCT_ORDER_STATUSES = [
   "pending",
   "awaiting_payment",
@@ -23,6 +33,8 @@ export const PRODUCT_ORDER_CHANNELS = ["online", "offline"] as const;
 export const PRODUCT_FULFILLMENT_METHODS = ["delivery", "collection"] as const;
 
 export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
+export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
+export type ProductBadge = (typeof PRODUCT_BADGES)[number];
 export type ProductOrderStatus = (typeof PRODUCT_ORDER_STATUSES)[number];
 export type ProductPaymentStatus = (typeof PRODUCT_PAYMENT_STATUSES)[number];
 export type ProductPaymentMethod = (typeof PRODUCT_PAYMENT_METHODS)[number];
@@ -40,6 +52,42 @@ export type ProductImage = {
   createdAt: string;
 };
 
+/**
+ * Optional, admin-authored product facts. Public components must omit empty
+ * values rather than infer material, safety, or SEO claims.
+ */
+export type ProductDetails = {
+  valueProposition: string | null;
+  keyBenefits: string[];
+  bestFor: string[];
+  suitableMaterials: string[];
+  materialsToAvoid: string[];
+  howToUse: string[];
+  warnings: string[];
+  packSize: string | null;
+  brand: string | null;
+  careInstructions: string[];
+  seoTitle: string | null;
+  seoDescription: string | null;
+};
+
+export function emptyProductDetails(): ProductDetails {
+  return {
+    valueProposition: null,
+    keyBenefits: [],
+    bestFor: [],
+    suitableMaterials: [],
+    materialsToAvoid: [],
+    howToUse: [],
+    warnings: [],
+    packSize: null,
+    brand: null,
+    careInstructions: [],
+    seoTitle: null,
+    seoDescription: null,
+  };
+}
+
 export type Product = {
   id: string;
   sku: string | null;
@@ -47,11 +95,15 @@ export type Product = {
   name: string;
   shortDescription: string | null;
   fullDescription: string | null;
+  category: ProductCategory | null;
   priceNpr: number | null;
+  compareAtPriceNpr: number | null;
   stockQuantity: number | null;
   lowStockThreshold: number;
   status: ProductStatus;
   featured: boolean;
+  badge: ProductBadge | null;
+  details: ProductDetails;
   createdAt: string;
   updatedAt: string;
   images: ProductImage[];
@@ -59,7 +111,7 @@ export type Product = {
 
 export type ProductCard = Pick<
   Product,
-  "slug" | "name" | "shortDescription" | "priceNpr" | "stockQuantity" | "lowStockThreshold"
+  "slug" | "name" | "shortDescription" | "category" | "priceNpr" | "compareAtPriceNpr" | "stockQuantity" | "lowStockThreshold" | "badge"
 > & {
   primaryImage: ProductImage | null;
   isLowStock: boolean;
@@ -72,10 +124,18 @@ export type ProductInput = {
   slug: string | null;
   shortDescription: string | null;
   fullDescription: string | null;
+  /** Undefined preserves values for a stale admin form during a rolling deploy. */
+  category?: ProductCategory | null;
   priceNpr: number | null;
+  /** Undefined preserves values for a stale admin form during a rolling deploy. */
+  compareAtPriceNpr?: number | null;
   lowStockThreshold: number;
   status: ProductStatus;
   featured: boolean;
+  /** Undefined preserves values for a stale admin form during a rolling deploy. */
+  badge?: ProductBadge | null;
+  /** Undefined preserves values for a stale admin form during a rolling deploy. */
+  details?: ProductDetails;
 };
 
 export type ProductOrderItem = {

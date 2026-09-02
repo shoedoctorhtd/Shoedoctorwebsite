@@ -73,3 +73,18 @@ test("public and admin payment routes retain bearer-token and permission boundar
   assert.match(paymentService, /attachments: \[\{/);
   assert.doesNotMatch(paymentService, /PRODUCT_IMAGES|R2|KVNamespace/);
 });
+
+test("admin order filters retain every QR and COD lifecycle status", async () => {
+  const [apiRoute, page] = await Promise.all([
+    readFile(new URL("../app/api/admin/product-orders/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/product-orders/page.tsx", import.meta.url), "utf8"),
+  ]);
+  for (const source of [apiRoute, page]) {
+    for (const status of ["awaiting_payment", "payment_review"]) {
+      assert.match(source, new RegExp(`status === "${status}"`));
+    }
+    for (const status of ["submitted", "rejected", "cod_pending"]) {
+      assert.match(source, new RegExp(`paymentStatus === "${status}"`));
+    }
+  }
+});

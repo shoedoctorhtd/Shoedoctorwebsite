@@ -1,7 +1,10 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import { ChangeEvent, FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { formatNpr } from "@/lib/money";
 import styles from "./ProductShop.module.css";
 
 const MAX_RECEIPT_BYTES = 3 * 1024 * 1024;
@@ -197,10 +200,6 @@ async function compressReceiptImage(file: File) {
   } catch {
     return file;
   }
-}
-
-function formatNpr(value: number) {
-  return `Rs ${new Intl.NumberFormat("en-NP", { maximumFractionDigits: 0 }).format(value)}`;
 }
 
 function label(value: string) {

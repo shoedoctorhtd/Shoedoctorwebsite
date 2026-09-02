@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
 import type { Metadata } from "next";
+import { Fragment } from "react";
 import BookingForm from "./components/BookingForm";
 import Image from "next/image";
 import bookingStyles from "./components/BookingExperience.module.css";
@@ -20,6 +21,7 @@ export const metadata: Metadata = {
   },
   description:
     "Professional shoe cleaning in Hetauda by Shoe Doctor Nepal. Discover steam shoe cleaning in Nepal and steam-assisted sneaker cleaning alongside expert repair and restoration.",
+  alternates: { canonical: "/" },
 };
 
 const steps = [
@@ -147,6 +149,16 @@ export default async function Home({
   )
     ? params.service
     : services[0]?.id;
+  const marqueeServiceIds = [
+    "basic-clean",
+    "deep-clean",
+    "steam-assisted-deep-clean",
+    "express-wash-dry",
+    "full-restoration",
+  ];
+  const marqueeServices = marqueeServiceIds
+    .map((serviceId) => services.find((service) => service.id === serviceId))
+    .filter((service): service is (typeof services)[number] => Boolean(service));
   const publicWhatsAppUrl = "https://wa.me/9779761716743";
 
   return (
@@ -288,32 +300,14 @@ export default async function Home({
         </div>
       </section>
 
-      <section className="sd-marquee" aria-label="Featured prices">
+      <section className="sd-marquee" aria-label="Current service prices">
         <div>
-          <span>BASIC CLEAN · RS 299</span>
-          <i>✦</i>
-          <span>DEEP CLEAN · RS 399</span>
-          <i>✦</i>
-          <span>UV Sterilization · RS 149</span>
-          <i>✦</i>
-          <span>EXPRESS · RS 149</span>
-          <i>✦</i>
-          <span>NEPALI BRANDS SAVE RS 50</span>
-          <i>✦</i>
-          <span>RESTORATION · FROM RS 1,299</span>
-          <i>✦</i>
-          <span>BASIC CLEAN · RS 299</span>
-          <i>✦</i>
-          <span>DEEP CLEAN · RS 399</span>
-          <i>✦</i>
-          <span>UV Sterilization · RS 149</span>
-          <i>✦</i>
-          <span>EXPRESS · RS 149</span>
-          <i>✦</i>
-          <span>NEPALI BRANDS SAVE RS 50</span>
-          <i>✦</i>
-          <span>RESTORATION · FROM RS 1,299</span>
-          <i>✦</i>
+          {[...marqueeServices, ...marqueeServices].map((service, index) => (
+            <Fragment key={`${service.id}-${index}`}>
+              <span>{service.name.toUpperCase()} · {service.priceLabel.toUpperCase()}</span>
+              <i>✦</i>
+            </Fragment>
+          ))}
         </div>
       </section>
 

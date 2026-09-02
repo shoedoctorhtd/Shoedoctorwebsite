@@ -32,11 +32,20 @@ async function getUpdate(slug: string) {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const update = await getUpdate(slug).catch(() => null);
-  if (!update) return { title: "Donation Update" };
+  if (!update) {
+    return {
+      title: "Donation Update",
+      robots: { index: false, follow: false },
+    };
+  }
   const description = update.kind === "drive"
     ? update.item.shortDescription
     : update.item.story.slice(0, 160);
-  return { title: update.item.title, description };
+  return {
+    title: update.item.title,
+    description,
+    alternates: { canonical: `/shoe-donation/updates/${encodeURIComponent(update.item.slug)}` },
+  };
 }
 
 export default async function DonationUpdateDetailPage({ params }: PageProps) {

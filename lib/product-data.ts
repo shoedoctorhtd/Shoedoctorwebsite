@@ -2,9 +2,16 @@ import { auditValueDiff, buildAuditLogInsert } from "./audit";
 import type { AdminActor } from "./admin-types";
 import { getDatabase } from "./data";
 import { MAX_PRODUCT_IMAGE_STORAGE_BYTES } from "./product-image-validation";
+import { parseProductDetails } from "./product-validation";
 import {
+  PRODUCT_BADGES,
+  PRODUCT_CATEGORIES,
+  emptyProductDetails,
   type Product,
+  type ProductBadge,
   type ProductCard,
+  type ProductCategory,
+  type ProductDetails,
   type ProductImage,
   type ProductInput,
   type ProductListFilters,
@@ -46,8 +53,9 @@ const MAX_ADMIN_PRODUCT_PAGE_SIZE = 100;
 
 const PRODUCT_SELECT = `
   SELECT p.id, p.sku, p.slug, p.name, p.short_description, p.full_description,
-         p.price_npr, p.stock_quantity, p.low_stock_threshold, p.status,
-         p.featured, p.created_at, p.updated_at
+         p.category, p.price_npr, p.compare_at_price_npr, p.stock_quantity,
+         p.low_stock_threshold, p.status, p.featured, p.details_json, p.badge,
+         p.created_at, p.updated_at
   FROM products p
 `;
 
@@ -194,6 +202,10 @@ export async function createDraftProduct(input: ProductInput, actor: AdminActor)
   const product = {
     id,
     ...input,
+    category: input.category ?? null,
+    compareAtPriceNpr: input.compareAtPriceNpr ?? null,
+    badge: input.badge ?? null,
+    details: input.details ?? emptyProductDetails(),
     stockQuantity: null,
     createdAt: now,
     updatedAt: now,
@@ -203,15 +215,18 @@ export async function createDraftProduct(input: ProductInput, actor: AdminActor)
     db
       .prepare(`
         INSERT INTO products (
-          id, sku, slug, name, short_description, full_description, price_npr,
-          stock_quantity, low_stock_threshold, status, featured,
+          id, sku, slug, name, short_description, full_description, category,
+          price_npr, compare_at_price_npr, stock_quantity, low_stock_threshold,
+          status, featured, details_json, badge,
           last_inventory_mutation_id, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       .bind(
         id, input.sku, input.slug, input.name, input.shortDescription,
-        input.fullDescription, input.priceNpr, input.lowStockThreshold,
-        input.status, input.featured ? 1 : 0, operationId, now, now,
+        input.fullDescription, product.category, input.priceNpr,
+        product.compareAtPriceNpr, input.lowStockThreshold, input.status,
+        input.featured ? 1 : 0, serializeProductDetails(product.details),
+        product.badge, operationId, now, now,
       ),
     buildAuditLogInsert(db, {
       actor,
@@ -240,13 +255,23 @@ export async function updateProduct(
 ) {
   const before = await getAdminProduct(id);
   if (!before) return { kind: "not_found" as const };
-  const db = await getDatabase();
-  const now = new Date().toISOString();
-  const nextSnapshot = productAuditSnapshot({
+  if (before.status === "published" && input.slug !== before.slug) {
+    throw new Error("Published product slugs are locked to preserve existing links. Unpublish it before changing the slug.");
+  }
+  const next = {
     ...before,
     ...input,
-    updatedAt: now,
-  });
+    category: input.category === undefined ? before.category : input.category,
+    compareAtPriceNpr: input.compareAtPriceNpr === undefined ? before.compareAtPriceNpr : input.compareAtPriceNpr,
+    badge: input.badge === undefined ? before.badge : input.badge,
+    details: input.details === undefined ? before.details : input.details,
+  };
+  if (next.compareAtPriceNpr !== null && (next.priceNpr === null || next.compareAtPriceNpr <= next.priceNpr)) {
+    throw new Error("Compare-at NPR price must be higher than the current NPR price.");
+  }
+  const db = await getDatabase();
+  const now = new Date().toISOString();
+  const nextSnapshot = productAuditSnapshot({ ...next, updatedAt: now });
   const diff = auditValueDiff(productAuditSnapshot(before), nextSnapshot);
   if (!diff.changedFields.length) return { kind: "unchanged" as const, product: before };
   const operationId = crypto.randomUUID();
@@ -261,13 +286,15 @@ export async function updateProduct(
         .prepare(`
           UPDATE products
           SET sku = ?, slug = ?, name = ?, short_description = ?, full_description = ?,
-              price_npr = ?, low_stock_threshold = ?, status = ?, featured = ?, updated_at = ?
+              category = ?, price_npr = ?, compare_at_price_npr = ?, low_stock_threshold = ?,
+              status = ?, featured = ?, details_json = ?, badge = ?, updated_at = ?
           WHERE id = ? AND updated_at = ?
         `)
         .bind(
           input.sku, input.slug, input.name, input.shortDescription,
-          input.fullDescription, input.priceNpr, input.lowStockThreshold,
-          input.status, input.featured ? 1 : 0, now, id, before.updatedAt,
+          input.fullDescription, next.category, input.priceNpr, next.compareAtPriceNpr,
+          input.lowStockThreshold, input.status, input.featured ? 1 : 0,
+          serializeProductDetails(next.details), next.badge, now, id, before.updatedAt,
         ),
       buildAuditLogInsert(db, {
         actor,
@@ -310,9 +337,13 @@ export async function archiveProduct(id: string, actor: AdminActor) {
     slug: existing.slug,
     shortDescription: existing.shortDescription,
     fullDescription: existing.fullDescription,
+    category: existing.category,
     priceNpr: existing.priceNpr,
+    compareAtPriceNpr: existing.compareAtPriceNpr,
     lowStockThreshold: existing.lowStockThreshold,
     featured: false,
+    badge: null,
+    details: existing.details,
     status: "archived",
   }, actor);
 }
@@ -322,7 +353,9 @@ export async function listImagesForAdminProduct(productId: string) {
 }
 
 export function isProductPriceChanged(before: Product, input: ProductInput) {
-  return before.priceNpr !== input.priceNpr;
+  return before.priceNpr !== input.priceNpr || (
+    input.compareAtPriceNpr !== undefined && before.compareAtPriceNpr !== input.compareAtPriceNpr
+  );
 }
 
 export function productAuditSnapshot(value: {
@@ -331,11 +364,16 @@ export function productAuditSnapshot(value: {
   slug: string | null;
   name: string;
   shortDescription: string | null;
+  fullDescription: string | null;
+  category: ProductCategory | null;
   priceNpr: number | null;
+  compareAtPriceNpr: number | null;
   stockQuantity?: number | null;
   lowStockThreshold: number;
   status: ProductStatus;
   featured: boolean;
+  badge: ProductBadge | null;
+  details: ProductDetails;
   updatedAt?: string;
 }) {
   return {
@@ -343,11 +381,16 @@ export function productAuditSnapshot(value: {
     slug: value.slug,
     name: value.name,
     shortDescription: value.shortDescription,
+    fullDescription: value.fullDescription,
+    category: value.category,
     priceNpr: value.priceNpr,
+    compareAtPriceNpr: value.compareAtPriceNpr,
     stockQuantity: value.stockQuantity ?? null,
     lowStockThreshold: value.lowStockThreshold,
     status: value.status,
     featured: value.featured,
+    badge: value.badge,
+    details: value.details,
   };
 }
 
@@ -358,9 +401,12 @@ function toProductCard(product: Product): ProductCard {
     slug: product.slug,
     name: product.name,
     shortDescription: product.shortDescription,
+    category: product.category,
     priceNpr: product.priceNpr,
+    compareAtPriceNpr: product.compareAtPriceNpr,
     stockQuantity: quantity,
     lowStockThreshold: product.lowStockThreshold,
+    badge: product.badge,
     primaryImage,
     isOutOfStock: quantity === 0,
     isLowStock: quantity !== null && quantity > 0 && quantity <= product.lowStockThreshold,
@@ -375,11 +421,15 @@ function parseProduct(row: ProductRow): Product {
     name: String(row.name ?? ""),
     shortDescription: nullableText(row.short_description),
     fullDescription: nullableText(row.full_description),
+    category: parseProductCategory(row.category),
     priceNpr: nullableInteger(row.price_npr),
+    compareAtPriceNpr: nullableInteger(row.compare_at_price_npr),
     stockQuantity: nullableInteger(row.stock_quantity),
     lowStockThreshold: Math.max(0, Number(row.low_stock_threshold ?? 0)),
     status: row.status === "published" || row.status === "archived" ? row.status : "draft",
     featured: Number(row.featured ?? 0) === 1,
+    badge: parseProductBadge(row.badge),
+    details: parseStoredProductDetails(row.details_json),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     images: [],
@@ -431,6 +481,35 @@ function nullableText(value: unknown) {
 function nullableInteger(value: unknown) {
   const number = Number(value);
   return Number.isSafeInteger(number) ? number : null;
+}
+
+function parseProductCategory(value: unknown): ProductCategory | null {
+  const category = nullableText(value);
+  return category && PRODUCT_CATEGORIES.includes(category as ProductCategory)
+    ? category as ProductCategory
+    : null;
+}
+
+function parseProductBadge(value: unknown): ProductBadge | null {
+  const badge = nullableText(value);
+  return badge && PRODUCT_BADGES.includes(badge as ProductBadge)
+    ? badge as ProductBadge
+    : null;
+}
+
+function parseStoredProductDetails(value: unknown): ProductDetails {
+  const source = nullableText(value);
+  if (!source) return emptyProductDetails();
+  try {
+    return parseProductDetails(JSON.parse(source));
+  } catch {
+    // A malformed legacy row must never take the catalogue or admin UI down.
+    return emptyProductDetails();
+  }
+}
+
+function serializeProductDetails(value: ProductDetails) {
+  return JSON.stringify(value);
 }
 
 function clampPage(value: number | undefined) {

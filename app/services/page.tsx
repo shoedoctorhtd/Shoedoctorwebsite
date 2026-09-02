@@ -19,6 +19,7 @@ export const metadata: Metadata = {
   },
   description:
     "Explore Shoe Doctor Nepal's professional shoe cleaning in Hetauda, repair and restoration services. Steam-assisted deep cleaning is available after material inspection.",
+  alternates: { canonical: "/services" },
 };
 
 const faqs = [
@@ -40,7 +41,7 @@ const faqs = [
   {
     question: "Can I request express service?",
     answer:
-      "Yes. Express Wash & Dry is +Rs 149 and aims for 2–3 hours. Repair Priority is +Rs 150. Both depend on treatment and available capacity.",
+      "Yes. Express Wash & Dry and Repair Priority are available only when the treatment and capacity allow it. The current service card shows the applicable add-on amount before you book.",
   },
 ];
 

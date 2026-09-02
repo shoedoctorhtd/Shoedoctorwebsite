@@ -22,6 +22,7 @@ export const metadata: Metadata = {
   },
   description:
     "Explore Shoe Doctor's Steam Gun Brush Cleaning process, combining controlled steam and specialised brushing for sole grooves, seams, edges and difficult-to-reach areas.",
+  alternates: { canonical: "/steam-cleaning" },
 };
 
 export default function SteamCleaningPage() {
@@ -36,9 +37,9 @@ export default function SteamCleaningPage() {
         </span>
         <p className="sd-kicker">NEW AT SHOE DOCTOR</p>
         <h1>
-          NEPAL&apos;S FIRST
+          A NEW SHOE-CARE
           <br />
-          <span>STEAM BRUSH CLEANING.</span>
+          <span>EXPERIENCE.</span>
         </h1>
         <div className="sd-page-hero-bottom">
           <p>

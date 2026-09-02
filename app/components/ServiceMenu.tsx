@@ -35,6 +35,23 @@ function groupServices(services: Service[], category: ServiceCategory) {
   return services.filter((service) => service.category === category);
 }
 
+function publicServiceBadge(badge: string | null) {
+  if (!badge) return null;
+  return /\b(?:nepal['’]s first|first(?:\s+time)?\s+in\s+nepal)\b/iu.test(badge)
+    ? "New at Shoe Doctor"
+    : badge;
+}
+
+function priceContext(priceLabel: string) {
+  const normalized = priceLabel.trim().toLowerCase();
+  if (normalized.startsWith("+")) return "Optional add-on";
+  if (/\bafter\s+(?:diagnosis|inspection)\b/iu.test(normalized)) {
+    return "Quoted after diagnosis";
+  }
+  if (normalized.startsWith("from ")) return "Starting price";
+  return "Standard service price";
+}
+
 type ServiceMenuProps = {
   services: Service[];
   afterCategory?: Partial<Record<ServiceCategory, ReactNode>>;
@@ -116,47 +133,7 @@ export default function ServiceMenu({
                 }`}
               >
                 {categoryServices.map((service, index) => (
-                  <article
-                    className={`menu-card ${service.tone}`}
-                    data-service-card
-                    data-service-id={service.id}
-                    key={service.id}
-                  >
-                    <div className="menu-card-top">
-                      <span className="menu-number">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      <span className="menu-icon">{service.icon}</span>
-                    </div>
-                    {service.badge && (
-                      <span className="menu-badge">{service.badge}</span>
-                    )}
-                    <p className="menu-turnaround">{service.turnaround}</p>
-                    <h3>{service.name}</h3>
-                    <p className="menu-description">{service.description}</p>
-                    <ul>
-                      {service.features.map((feature) => (
-                        <li key={feature}>{feature}</li>
-                      ))}
-                    </ul>
-                    <div className="menu-price">
-                      <div>
-                        <span>Service price</span>
-                        <strong>{service.priceLabel}</strong>
-                        {service.specialPriceLabel && (
-                          <em>{service.specialPriceLabel}</em>
-                        )}
-                      </div>
-                      <a
-                        href={`/?service=${encodeURIComponent(
-                          service.id,
-                        )}#book`}
-                        aria-label={`Book ${service.name}`}
-                      >
-                        Book now <ArrowUpRight />
-                      </a>
-                    </div>
-                  </article>
+                  <ServiceCard key={service.id} service={service} index={index} />
                 ))}
               </div>
             </div>
@@ -168,10 +145,51 @@ export default function ServiceMenu({
       <div className="pricing-note">
         <strong>Before we begin</strong>
         <p>
-          Cleaning charges may apply separately unless included. Final price
-          depends on material, damage and shoe condition.
+          Prices marked “From”, “After diagnosis” or with a + are not fixed
+          all-in quotes. Any extra repair or restoration work is confirmed
+          with you before it begins.
         </p>
       </div>
     </>
+  );
+}
+
+function ServiceCard({ service, index }: { service: Service; index: number }) {
+  const badge = publicServiceBadge(service.badge);
+  return (
+    <article
+      className={`menu-card ${service.tone}`}
+      data-service-card
+      data-service-id={service.id}
+    >
+      <div className="menu-card-top">
+        <span className="menu-number">{String(index + 1).padStart(2, "0")}</span>
+        <span className="menu-icon">{service.icon}</span>
+      </div>
+      {badge && <span className="menu-badge">{badge}</span>}
+      <p className="menu-turnaround">{service.turnaround}</p>
+      <h3>{service.name}</h3>
+      <p className="menu-description">{service.description}</p>
+      <ul>
+        {service.features.map((feature) => <li key={feature}>{feature}</li>)}
+      </ul>
+      <p className="menu-description">
+        Treatment scope is confirmed after diagnosis; work outside the agreed
+        scope is quoted before it begins.
+      </p>
+      <div className="menu-price">
+        <div>
+          <span>{priceContext(service.priceLabel)}</span>
+          <strong>{service.priceLabel}</strong>
+          {service.specialPriceLabel && <em>{service.specialPriceLabel}</em>}
+        </div>
+        <a
+          href={`/?service=${encodeURIComponent(service.id)}#book`}
+          aria-label={`Book ${service.name}`}
+        >
+          Book now <ArrowUpRight />
+        </a>
+      </div>
+    </article>
   );
 }

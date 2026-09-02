@@ -5,7 +5,15 @@
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import type { ProductImageStorageSummary } from "@/lib/product-data";
-import type { Product, ProductImage, ProductInput } from "@/lib/product-types";
+import {
+  PRODUCT_BADGES,
+  PRODUCT_CATEGORIES,
+  emptyProductDetails,
+  type Product,
+  type ProductDetails,
+  type ProductImage,
+  type ProductInput,
+} from "@/lib/product-types";
 import { getMissingProductPublicationFields, productSlugFromName } from "@/lib/product-validation";
 import {
   prepareProductImageForUpload,
@@ -43,10 +51,14 @@ const emptyInput: ProductInput = {
   slug: null,
   shortDescription: null,
   fullDescription: null,
+  category: null,
   priceNpr: null,
+  compareAtPriceNpr: null,
   lowStockThreshold: 0,
   status: "draft",
   featured: false,
+  badge: null,
+  details: emptyProductDetails(),
 };
 
 function productToInput(product: Product): ProductInput {
@@ -56,11 +68,37 @@ function productToInput(product: Product): ProductInput {
     slug: product.slug?.trim() || productSlugFromName(product.name),
     shortDescription: product.shortDescription,
     fullDescription: product.fullDescription,
+    category: product.category,
     priceNpr: product.priceNpr,
+    compareAtPriceNpr: product.compareAtPriceNpr,
     lowStockThreshold: product.lowStockThreshold,
     status: product.status,
     featured: product.featured,
+    badge: product.badge,
+    details: product.details,
   };
+}
+
+const categoryLabels: Record<(typeof PRODUCT_CATEGORIES)[number], string> = {
+  quick_clean: "Quick Clean",
+  cleaning_kits: "Cleaning Kits",
+  suede_nubuck: "Suede & Nubuck",
+  protection: "Protection",
+  storage: "Storage",
+  restoration: "Restoration",
+  accessories: "Accessories",
+};
+
+const badgeLabels: Record<(typeof PRODUCT_BADGES)[number], string> = {
+  doctors_pick: "Doctor's Pick",
+};
+
+function detailLines(value: string[]) {
+  return value.join("\n");
+}
+
+function detailList(value: string) {
+  return value.split(/\r?\n/gu).map((item) => item.trim()).filter(Boolean);
 }
 
 export default function ProductAdminDashboard({
@@ -110,6 +148,7 @@ export default function ProductAdminDashboard({
       ]
     : [];
   const publicationBlocked = isPublishing && publicationRequirements.length > 0;
+  const details = input.details ?? emptyProductDetails();
 
   function productPageUrl(page: number) {
     const params = new URLSearchParams({ page: String(page), pageSize: String(initialPageSize) });
@@ -129,6 +168,16 @@ export default function ProductAdminDashboard({
       if (shouldGenerateSlug) next.slug = productSlugFromName(next.name);
       return next;
     });
+  }
+
+  function changeDetails<K extends keyof ProductDetails>(key: K, value: ProductDetails[K]) {
+    setInput((current) => ({
+      ...current,
+      details: {
+        ...(current.details ?? emptyProductDetails()),
+        [key]: value,
+      } as ProductDetails,
+    }));
   }
 
   async function reload() {
@@ -396,14 +445,35 @@ export default function ProductAdminDashboard({
           <form className={styles.form} onSubmit={save}>
             <label>Product name<input required minLength={2} maxLength={120} value={input.name} onChange={(event) => change("name", event.target.value)} /></label>
             <label>SKU<input required={isPublishing} minLength={isPublishing ? 2 : undefined} maxLength={64} value={input.sku ?? ""} onChange={(event) => change("sku", event.target.value || null)} placeholder="Unique product SKU" /></label>
-            <label>Slug<input required={isPublishing} minLength={isPublishing ? 2 : undefined} maxLength={100} value={input.slug ?? ""} onChange={(event) => change("slug", event.target.value || null)} placeholder="unique-product-slug" /></label>
+            <label>Slug<input required={isPublishing} minLength={isPublishing ? 2 : undefined} maxLength={100} value={input.slug ?? ""} disabled={editing?.status === "published"} onChange={(event) => change("slug", event.target.value || null)} placeholder="unique-product-slug" />{editing?.status === "published" ? <small>Published slugs are locked to preserve existing links.</small> : null}</label>
             <label>NPR price<input type="number" required={isPublishing} min="1" step="1" disabled={!capabilities.canChangePrice} value={input.priceNpr ?? ""} onChange={(event) => change("priceNpr", event.target.value === "" ? null : Number(event.target.value))} /></label>
+            <label>Compare-at NPR price <small>(optional original price)</small><input type="number" min="1" step="1" disabled={!capabilities.canChangePrice} value={input.compareAtPriceNpr ?? ""} onChange={(event) => change("compareAtPriceNpr", event.target.value === "" ? null : Number(event.target.value))} /></label>
+            <label>Category<select value={input.category ?? ""} onChange={(event) => change("category", (event.target.value || null) as ProductInput["category"])}><option value="">Not set</option>{PRODUCT_CATEGORIES.map((category) => <option value={category} key={category}>{categoryLabels[category]}</option>)}</select></label>
             {!editing ? capabilities.canAdjustInventory ? <label>Initial stock <small>(optional for a draft)</small><input type="number" min="0" max="100000" step="1" value={initialStock} onChange={(event) => setInitialStock(event.target.value)} /></label> : <p className={styles.full}>Initial stock can be set later by an administrator with inventory-adjustment access.</p> : <label>Current stock<input value={editing.stockQuantity ?? "Not set"} disabled /></label>}
             <label>Low-stock threshold<input type="number" min="0" max="100000" step="1" value={input.lowStockThreshold} onChange={(event) => change("lowStockThreshold", Number(event.target.value))} /></label>
             {editing ? <label>Publication state<select value={input.status} onChange={(event) => change("status", event.target.value as ProductInput["status"])}><option value="draft">Draft</option><option value="published">Published</option><option value="archived">Archived</option></select></label> : <p className={styles.full}>New products are always created as drafts. Add an image and stock, then edit the draft to publish it.</p>}
             <label className={styles.check}><input type="checkbox" checked={input.featured} onChange={(event) => change("featured", event.target.checked)} />Featured product</label>
+            <label>Product badge<select value={input.badge ?? ""} onChange={(event) => change("badge", (event.target.value || null) as ProductInput["badge"])}><option value="">No badge</option>{PRODUCT_BADGES.map((badge) => <option value={badge} key={badge}>{badgeLabels[badge]}</option>)}</select></label>
             <label className={styles.full}>Short description<textarea required={isPublishing} minLength={isPublishing ? 2 : undefined} maxLength={320} value={input.shortDescription ?? ""} onChange={(event) => change("shortDescription", event.target.value || null)} /></label>
             <label className={styles.full}>Full description<textarea maxLength={5000} value={input.fullDescription ?? ""} onChange={(event) => change("fullDescription", event.target.value || null)} /></label>
+            <details className={`${styles.full} ${styles.optionalDetails}`}>
+              <summary>Care guide and SEO details <small>(optional; leave unknown facts blank)</small></summary>
+              <p>Only enter factual product information supplied by the brand, distributor, or Shoe Doctor&apos;s documented product record.</p>
+              <div className={styles.detailsGrid}>
+                <label className={styles.full}>One-line value proposition<input maxLength={220} value={details.valueProposition ?? ""} onChange={(event) => changeDetails("valueProposition", event.target.value || null)} /></label>
+                <label>Brand<input maxLength={120} value={details.brand ?? ""} onChange={(event) => changeDetails("brand", event.target.value || null)} /></label>
+                <label>Pack size / quantity<input maxLength={120} value={details.packSize ?? ""} onChange={(event) => changeDetails("packSize", event.target.value || null)} /></label>
+                <label>Key benefits <small>(one per line)</small><textarea maxLength={1500} value={detailLines(details.keyBenefits)} onChange={(event) => changeDetails("keyBenefits", detailList(event.target.value))} /></label>
+                <label>Best for <small>(one per line)</small><textarea maxLength={1500} value={detailLines(details.bestFor)} onChange={(event) => changeDetails("bestFor", detailList(event.target.value))} /></label>
+                <label>Suitable materials <small>(one per line)</small><textarea maxLength={1500} value={detailLines(details.suitableMaterials)} onChange={(event) => changeDetails("suitableMaterials", detailList(event.target.value))} /></label>
+                <label>Materials to avoid <small>(one per line)</small><textarea maxLength={1500} value={detailLines(details.materialsToAvoid)} onChange={(event) => changeDetails("materialsToAvoid", detailList(event.target.value))} /></label>
+                <label className={styles.full}>How to use <small>(one step per line)</small><textarea maxLength={3000} value={detailLines(details.howToUse)} onChange={(event) => changeDetails("howToUse", detailList(event.target.value))} /></label>
+                <label>Warnings <small>(one per line)</small><textarea maxLength={2000} value={detailLines(details.warnings)} onChange={(event) => changeDetails("warnings", detailList(event.target.value))} /></label>
+                <label>Care instructions <small>(one per line)</small><textarea maxLength={2000} value={detailLines(details.careInstructions)} onChange={(event) => changeDetails("careInstructions", detailList(event.target.value))} /></label>
+                <label className={styles.full}>SEO title<input maxLength={160} value={details.seoTitle ?? ""} onChange={(event) => changeDetails("seoTitle", event.target.value || null)} /></label>
+                <label className={styles.full}>SEO description<textarea maxLength={320} value={details.seoDescription ?? ""} onChange={(event) => changeDetails("seoDescription", event.target.value || null)} /></label>
+              </div>
+            </details>
             {isPublishing ? <p className={`${styles.full} ${styles.publicationReadiness}`} role="status">{publicationRequirements.length ? <>Before publishing, complete: {publicationRequirements.join(", ")}.</> : "Ready to publish: this product has its catalogue details, stock, and image."}</p> : null}
             <div className={styles.full}><button className={styles.primary} type="submit" disabled={busy || publicationBlocked}>{busy ? "Saving…" : !editing ? "Create draft" : isPublishing ? "Publish product" : "Save product"}</button></div>
           </form>

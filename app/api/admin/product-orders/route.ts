@@ -15,8 +15,8 @@ export async function GET(request: Request) {
   return Response.json(await listProductOrders({
     search: query.get("search") ?? undefined,
     channel: channel === "online" || channel === "offline" ? channel : undefined,
-    status: status === "pending" || status === "confirmed" || status === "processing" || status === "completed" || status === "cancelled" ? status : undefined,
-    paymentStatus: paymentStatus === "pending" || paymentStatus === "unpaid" || paymentStatus === "partial" || paymentStatus === "paid" || paymentStatus === "refunded" ? paymentStatus : undefined,
+    status: status === "pending" || status === "awaiting_payment" || status === "payment_review" || status === "confirmed" || status === "processing" || status === "completed" || status === "cancelled" ? status : undefined,
+    paymentStatus: paymentStatus === "pending" || paymentStatus === "unpaid" || paymentStatus === "submitted" || paymentStatus === "rejected" || paymentStatus === "cod_pending" || paymentStatus === "partial" || paymentStatus === "paid" || paymentStatus === "refunded" ? paymentStatus : undefined,
     date: query.get("date") ?? undefined,
     page: parsePage(query.get("page")),
   }), { headers: { "Cache-Control": "private, no-store" } });
