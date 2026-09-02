@@ -144,9 +144,12 @@ export default function ProductAdminDashboard({
     ? Math.min(100, Math.round((storage.bytesUsed / storage.byteLimit) * 1000) / 10)
     : 0;
   const isPublishing = editing !== null && input.status === "published";
+  const publicationStockQuantity = editing?.stockQuantity === null && initialStock !== ""
+    ? Number(initialStock)
+    : editing?.stockQuantity;
   const publicationRequirements = isPublishing && editing
     ? getMissingProductPublicationRequirements(input, {
-        stockQuantity: editing.stockQuantity,
+        stockQuantity: publicationStockQuantity,
         imageCount: editing.images.length,
       })
     : [];
