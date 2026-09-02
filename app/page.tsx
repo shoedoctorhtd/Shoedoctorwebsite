@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import { Fragment } from "react";
 import BookingForm from "./components/BookingForm";
+import HomeCareEssentials from "./components/HomeCareEssentials";
 import Image from "next/image";
 import bookingStyles from "./components/BookingExperience.module.css";
 import SiteMotion from "./components/SiteMotion";
@@ -12,6 +13,7 @@ import {
   SiteHeader,
 } from "./components/SiteChrome";
 import { listPublicServices } from "@/lib/data";
+import { listHomepageProducts } from "@/lib/product-data";
 
 export const dynamic = "force-dynamic";
 
@@ -140,9 +142,10 @@ export default async function Home({
 }: {
   searchParams: Promise<{ service?: string }>;
 }) {
-  const [services, params] = await Promise.all([
+  const [services, params, homepageProducts] = await Promise.all([
     listPublicServices(),
     searchParams,
+    listHomepageProducts().catch(() => []),
   ]);
   const requestedService = services.some(
     (service) => service.id === params.service,
@@ -377,6 +380,8 @@ export default async function Home({
           WE DIAGNOSE. WE CLEAN. WE RESTORE.
         </p>
       </section>
+
+      <HomeCareEssentials products={homepageProducts} />
 
       <section className="sd-wash-lab sd-section" data-reveal>
         <div className="sd-wash-copy">

@@ -442,6 +442,15 @@ export function parseInitialProductStock(value: unknown) {
   } as const;
 }
 
+/** Product rows created before the current app can carry SQLite timestamp
+ * formats, so treat this as a bounded opaque optimistic-concurrency token. */
+export function parseProductUpdatedAt(value: unknown) {
+  if (typeof value !== "string" || !value.trim() || value.length > 80) {
+    throw new Error("This product is missing its current version. Refresh it before making changes.");
+  }
+  return value;
+}
+
 export function parseOrderCancellation(value: unknown) {
   const input = (value ?? {}) as Record<string, unknown>;
   const reason = cleanText(input.reason, 500, "Cancellation reason").replace(/\s+/gu, " ");

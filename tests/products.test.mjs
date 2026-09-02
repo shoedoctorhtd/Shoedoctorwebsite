@@ -21,11 +21,13 @@ import { canCancelProductOrderStatus, canTransitionProductOrderStatus } from "..
 import { detectImageType, validateProductImage } from "../lib/product-image-validation.ts";
 import { clearSessionRetryToken, getSessionRetryToken } from "../app/components/ProductRetryToken.ts";
 import { auditValueDiff } from "../lib/audit.ts";
+import { HOMEPAGE_PRODUCT_LIMIT, selectHomepageProducts } from "../lib/product-home.ts";
 
 const migrationUrl = new URL("../migrations/0012_product_catalogue_inventory.sql", import.meta.url);
 const migration0013Url = new URL("../migrations/0013_product_order_payments.sql", import.meta.url);
 const migration0014Url = new URL("../migrations/0014_product_image_blobs.sql", import.meta.url);
 const migration0015Url = new URL("../migrations/0015_product_content_fields.sql", import.meta.url);
+const migration0016Url = new URL("../migrations/0016_product_lifecycle_deletion.sql", import.meta.url);
 const now = "2026-08-29T08:00:00.000Z";
 
 async function createCatalogueDatabase() {
@@ -41,6 +43,7 @@ async function createProductContentDatabase({ includeProductContentMigration = t
   db.exec("PRAGMA foreign_keys = ON; CREATE TABLE admin_users (id TEXT PRIMARY KEY);");
   const migrations = [migrationUrl, migration0013Url, migration0014Url];
   if (includeProductContentMigration) migrations.push(migration0015Url);
+  migrations.push(migration0016Url);
   for (const migration of migrations) {
     db.exec(await readFile(migration, "utf8"));
   }
@@ -155,6 +158,94 @@ test("0015 adds nullable product-content fields without changing existing produc
     { ...db.prepare("SELECT status, category, compare_at_price_npr, details_json, badge FROM products WHERE id = 'published-before-0015'").get() },
     { status: "published", category: "quick_clean", compare_at_price_npr: 149, details_json: details, badge: "doctors_pick" },
   );
+});
+
+test("homepage care selection is capped, published-slug-safe, and deterministic", () => {
+  const selected = selectHomepageProducts([
+    { id: "doctor-out", slug: "doctor-out", name: "Doctor Out", badge: "doctors_pick", featured: false, stockQuantity: 0, updatedAt: "2026-08-29T00:00:00.000Z" },
+    { id: "doctor-in", slug: "doctor-in", name: "Doctor In", badge: "doctors_pick", featured: false, stockQuantity: 2, updatedAt: "2026-08-28T00:00:00.000Z" },
+    { id: "featured-in", slug: "featured-in", name: "Featured In", badge: null, featured: true, stockQuantity: 4, updatedAt: "2026-08-27T00:00:00.000Z" },
+    { id: "plain-in", slug: "plain-in", name: "Plain In", badge: null, featured: false, stockQuantity: 8, updatedAt: "2026-08-26T00:00:00.000Z" },
+    { id: "plain-out", slug: "plain-out", name: "Plain Out", badge: null, featured: false, stockQuantity: 0, updatedAt: "2026-08-30T00:00:00.000Z" },
+    { id: "invalid", slug: "Not a valid slug", name: "Invalid", badge: "doctors_pick", featured: true, stockQuantity: 9, updatedAt: "2026-08-31T00:00:00.000Z" },
+  ]);
+  assert.equal(HOMEPAGE_PRODUCT_LIMIT, 4);
+  assert.deepEqual(selected.map((product) => product.id), ["doctor-in", "doctor-out", "featured-in", "plain-in"]);
+  assert.deepEqual(selectHomepageProducts([selected[0]]).map((product) => product.id), ["doctor-in"]);
+});
+
+test("0016 only permits harmless initial-stock cleanup before deleting an unused product", async (t) => {
+  const db = await createProductContentDatabase();
+  t.after(() => db.close());
+  const productId = "unused-product";
+  insertDraft(db, { id: productId, stock: 4 });
+  db.prepare("UPDATE products SET status = 'archived' WHERE id = ?").run(productId);
+  db.prepare(`
+    INSERT INTO product_images (
+      id, product_id, image_data, mime_type, byte_size, sha256, original_name,
+      alt_text, is_primary, sort_order, uploaded_by_admin_id, created_at
+    ) VALUES ('unused-active-image', ?, X'89504E470D0A1A0A', 'image/png', 8, ?, 'product.png', NULL, 1, 0, NULL, ?)
+  `).run(productId, "a".repeat(64), now);
+  db.prepare(`
+    INSERT INTO product_images_legacy_r2 (
+      id, product_id, object_key, original_name, content_type, byte_size,
+      is_primary, sort_order, created_at
+    ) VALUES ('unused-legacy-image', ?, ?, 'legacy.png', 'image/png', 8, 1, 0, ?)
+  `).run(productId, `products/${productId}/legacy.png`, now);
+  db.prepare(`
+    INSERT INTO inventory_movements (
+      id, product_id, stock_change, previous_stock, resulting_stock,
+      movement_type, related_order_id, source_id, admin_user_id, reason,
+      idempotency_key, created_at
+    ) VALUES ('unused-initial-stock', ?, 4, 0, 4, 'initial_stock', NULL, NULL, NULL, 'Initial product stock', 'initial:unused-product', ?)
+  `).run(productId, now);
+
+  db.exec("BEGIN;");
+  try {
+    assert.equal(db.prepare("DELETE FROM product_images WHERE product_id = ?").run(productId).changes, 1);
+    assert.equal(db.prepare("DELETE FROM product_images_legacy_r2 WHERE product_id = ?").run(productId).changes, 1);
+    assert.equal(db.prepare("DELETE FROM inventory_movements WHERE product_id = ? AND movement_type = 'initial_stock'").run(productId).changes, 1);
+    assert.equal(db.prepare("DELETE FROM products WHERE id = ? AND status IN ('draft', 'archived')").run(productId).changes, 1);
+    db.exec("COMMIT;");
+  } catch (error) {
+    db.exec("ROLLBACK;");
+    throw error;
+  }
+  assert.equal(db.prepare("SELECT COUNT(*) AS count FROM products WHERE id = ?").get(productId).count, 0);
+  assert.equal(db.prepare("SELECT COUNT(*) AS count FROM product_images WHERE product_id = ?").get(productId).count, 0);
+  assert.equal(db.prepare("SELECT COUNT(*) AS count FROM product_images_legacy_r2 WHERE product_id = ?").get(productId).count, 0);
+  assert.equal(db.prepare("SELECT COUNT(*) AS count FROM inventory_movements WHERE product_id = ?").get(productId).count, 0);
+
+  insertDraft(db, { id: "inventory-history", sku: "INVENTORY-1", slug: "inventory-history" });
+  db.prepare(`
+    INSERT INTO inventory_movements (
+      id, product_id, stock_change, previous_stock, resulting_stock,
+      movement_type, related_order_id, source_id, admin_user_id, reason,
+      idempotency_key, created_at
+    ) VALUES ('meaningful-restock', 'inventory-history', 1, 4, 5, 'restock', NULL, NULL, NULL, 'Supplier restock', 'restock:inventory-history', ?)
+  `).run(now);
+  assert.throws(() => db.prepare("DELETE FROM inventory_movements WHERE id = 'meaningful-restock'").run(), /inventory movements are immutable/i);
+  assert.throws(() => db.prepare("DELETE FROM products WHERE id = 'inventory-history'").run(), /FOREIGN KEY constraint failed/i);
+
+  insertDraft(db, { id: "ordered-product", sku: "ORDERED-1", slug: "ordered-product" });
+  insertOrder(db, { id: "ordered-product-order", reference: "PO-260829-ORD", token: "checkout_token_ordered_123" });
+  db.prepare(`
+    INSERT INTO product_order_items (
+      id, order_id, product_id, sku_snapshot, product_name_snapshot,
+      unit_price_npr, quantity, line_total_npr, created_at
+    ) VALUES ('ordered-product-item', 'ordered-product-order', 'ordered-product', 'ORDER-1', 'Ordered product', 500, 1, 500, ?)
+  `).run(now);
+  assert.throws(() => db.prepare("DELETE FROM products WHERE id = 'ordered-product'").run(), /FOREIGN KEY constraint failed/i);
+
+  insertDraft(db, { id: "returned-product", sku: "RETURNED-1", slug: "returned-product" });
+  insertOrder(db, { id: "returned-product-order", reference: "PO-260829-RET", token: "checkout_token_returned_123" });
+  db.prepare(`
+    INSERT INTO product_order_returns (
+      id, order_id, product_id, quantity, restock, reason, admin_user_id,
+      idempotency_key, created_at
+    ) VALUES ('returned-product-row', 'returned-product-order', 'returned-product', 1, 0, 'Customer return', NULL, 'return:returned-product', ?)
+  `).run(now);
+  assert.throws(() => db.prepare("DELETE FROM products WHERE id = 'returned-product'").run(), /FOREIGN KEY constraint failed/i);
 });
 
 test("publication validation identifies every missing catalogue field before a draft can be published", () => {
@@ -481,6 +572,53 @@ test("public references, status transitions, image validation, and admin permiss
     name: "truncated.png", type: "image/png", size: 8,
     arrayBuffer: async () => Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).buffer,
   }), /incomplete/i);
+});
+
+test("homepage care essentials and permanent product deletion keep their public and admin boundaries", async () => {
+  const [homePage, homeSection, homeStyles, productData, permanentDeleteRoute, restoreRoute, dashboard, adminProductsPage, lifecycleMigration] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/HomeCareEssentials.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/HomeCareEssentials.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../lib/product-data.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/admin/products/[id]/permanent-delete/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/admin/products/[id]/restore/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/ProductAdminDashboard.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/products/page.tsx", import.meta.url), "utf8"),
+    readFile(migration0016Url, "utf8"),
+  ]);
+  assert.match(homePage, /listHomepageProducts\(\)\.catch\(\(\) => \[\]\)/);
+  assert.match(homePage, /<HomeCareEssentials products=\{homepageProducts\} \/>/);
+  assert.match(homeSection, /if \(!visibleProducts\.length\) return null/);
+  assert.match(homeSection, /Genuine product/);
+  assert.doesNotMatch(homeSection, /ProductStructuredData/);
+  assert.match(homeStyles, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.match(homeStyles, /@media \(max-width: 620px\) \{[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(productData, /HOMEPAGE_PRODUCT_CANDIDATE_LIMIT = 12/);
+  assert.match(productData, /WHERE p\.status = 'published'/);
+  assert.match(productData, /LIMIT \?/);
+  assert.match(productData, /PRODUCT_RESTORED/);
+  assert.match(productData, /PRODUCT_PERMANENTLY_DELETED/);
+  assert.match(productData, /product_order_items/);
+  assert.match(productData, /product_order_returns/);
+  assert.match(productData, /inventory_movements/);
+  assert.match(productData, /product_images_legacy_r2/);
+  assert.match(productData, /db\.batch\(/);
+  assert.match(permanentDeleteRoute, /roles: \["super_admin"\]/);
+  assert.match(permanentDeleteRoute, /productPermission: "manage_products"/);
+  assert.match(permanentDeleteRoute, /body\.confirmation !== "DELETE"/);
+  assert.match(permanentDeleteRoute, /deliverOwnerAlertEvent/);
+  assert.match(restoreRoute, /restoreArchivedProduct/);
+  assert.match(dashboard, /canPermanentlyDelete/);
+  assert.match(dashboard, /Delete permanently/);
+  assert.match(dashboard, /\/permanent-delete/);
+  assert.match(dashboard, /\/restore/);
+  assert.match(dashboard, /deletionConfirmation !== "DELETE"/);
+  assert.match(adminProductsPage, /user\.role === "super_admin" && canManage/);
+  assert.match(lifecycleMigration, /DROP TRIGGER IF EXISTS inventory_movements_prevent_delete/);
+  assert.match(lifecycleMigration, /OLD\.movement_type = 'initial_stock'/);
+  assert.match(lifecycleMigration, /sibling\.product_id = OLD\.product_id/);
+  assert.match(lifecycleMigration, /product_order_items\.product_id = OLD\.product_id/);
+  assert.match(lifecycleMigration, /product_order_returns\.product_id = OLD\.product_id/);
 });
 
 test("public and admin routes enforce the catalogue, image-access, SEO, header, permission, and atomic-write contracts", async () => {

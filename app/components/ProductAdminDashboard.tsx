@@ -27,6 +27,7 @@ type Capabilities = {
   canChangePrice: boolean;
   canManageImages: boolean;
   canAdjustInventory: boolean;
+  canPermanentlyDelete: boolean;
 };
 
 type PreparedUpload = PreparedProductImage & { replaceImageId: string | null };
@@ -133,6 +134,9 @@ export default function ProductAdminDashboard({
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [preparedUpload, setPreparedUpload] = useState<PreparedUpload | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [pendingPermanentDeletion, setPendingPermanentDeletion] = useState<Product | null>(null);
+  const [deletionConfirmation, setDeletionConfirmation] = useState("");
+  const [deletionError, setDeletionError] = useState<string | null>(null);
 
   useEffect(() => () => releasePreparedProductImage(preparedUpload), [preparedUpload]);
 
@@ -276,6 +280,79 @@ export default function ProductAdminDashboard({
       setNotice("Product archived. Historical orders were preserved.");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to archive product.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function restore(product: Product) {
+    if (!capabilities.canManage || product.status !== "archived") return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/admin/products/${encodeURIComponent(product.id)}/restore`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ updatedAt: product.updatedAt }),
+      });
+      const result = await response.json() as { product?: Product; message?: string };
+      if (!response.ok || !result.product) throw new Error(result.message ?? "Unable to restore product.");
+      const updatedProducts = await reload();
+      const updated = updatedProducts.find((candidate) => candidate.id === product.id) ?? result.product;
+      if (editing?.id === product.id) {
+        setEditing(updated);
+        setInput(productToInput(updated));
+      }
+      setNotice("Product restored as a draft. Complete and publish it when ready.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to restore product.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function openPermanentDeletion(product: Product) {
+    if (!capabilities.canPermanentlyDelete || (product.status !== "archived" && product.status !== "draft")) return;
+    setPendingPermanentDeletion(product);
+    setDeletionConfirmation("");
+    setDeletionError(null);
+  }
+
+  function closePermanentDeletion() {
+    if (busy) return;
+    setPendingPermanentDeletion(null);
+    setDeletionConfirmation("");
+    setDeletionError(null);
+  }
+
+  async function permanentlyDelete() {
+    const product = pendingPermanentDeletion;
+    if (!product || !capabilities.canPermanentlyDelete || deletionConfirmation !== "DELETE") return;
+    setBusy(true);
+    setDeletionError(null);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/admin/products/${encodeURIComponent(product.id)}/permanent-delete`, {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ confirmation: deletionConfirmation, updatedAt: product.updatedAt }),
+      });
+      const result = await response.json() as { message?: string };
+      if (!response.ok) throw new Error(result.message ?? "Unable to permanently delete product.");
+      await reload();
+      if (editing?.id === product.id) {
+        setEditing(null);
+        setInput(emptyInput);
+        setInitialStock("");
+        setPreparedUpload(null);
+      }
+      setPendingPermanentDeletion(null);
+      setDeletionConfirmation("");
+      setNotice("Product permanently deleted. Its retained audit record documents the removal.");
+    } catch (reason) {
+      setDeletionError(reason instanceof Error ? reason.message : "Unable to permanently delete product.");
     } finally {
       setBusy(false);
     }
@@ -553,8 +630,12 @@ export default function ProductAdminDashboard({
               <div className={styles.rowActions}>
                 {low ? <span className={`${styles.status} ${styles.low}`}>Low stock</span> : product.stockQuantity === 0 ? <span className={`${styles.status} ${styles.out}`}>Out</span> : null}
                 {capabilities.canManage || capabilities.canManageImages ? <button type="button" onClick={() => editProduct(product)}>{capabilities.canManage ? "Edit" : "Manage images"}</button> : null}
-                <Link href={`/admin/inventory?product=${encodeURIComponent(product.id)}`}>Inventory</Link>
+                {product.status !== "archived" ? <Link href={`/admin/inventory?product=${encodeURIComponent(product.id)}`}>Inventory</Link> : null}
                 {capabilities.canManage && product.status !== "archived" ? <button type="button" onClick={() => void archive(product)}>Archive</button> : null}
+                {capabilities.canManage && product.status === "archived" ? <button type="button" disabled={busy} onClick={() => void restore(product)}>Restore</button> : null}
+                {capabilities.canPermanentlyDelete && (product.status === "archived" || product.status === "draft") ? (
+                  <button className={styles.rowDanger} type="button" disabled={busy} onClick={() => openPermanentDeletion(product)}>Delete permanently</button>
+                ) : null}
               </div>
             </article>;
           })}
@@ -568,6 +649,28 @@ export default function ProductAdminDashboard({
           </div>
         ) : null}
       </section>
+
+      {pendingPermanentDeletion ? (
+        <div className={styles.deleteOverlay} role="presentation">
+          <section aria-describedby="permanent-delete-description" aria-labelledby="permanent-delete-title" aria-modal="true" className={styles.deleteDialog} role="dialog">
+            <p className="section-kicker">Super Admin only</p>
+            <h2 id="permanent-delete-title">Delete {pendingPermanentDeletion.name} permanently?</h2>
+            <p id="permanent-delete-description">This removes an unused {pendingPermanentDeletion.status} product and its product-only image records. Orders, returns, and meaningful inventory history can never be deleted here.</p>
+            <label>
+              Type <strong>DELETE</strong> to confirm
+              <input autoComplete="off" autoFocus value={deletionConfirmation} onChange={(event) => setDeletionConfirmation(event.target.value)} />
+            </label>
+            {deletionError ? <p className={`${styles.notice} ${styles.error}`} role="alert">{deletionError}</p> : null}
+            <div className={styles.deleteDialogActions}>
+              <button className={styles.secondary} type="button" disabled={busy} onClick={closePermanentDeletion}>Cancel</button>
+              {pendingPermanentDeletion.status === "draft" ? <button className={styles.secondary} type="button" disabled={busy} onClick={() => { closePermanentDeletion(); void archive(pendingPermanentDeletion); }}>Archive instead</button> : null}
+              <button className={styles.danger} type="button" disabled={busy || deletionConfirmation !== "DELETE"} onClick={() => void permanentlyDelete()}>
+                {busy ? "Deleting…" : "Delete permanently"}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }

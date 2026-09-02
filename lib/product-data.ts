@@ -1,6 +1,7 @@
-import { auditValueDiff, buildAuditLogInsert } from "./audit";
+import { auditValueDiff, buildAuditLogInsert, buildOwnerAlertEventInsert } from "./audit";
 import type { AdminActor } from "./admin-types";
 import { getDatabase } from "./data";
+import { HOMEPAGE_PRODUCT_LIMIT, selectHomepageProducts } from "./product-home";
 import { MAX_PRODUCT_IMAGE_STORAGE_BYTES } from "./product-image-validation";
 import { parseProductDetails } from "./product-validation";
 import {
@@ -50,6 +51,7 @@ type ProductListPagination = {
 
 const DEFAULT_ADMIN_PRODUCT_PAGE_SIZE = 50;
 const MAX_ADMIN_PRODUCT_PAGE_SIZE = 100;
+const HOMEPAGE_PRODUCT_CANDIDATE_LIMIT = 12;
 
 const PRODUCT_SELECT = `
   SELECT p.id, p.sku, p.slug, p.name, p.short_description, p.full_description,
@@ -64,12 +66,75 @@ const IMAGE_SELECT = `
   FROM product_images
 `;
 
+function safeInitialStockMovementSql(alias: string) {
+  return `${alias}.movement_type = 'initial_stock'
+    AND ${alias}.related_order_id IS NULL
+    AND ${alias}.source_id IS NULL
+    AND ${alias}.stock_change > 0
+    AND ${alias}.previous_stock = 0
+    AND ${alias}.resulting_stock = ${alias}.stock_change`;
+}
+
+function productPermanentDeleteEligibilitySql(productAlias: string) {
+  return `${productAlias}.id = ?
+    AND ${productAlias}.updated_at = ?
+    AND ${productAlias}.status IN ('draft', 'archived')
+    AND NOT EXISTS (
+      SELECT 1 FROM product_order_items
+      WHERE product_order_items.product_id = ${productAlias}.id
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM product_order_returns
+      WHERE product_order_returns.product_id = ${productAlias}.id
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM inventory_movements AS meaningful_movement
+      WHERE meaningful_movement.product_id = ${productAlias}.id
+        AND NOT (${safeInitialStockMovementSql("meaningful_movement")})
+    )
+    AND (
+      SELECT COUNT(*) FROM inventory_movements AS initial_movement
+      WHERE initial_movement.product_id = ${productAlias}.id
+    ) <= 1`;
+}
+
 export async function listPublicProducts(): Promise<ProductCard[]> {
   const db = await getDatabase();
   const rows = await db
     .prepare(`${PRODUCT_SELECT} WHERE p.status = 'published' ORDER BY p.featured DESC, p.updated_at DESC, p.name COLLATE NOCASE ASC`)
     .all<ProductRow>();
   const products = rows.results.map(parseProduct);
+  const images = await listImagesForProducts(products.map((product) => product.id));
+  return products.map((product) => toProductCard({ ...product, images: images.get(product.id) ?? [] }));
+}
+
+/**
+ * Homepage-only catalogue slice. This intentionally reads a capped candidate
+ * set instead of loading the full shop catalogue on the home route.
+ */
+export async function listHomepageProducts(limit = HOMEPAGE_PRODUCT_LIMIT): Promise<ProductCard[]> {
+  const db = await getDatabase();
+  const rows = await db
+    .prepare(`
+      ${PRODUCT_SELECT}
+      WHERE p.status = 'published'
+        AND p.slug IS NOT NULL
+        AND length(trim(p.slug)) > 0
+        AND p.short_description IS NOT NULL
+        AND length(trim(p.short_description)) >= 2
+      ORDER BY
+        CASE WHEN p.badge = 'doctors_pick' THEN 0 ELSE 1 END ASC,
+        CASE WHEN p.featured = 1 THEN 0 ELSE 1 END ASC,
+        CASE WHEN p.stock_quantity > 0 THEN 0 ELSE 1 END ASC,
+        p.updated_at DESC,
+        p.name COLLATE NOCASE ASC,
+        p.id ASC
+      LIMIT ?
+    `)
+    .bind(HOMEPAGE_PRODUCT_CANDIDATE_LIMIT)
+    .all<ProductRow>();
+  const candidates: Product[] = rows.results.map(parseProduct);
+  const products = selectHomepageProducts<Product>(candidates, limit);
   const images = await listImagesForProducts(products.map((product) => product.id));
   return products.map((product) => toProductCard({ ...product, images: images.get(product.id) ?? [] }));
 }
@@ -252,9 +317,13 @@ export async function updateProduct(
   id: string,
   input: ProductInput,
   actor: AdminActor,
+  options: { expectedUpdatedAt?: string; auditAction?: string } = {},
 ) {
   const before = await getAdminProduct(id);
   if (!before) return { kind: "not_found" as const };
+  if (options.expectedUpdatedAt && options.expectedUpdatedAt !== before.updatedAt) {
+    return { kind: "conflict" as const, product: before };
+  }
   if (before.status === "published" && input.slug !== before.slug) {
     throw new Error("Published product slugs are locked to preserve existing links. Unpublish it before changing the slug.");
   }
@@ -275,11 +344,11 @@ export async function updateProduct(
   const diff = auditValueDiff(productAuditSnapshot(before), nextSnapshot);
   if (!diff.changedFields.length) return { kind: "unchanged" as const, product: before };
   const operationId = crypto.randomUUID();
-  const action = input.status === "archived"
+  const action = options.auditAction ?? (input.status === "archived"
     ? "PRODUCT_ARCHIVED"
     : before.status !== input.status
       ? input.status === "published" ? "PRODUCT_PUBLISHED" : "PRODUCT_UNPUBLISHED"
-      : "PRODUCT_UPDATED";
+      : "PRODUCT_UPDATED");
   try {
     const result = await db.batch([
       db
@@ -331,21 +400,162 @@ export async function updateProduct(
 export async function archiveProduct(id: string, actor: AdminActor) {
   const existing = await getAdminProduct(id);
   if (!existing) return { kind: "not_found" as const };
-  return updateProduct(id, {
-    name: existing.name,
-    sku: existing.sku,
-    slug: existing.slug,
-    shortDescription: existing.shortDescription,
-    fullDescription: existing.fullDescription,
-    category: existing.category,
-    priceNpr: existing.priceNpr,
-    compareAtPriceNpr: existing.compareAtPriceNpr,
-    lowStockThreshold: existing.lowStockThreshold,
-    featured: false,
-    badge: null,
-    details: existing.details,
-    status: "archived",
-  }, actor);
+  return updateProduct(id, productInputFromExisting(existing, "archived", { featured: false, badge: null }), actor);
+}
+
+export async function restoreArchivedProduct(id: string, actor: AdminActor, expectedUpdatedAt: string) {
+  const existing = await getAdminProduct(id);
+  if (!existing) return { kind: "not_found" as const };
+  if (expectedUpdatedAt !== existing.updatedAt) return { kind: "conflict" as const, product: existing };
+  if (existing.status !== "archived") return { kind: "not_archived" as const, product: existing };
+  return updateProduct(
+    id,
+    productInputFromExisting(existing, "draft"),
+    actor,
+    { expectedUpdatedAt, auditAction: "PRODUCT_RESTORED" },
+  );
+}
+
+export type ProductPermanentDeleteResult =
+  | { kind: "deleted"; ownerAlertEventId: string }
+  | { kind: "not_found" }
+  | { kind: "conflict"; product: Product }
+  | { kind: "not_deletable_status"; product: Product }
+  | { kind: "has_business_history"; product: Product };
+
+/**
+ * Removes only an unused draft or archived catalogue record. Orders, returns,
+ * meaningful inventory ledger rows, audit logs, and anything they reference
+ * are deliberately preserved and make permanent deletion unavailable.
+ */
+export async function permanentlyDeleteUnusedProduct(
+  id: string,
+  actor: AdminActor,
+  expectedUpdatedAt: string,
+): Promise<ProductPermanentDeleteResult> {
+  const db = await getDatabase();
+  const existing = await getAdminProduct(id);
+  if (!existing) return { kind: "not_found" };
+  if (expectedUpdatedAt !== existing.updatedAt) return { kind: "conflict", product: existing };
+  if (existing.status !== "draft" && existing.status !== "archived") {
+    return { kind: "not_deletable_status", product: existing };
+  }
+
+  const dependencies = await db.prepare(`
+    SELECT
+      (SELECT COUNT(*) FROM product_order_items WHERE product_id = ?) AS order_item_count,
+      (SELECT COUNT(*) FROM product_order_returns WHERE product_id = ?) AS return_count,
+      (SELECT COUNT(*) FROM inventory_movements WHERE product_id = ?) AS inventory_movement_count,
+      (SELECT COUNT(*) FROM inventory_movements WHERE product_id = ? AND ${safeInitialStockMovementSql("inventory_movements")}) AS safe_initial_movement_count,
+      (SELECT COUNT(*) FROM product_images WHERE product_id = ?) AS image_count,
+      (SELECT COUNT(*) FROM product_images_legacy_r2 WHERE product_id = ?) AS legacy_image_count
+  `).bind(id, id, id, id, id, id).first<{
+    order_item_count: number;
+    return_count: number;
+    inventory_movement_count: number;
+    safe_initial_movement_count: number;
+    image_count: number;
+    legacy_image_count: number;
+  }>();
+  const orderItemCount = Number(dependencies?.order_item_count ?? 0);
+  const returnCount = Number(dependencies?.return_count ?? 0);
+  const inventoryMovementCount = Number(dependencies?.inventory_movement_count ?? 0);
+  const safeInitialMovementCount = Number(dependencies?.safe_initial_movement_count ?? 0);
+  if (
+    orderItemCount > 0
+    || returnCount > 0
+    || inventoryMovementCount !== safeInitialMovementCount
+    || safeInitialMovementCount > 1
+  ) {
+    return { kind: "has_business_history", product: existing };
+  }
+
+  const now = new Date().toISOString();
+  const auditId = crypto.randomUUID();
+  const ownerAlertEventId = crypto.randomUUID();
+  const eligibilitySql = productPermanentDeleteEligibilitySql("products");
+  const eligibility = { sql: `EXISTS (SELECT 1 FROM products WHERE ${eligibilitySql})`, bindings: [id, expectedUpdatedAt] };
+  const batch = await db.batch([
+    buildAuditLogInsert(db, {
+      id: auditId,
+      actor,
+      action: "PRODUCT_PERMANENTLY_DELETED",
+      entityType: "product",
+      entityId: id,
+      previousValues: productAuditSnapshot(existing),
+      newValues: {
+        permanentlyDeleted: true,
+        removedImageCount: Number(dependencies?.image_count ?? 0),
+        removedLegacyImageMetadataCount: Number(dependencies?.legacy_image_count ?? 0),
+        removedInitialStockMovementCount: safeInitialMovementCount,
+      },
+      changedFields: ["deleted"],
+      reason: "Unused product permanently deleted after dependency checks.",
+      requestId: crypto.randomUUID(),
+      createdAt: now,
+      conditionalOn: eligibility,
+    }),
+    db.prepare(`
+      DELETE FROM product_images
+      WHERE product_id = ? AND ${eligibility.sql}
+    `).bind(id, ...eligibility.bindings),
+    db.prepare(`
+      DELETE FROM product_images_legacy_r2
+      WHERE product_id = ? AND ${eligibility.sql}
+    `).bind(id, ...eligibility.bindings),
+    db.prepare(`
+      DELETE FROM inventory_movements
+      WHERE product_id = ?
+        AND ${safeInitialStockMovementSql("inventory_movements")}
+        AND ${eligibility.sql}
+    `).bind(id, ...eligibility.bindings),
+    db.prepare(`DELETE FROM products WHERE ${eligibilitySql}`).bind(...eligibility.bindings),
+    buildOwnerAlertEventInsert(db, {
+      id: ownerAlertEventId,
+      auditLogId: auditId,
+      alertType: "PRODUCT_PERMANENTLY_DELETED",
+      createdAt: now,
+      conditionalOn: {
+        sql: "EXISTS (SELECT 1 FROM audit_logs WHERE id = ?) AND NOT EXISTS (SELECT 1 FROM products WHERE id = ?)",
+        bindings: [auditId, id],
+      },
+    }),
+  ]);
+
+  if (!batch[4]?.meta.changes) {
+    const current = await getAdminProduct(id);
+    if (!current) return { kind: "not_found" };
+    if (current.status !== "draft" && current.status !== "archived") {
+      return { kind: "not_deletable_status", product: current };
+    }
+    return { kind: "conflict", product: current };
+  }
+  if (!batch[0]?.meta.changes || !batch[5]?.meta.changes) {
+    throw new Error("Unable to preserve the product deletion audit record.");
+  }
+  return { kind: "deleted", ownerAlertEventId };
+}
+
+function productInputFromExisting(
+  product: Product,
+  status: ProductStatus,
+  overrides: Partial<Pick<ProductInput, "featured" | "badge">> = {},
+): ProductInput {
+  return {
+    name: product.name,
+    sku: product.sku,
+    slug: product.slug,
+    shortDescription: product.shortDescription,
+    fullDescription: product.fullDescription,
+    category: product.category,
+    priceNpr: product.priceNpr,
+    compareAtPriceNpr: product.compareAtPriceNpr,
+    lowStockThreshold: product.lowStockThreshold,
+    featured: overrides.featured ?? product.featured,
+    badge: overrides.badge === undefined ? product.badge : overrides.badge,
+    details: product.details,
+    status,
+  };
 }
 
 export async function listImagesForAdminProduct(productId: string) {

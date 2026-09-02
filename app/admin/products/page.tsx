@@ -42,6 +42,7 @@ export default async function AdminProductsPage() {
     canChangePrice,
     canManageImages,
     canAdjustInventory,
+    canPermanentlyDelete: user.role === "super_admin" && canManage,
     }}
   />;
 }
