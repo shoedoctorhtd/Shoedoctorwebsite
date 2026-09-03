@@ -38,7 +38,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const hasCompareAtPrice = product.compareAtPriceNpr !== null && product.compareAtPriceNpr > product.priceNpr;
   return (
     <ProductCartProvider>
-      <main id="main-content" className={`public-site ${styles.page}`}>
+      <main className={`public-site ${styles.page}`}>
         <SiteHeader />
         <ProductStructuredData product={product} />
         <section className={styles.detail}>

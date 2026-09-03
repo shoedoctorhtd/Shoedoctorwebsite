@@ -10,12 +10,7 @@ import styles from "./HomeCareEssentials.module.css";
 
 export default function HomeCareEssentials({ products }: { products: ProductCard[] }) {
   const visibleProducts = products
-    .filter(
-      (product): product is ProductCard & { slug: string } =>
-        Boolean(product.slug) &&
-        typeof product.stockQuantity === "number" &&
-        product.stockQuantity > 0,
-    )
+    .filter((product): product is ProductCard & { slug: string } => Boolean(product.slug))
     .slice(0, HOMEPAGE_PRODUCT_LIMIT);
   if (!visibleProducts.length) return null;
 

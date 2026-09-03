@@ -10,12 +10,11 @@ import {
   type FormEvent,
 } from "react";
 import Link from "next/link";
-import { SERVICE_CATEGORIES, type Service } from "@/lib/data";
+import type { Service } from "@/lib/data";
 import {
   calculateBookingTotals,
   calculatePickupDeliveryFee,
   formatNprPrice,
-  formatNprPriceLabel,
   getExactNprPrice,
   isPickupArea,
   pickupAreaLabel,
@@ -265,10 +264,6 @@ function pairCountLabel(pairCount: number) {
   return `${pairCount} ${pairCount === 1 ? "pair" : "pairs"} selected`;
 }
 
-function bookingServiceCategoryLabel(category: Service["category"]) {
-  return category === "Repairs" ? "Repair / Restoration" : category;
-}
-
 export default function BookingForm({
   services,
   initialServiceId,
@@ -313,7 +308,6 @@ export default function BookingForm({
     null,
   );
   const [hasCompletedBooking, setHasCompletedBooking] = useState(false);
-  const bookingHeadingRef = useRef<HTMLHeadingElement>(null);
   const successHeadingRef = useRef<HTMLHeadingElement>(null);
   const customerNameInputRef = useRef<HTMLInputElement>(null);
   const nextPairFocusRef = useRef<string | null>(null);
@@ -454,29 +448,6 @@ export default function BookingForm({
       successHeadingRef.current?.focus();
     }
   }, [state]);
-
-  const focusBookingFromHash = useCallback(() => {
-    if (window.location.hash !== "#book") return;
-
-    window.requestAnimationFrame(() => {
-      const heading = bookingHeadingRef.current;
-      if (!heading) return;
-
-      heading.scrollIntoView({
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "auto"
-          : "smooth",
-        block: "start",
-      });
-      heading.focus({ preventScroll: true });
-    });
-  }, []);
-
-  useEffect(() => {
-    focusBookingFromHash();
-    window.addEventListener("hashchange", focusBookingFromHash);
-    return () => window.removeEventListener("hashchange", focusBookingFromHash);
-  }, [focusBookingFromHash]);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -1083,18 +1054,10 @@ export default function BookingForm({
       id="book"
       noValidate
       onSubmit={submitBooking}
-      aria-labelledby="booking-form-heading"
     >
       <header className={styles.formHeading}>
         <span className={styles.formKicker}>Booking request</span>
-        <h3
-          className={styles.formTitle}
-          id="booking-form-heading"
-          ref={bookingHeadingRef}
-          tabIndex={-1}
-        >
-          Tell Us About Your Shoes.
-        </h3>
+        <h3 className={styles.formTitle}>Tell Us About Your Shoes.</h3>
         <p className={styles.formIntro}>
           Send us the details below. We will review your shoes and contact you
           about any treatment details and pickup or drop-off time.
@@ -1341,7 +1304,7 @@ export default function BookingForm({
           )}
         </label>
 
-        <label className={classNames(styles.field, styles.emailField)}>
+        <label className={styles.field}>
           <span>Email <em className={styles.optional}>Optional</em></span>
           <input
             aria-describedby={fieldErrors.email ? "email-error" : undefined}
@@ -1364,35 +1327,6 @@ export default function BookingForm({
             </span>
           )}
         </label>
-
-        <fieldset className={classNames(styles.pairQuantity, styles.pairQuantityField)}>
-          <legend>How many pairs? <b aria-hidden="true">*</b></legend>
-          <div className={styles.pairQuantityControl}>
-            <button
-              aria-label="Decrease number of pairs"
-              disabled={pairCount <= 1}
-              onClick={() => changePairCount(pairCount - 1)}
-              type="button"
-            >
-              <span aria-hidden="true">&minus;</span>
-            </button>
-            <output
-              aria-atomic="true"
-              aria-label={pairCountLabel(pairCount)}
-              aria-live="polite"
-            >
-              {pairCount}
-            </output>
-            <button
-              aria-label="Increase number of pairs"
-              disabled={pairCount >= MAXIMUM_PAIR_COUNT}
-              onClick={() => changePairCount(pairCount + 1)}
-              type="button"
-            >
-              <span aria-hidden="true">+</span>
-            </button>
-          </div>
-        </fieldset>
 
         {returningCustomer ? (
           <label className={classNames(styles.customerPreference, styles.compactFull)}>
@@ -1428,6 +1362,35 @@ export default function BookingForm({
             </span>
           </label>
         )}
+
+        <fieldset className={styles.pairQuantity}>
+          <legend>How many pairs? <b aria-hidden="true">*</b></legend>
+          <div className={styles.pairQuantityControl}>
+            <button
+              aria-label="Decrease number of pairs"
+              disabled={pairCount <= 1}
+              onClick={() => changePairCount(pairCount - 1)}
+              type="button"
+            >
+              <span aria-hidden="true">−</span>
+            </button>
+            <output
+              aria-atomic="true"
+              aria-label={pairCountLabel(pairCount)}
+              aria-live="polite"
+            >
+              {pairCount}
+            </output>
+            <button
+              aria-label="Increase number of pairs"
+              disabled={pairCount >= MAXIMUM_PAIR_COUNT}
+              onClick={() => changePairCount(pairCount + 1)}
+              type="button"
+            >
+              <span aria-hidden="true">+</span>
+            </button>
+          </div>
+        </fieldset>
 
         <section
           aria-labelledby="your-shoes-heading"
@@ -1484,25 +1447,11 @@ export default function BookingForm({
                           value={item.serviceId}
                         >
                           <option value="">Choose a service</option>
-                          {SERVICE_CATEGORIES.map((category) => {
-                            const categoryServices = services.filter(
-                              (service) => service.category === category,
-                            );
-                            if (!categoryServices.length) return null;
-
-                            return (
-                              <optgroup
-                                key={category}
-                                label={bookingServiceCategoryLabel(category)}
-                              >
-                                {categoryServices.map((service) => (
-                                  <option key={service.id} value={service.id}>
-                                    {service.name} — {formatNprPriceLabel(service.priceLabel)}
-                                  </option>
-                                ))}
-                              </optgroup>
-                            );
-                          })}
+                          {services.map((service) => (
+                            <option key={service.id} value={service.id}>
+                              {service.name} — {service.priceLabel}
+                            </option>
+                          ))}
                         </select>
                       ) : (
                         <span className={styles.unavailableServices} role="status">
@@ -1662,7 +1611,7 @@ export default function BookingForm({
                 <strong>Request express service</strong>
                 <small>
                   {expressService?.priceLabel
-                    ? "Available from " + formatNprPriceLabel(expressService.priceLabel) + " when a slot is open."
+                    ? "Available from " + expressService.priceLabel + " when a slot is open."
                     : "We will confirm availability and any extra charge."}
                 </small>
               </span>
@@ -1898,9 +1847,7 @@ export default function BookingForm({
                 <dt>Pair {index + 1}</dt>
                 <dd>
                   <span>{service?.name ?? "Choose a service"}</span>
-                  <strong>
-                    {service ? formatNprPriceLabel(service.priceLabel) : "Not selected"}
-                  </strong>
+                  <strong>{service?.priceLabel ?? "Not selected"}</strong>
                 </dd>
               </div>
             );
@@ -1946,7 +1893,7 @@ export default function BookingForm({
                 ? "Selected as a pair service"
                 : expressRequested
                   ? expressService?.priceLabel
-                    ? "Requested — " + formatNprPriceLabel(expressService.priceLabel)
+                    ? "Requested — " + expressService.priceLabel
                     : "Requested — confirmed when available"
                   : "Not selected"}
             </dd>

@@ -121,18 +121,15 @@ export async function listPublicProducts(): Promise<ProductCard[]> {
 }
 
 /**
- * Homepage-only catalogue slice. It reads a capped candidate set instead of
- * the full shop catalogue and promotes only published, orderable stock.
+ * Homepage-only catalogue slice. This intentionally reads a capped candidate
+ * set instead of loading the full shop catalogue on the home route.
  */
-export async function listHomepageProducts(
-  limit = HOMEPAGE_PRODUCT_LIMIT,
-): Promise<ProductCard[]> {
+export async function listHomepageProducts(limit = HOMEPAGE_PRODUCT_LIMIT): Promise<ProductCard[]> {
   const db = await getDatabase();
   const rows = await db
     .prepare(`
       ${PRODUCT_SELECT}
       WHERE p.status = 'published'
-        AND p.stock_quantity > 0
         AND p.slug IS NOT NULL
         AND length(trim(p.slug)) > 0
         AND p.short_description IS NOT NULL
@@ -140,6 +137,7 @@ export async function listHomepageProducts(
       ORDER BY
         CASE WHEN p.badge = 'doctors_pick' THEN 0 ELSE 1 END ASC,
         CASE WHEN p.featured = 1 THEN 0 ELSE 1 END ASC,
+        CASE WHEN p.stock_quantity > 0 THEN 0 ELSE 1 END ASC,
         p.updated_at DESC,
         p.name COLLATE NOCASE ASC,
         p.id ASC
@@ -150,23 +148,12 @@ export async function listHomepageProducts(
   const candidates: Product[] = rows.results.map(parseProduct);
   const products = selectHomepageProducts<Product>(candidates, limit);
   const images = await listImagesForProducts(products.map((product) => product.id));
-  return products.map((product) =>
-    toProductCard({ ...product, images: images.get(product.id) ?? [] }),
-  );
+  return products.map((product) => toProductCard({ ...product, images: images.get(product.id) ?? [] }));
 }
 
-/**
- * Retained for callers outside the homepage. Its selection matches the public
- * homepage rule without changing full catalogue availability behaviour.
- */
 export async function listFeaturedPublicProducts(limit = 4) {
   const products = await listPublicProducts();
-  return products
-    .filter(
-      (product) =>
-        typeof product.stockQuantity === "number" && product.stockQuantity > 0,
-    )
-    .slice(0, Math.max(1, Math.min(4, limit)));
+  return products.filter((product) => product.isLowStock === false || product.stockQuantity !== 0).slice(0, Math.max(1, Math.min(12, limit)));
 }
 
 export async function getPublicProductBySlug(slug: string): Promise<Product | null> {

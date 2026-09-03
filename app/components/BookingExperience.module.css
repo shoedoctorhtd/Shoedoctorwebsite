@@ -1690,11 +1690,6 @@ select.input {
     min-height: 3.25rem;
   }
 
-  .pairQuantityControl,
-  .pairQuantityControl button {
-    min-height: 3.25rem;
-  }
-
   .serviceCard,
   .deliveryCard,
   .expressOption {
@@ -1730,11 +1725,6 @@ select.input {
 
   .deliveryCard {
     min-height: 0;
-  }
-
-  .deliveryCard[data-selected="true"] {
-    background: #fff7f1;
-    border-width: 2px;
   }
 
   .deliveryPrice {
@@ -1777,17 +1767,6 @@ select.input {
   .successActions a,
   .successActions button {
     width: fit-content;
-  }
-}
-
-@media (min-width: 390px) and (max-width: 640px) {
-  .compactFields {
-    grid-template-columns: minmax(0, 1fr) minmax(9.25rem, 0.78fr);
-  }
-
-  .emailField,
-  .pairQuantityField {
-    min-width: 0;
   }
 }
 

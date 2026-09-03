@@ -164,7 +164,7 @@ test("0015 adds nullable product-content fields without changing existing produc
   );
 });
 
-test("homepage care selection is capped, in-stock, slug-safe, and deterministic", () => {
+test("homepage care selection is capped, published-slug-safe, and deterministic", () => {
   const selected = selectHomepageProducts([
     { id: "doctor-out", slug: "doctor-out", name: "Doctor Out", badge: "doctors_pick", featured: false, stockQuantity: 0, updatedAt: "2026-08-29T00:00:00.000Z" },
     { id: "doctor-in", slug: "doctor-in", name: "Doctor In", badge: "doctors_pick", featured: false, stockQuantity: 2, updatedAt: "2026-08-28T00:00:00.000Z" },
@@ -174,7 +174,7 @@ test("homepage care selection is capped, in-stock, slug-safe, and deterministic"
     { id: "invalid", slug: "Not a valid slug", name: "Invalid", badge: "doctors_pick", featured: true, stockQuantity: 9, updatedAt: "2026-08-31T00:00:00.000Z" },
   ]);
   assert.equal(HOMEPAGE_PRODUCT_LIMIT, 4);
-  assert.deepEqual(selected.map((product) => product.id), ["doctor-in", "featured-in", "plain-in"]);
+  assert.deepEqual(selected.map((product) => product.id), ["doctor-in", "doctor-out", "featured-in", "plain-in"]);
   assert.deepEqual(selectHomepageProducts([selected[0]]).map((product) => product.id), ["doctor-in"]);
 });
 
@@ -604,12 +604,11 @@ test("public references, status transitions, image validation, and admin permiss
 });
 
 test("homepage care essentials and permanent product deletion keep their public and admin boundaries", async () => {
-  const [homePage, homeSection, homeStyles, productData, productHome, permanentDeleteRoute, restoreRoute, dashboard, adminProductsPage, lifecycleMigration] = await Promise.all([
+  const [homePage, homeSection, homeStyles, productData, permanentDeleteRoute, restoreRoute, dashboard, adminProductsPage, lifecycleMigration] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/HomeCareEssentials.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/HomeCareEssentials.module.css", import.meta.url), "utf8"),
     readFile(new URL("../lib/product-data.ts", import.meta.url), "utf8"),
-    readFile(new URL("../lib/product-home.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/products/[id]/permanent-delete/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/admin/products/[id]/restore/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/components/ProductAdminDashboard.tsx", import.meta.url), "utf8"),
@@ -622,12 +621,9 @@ test("homepage care essentials and permanent product deletion keep their public 
   assert.match(homeSection, /Genuine product/);
   assert.doesNotMatch(homeSection, /ProductStructuredData/);
   assert.match(homeStyles, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
-  assert.match(homeStyles, /scroll-snap-type: x mandatory/);
+  assert.match(homeStyles, /@media \(max-width: 620px\) \{[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(productData, /HOMEPAGE_PRODUCT_CANDIDATE_LIMIT = 12/);
   assert.match(productData, /WHERE p\.status = 'published'/);
-  assert.match(productData, /AND p\.stock_quantity > 0/);
-  assert.match(homeSection, /typeof product\.stockQuantity === "number" &&[\s\S]*product\.stockQuantity > 0/);
-  assert.match(productHome, /typeof product\.stockQuantity === "number" &&[\s\S]*product\.stockQuantity > 0/);
   assert.match(productData, /LIMIT \?/);
   assert.match(productData, /PRODUCT_RESTORED/);
   assert.match(productData, /PRODUCT_PERMANENTLY_DELETED/);
@@ -650,9 +646,7 @@ test("homepage care essentials and permanent product deletion keep their public 
   assert.match(dashboard, /\/publish/);
   assert.match(dashboard, /rowPublish/);
   assert.match(dashboard, /deletionConfirmation !== "DELETE"/);
-  assert.match(dashboard, /publicationStockQuantity/);
-  assert.match(dashboard, /required=\{isPublishing\}/);
-  assert.match(dashboard, /Set this before publishing/);
+  assert.match(dashboard, /Set initial stock in Inventory/);
   assert.match(dashboard, /never required to publish/);
   assert.match(adminProductsPage, /user\.role === "super_admin" && canManage/);
   assert.match(lifecycleMigration, /DROP TRIGGER IF EXISTS inventory_movements_prevent_delete/);
@@ -663,7 +657,7 @@ test("homepage care essentials and permanent product deletion keep their public 
 });
 
 test("public and admin routes enforce the catalogue, image-access, SEO, header, permission, and atomic-write contracts", async () => {
-  const [catalogue, publicApi, productApi, publicImageRoute, adminImageRoute, publishRoute, checkoutApi, adminProductsApi, inventoryApi, globalInventoryApi, inventoryPage, inventory, permissions, header, headerStyles, globalStyles, migration, productData, productImages, sitemap, productStructuredData, blog, recommendation] = await Promise.all([
+  const [catalogue, publicApi, productApi, publicImageRoute, adminImageRoute, publishRoute, checkoutApi, adminProductsApi, inventoryApi, globalInventoryApi, inventoryPage, inventory, permissions, header, migration, productData, productImages, sitemap, productStructuredData, blog, recommendation] = await Promise.all([
     readFile(new URL("../app/products/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/products/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/products/[slug]/route.ts", import.meta.url), "utf8"),
@@ -678,8 +672,6 @@ test("public and admin routes enforce the catalogue, image-access, SEO, header, 
     readFile(new URL("../lib/product-inventory.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/product-permissions.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/components/SiteChrome.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/components/SiteChrome.module.css", import.meta.url), "utf8"),
-    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(migrationUrl, "utf8"),
     readFile(new URL("../lib/product-data.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/product-images.ts", import.meta.url), "utf8"),
@@ -740,13 +732,8 @@ test("public and admin routes enforce the catalogue, image-access, SEO, header, 
   assert.match(permissions, /user\.role === "super_admin"/);
   assert.match(permissions, /admin_product_permissions/);
   assert.match(permissions, /cancel_product_orders/);
-  assert.match(header, /products: \{ href: "\/products", key: "products", label: "Products" \}/);
-  assert.match(header, /const mobileNavigationRows/);
-  assert.match(header, /navigationItems\.home,[\s\S]*navigationItems\.about,[\s\S]*navigationItems\.donate,[\s\S]*navigationItems\.services/);
-  assert.match(header, /navigationItems\.steam,[\s\S]*navigationItems\.products,[\s\S]*navigationItems\.blog,[\s\S]*navigationItems\.contact/);
-  assert.match(headerStyles, /steamNewBadge/);
-  assert.doesNotMatch(globalStyles, /\.sd-steam-nav-trigger span/);
-  assert.doesNotMatch(globalStyles, /\.sd-mobile-nav \.sd-steam-nav-trigger\[data-current="true"\] span/);
+  assert.match(header, /\{ href: "\/products", label: "Products" \}/);
+  assert.ok(header.indexOf("sd-steam-nav-trigger") < header.indexOf("navItems.slice(3)"));
   for (const required of [
     "product_order_items_prevent_update",
     "product_order_items_prevent_delete",

@@ -17,12 +17,7 @@ export function selectHomepageProducts<T extends HomepageProductCandidate>(
 ) {
   const safeLimit = Math.max(1, Math.min(HOMEPAGE_PRODUCT_LIMIT, Math.trunc(limit) || HOMEPAGE_PRODUCT_LIMIT));
   return [...products]
-    .filter(
-      (product) =>
-        isValidPublicProductSlug(product.slug) &&
-        typeof product.stockQuantity === "number" &&
-        product.stockQuantity > 0,
-    )
+    .filter((product) => isValidPublicProductSlug(product.slug))
     .sort(compareHomepageProducts)
     .slice(0, safeLimit);
 }

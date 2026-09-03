@@ -40,7 +40,7 @@ export default async function BlogPage() {
   const suedeRecommendation = firstDoctorsPickInCategory(products, "suede_nubuck");
   const kitRecommendation = firstDoctorsPickInCategory(products, "cleaning_kits");
   return (
-    <main id="main-content" className="public-site inner-site">
+    <main className="public-site inner-site">
       <SiteMotion />
       <SiteHeader />
 

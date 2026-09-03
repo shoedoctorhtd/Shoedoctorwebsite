@@ -269,7 +269,7 @@ function CareerToCraftIcon({
 
 export default function AboutPage() {
   return (
-    <main id="main-content" className="public-site inner-site about-page">
+    <main className="public-site inner-site about-page">
       <SiteMotion />
       <SiteHeader />
 

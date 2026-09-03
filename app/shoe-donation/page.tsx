@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import DonationForm from "../components/DonationForm";
 import DonationImpactStats from "../components/DonationImpactStats";
 import DonationProgramUpdates from "../components/DonationProgramUpdates";
@@ -83,34 +84,20 @@ export default async function ShoeDonationPage() {
       : null;
 
   return (
-    <main id="main-content" className="public-site inner-site donation-site">
-      <SiteMotion />
+    <main className="public-site inner-site donation-site">
+      <SiteMotion showLoader={false} />
       <SiteHeader />
 
       <section className="donation-hero" aria-labelledby="donation-hero-title">
         <div className="donation-hero__media" aria-hidden="true">
-          <picture>
-            <source
-              media="(max-width: 640px)"
-              srcSet="/shoe-donation-hero-mobile.webp"
-              type="image/webp"
-            />
-            <source
-              media="(max-width: 1024px)"
-              srcSet="/shoe-donation-hero-tablet.webp"
-              type="image/webp"
-            />
-            <img
-              alt=""
-              aria-hidden="true"
-              decoding="async"
-              fetchPriority="high"
-              height="1024"
-              loading="eager"
-              src="/shoe-donation-hero.png"
-              width="1536"
-            />
-          </picture>
+          <Image
+            src="/shoe-donation-hero.png"
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            unoptimized
+          />
         </div>
         <div className="donation-hero__wash" aria-hidden="true" />
         <ShoeIcon className="donation-floating-shoe donation-floating-shoe--one" />

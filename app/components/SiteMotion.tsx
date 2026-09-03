@@ -2,48 +2,33 @@
 
 import { useEffect } from "react";
 
-/**
- * Enhances already-visible public content after hydration. It deliberately
- * never renders a loader, so a slow script, missing observer, or reduced
- * motion preference cannot hold the page behind a client-side gate.
- */
-export default function SiteMotion() {
+export default function SiteMotion({
+  showLoader = true,
+}: {
+  showLoader?: boolean;
+}) {
   useEffect(() => {
-    const reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
+    document.body.classList.add("motion-ready");
     const revealItems = Array.from(
       document.querySelectorAll<HTMLElement>("[data-reveal]"),
     );
-    const revealObserver =
-      !reducedMotion && typeof IntersectionObserver === "function"
-        ? new IntersectionObserver(
-            (entries, observer) => {
-              entries.forEach((entry) => {
-                if (entry.isIntersecting) {
-                  entry.target.classList.add("is-revealed");
-                  observer.unobserve(entry.target);
-                }
-              });
-            },
-            { threshold: 0.12, rootMargin: "0px 0px -40px" },
-          )
-        : null;
-
-    if (revealObserver) {
-      document.body.classList.add("motion-ready");
-      revealItems.forEach((item) => revealObserver.observe(item));
-    } else {
-      revealItems.forEach((item) => item.classList.add("is-revealed"));
-    }
-
-    const revealFallback = revealObserver
-      ? window.setTimeout(() => {
-          revealItems.forEach((item) => item.classList.add("is-revealed"));
-        }, 900)
-      : null;
+    const revealObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-revealed");
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -40px" },
+    );
+    revealItems.forEach((item) => revealObserver.observe(item));
 
     const finePointer = window.matchMedia("(pointer: fine)").matches;
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     const tiltItems = Array.from(
       document.querySelectorAll<HTMLElement>("[data-tilt]"),
     );
@@ -75,8 +60,7 @@ export default function SiteMotion() {
     }
 
     return () => {
-      if (revealFallback !== null) window.clearTimeout(revealFallback);
-      revealObserver?.disconnect();
+      revealObserver.disconnect();
       tiltItems.forEach((item) => {
         item.removeEventListener("pointermove", tiltVisual);
         item.removeEventListener("pointerleave", resetTilt);
@@ -85,5 +69,29 @@ export default function SiteMotion() {
     };
   }, []);
 
-  return null;
+  return (
+    <>
+      {showLoader && (
+        <div className="site-loader" aria-hidden="true">
+          <div className="loader-branding">
+            <div className="loader-diagnosis-art">
+              <i />
+            </div>
+            <div className="loader-branding-copy">
+              <strong>
+                <span>SH</span>
+                <span className="loader-brand-plus">
+                  <span>+</span>
+                </span>
+                <span>E DOCTOR</span>
+              </strong>
+              <span className="loader-branding-tagline">
+                WE DIAGNOSE · WE CLEAN · WE RESTORE
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }

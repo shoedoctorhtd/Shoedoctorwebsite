@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { steamCleaningContent } from "@/lib/steam-cleaning";
 
@@ -29,22 +30,14 @@ export default function SteamBrushVisual() {
 
       <div className="sd-steam-image-frame">
         {imageAvailable ? (
-          <picture className="sd-steam-image-picture">
-            <source
-              media="(max-width: 640px)"
-              srcSet="/images/steam-brush-cleaning-mobile.webp"
-              type="image/webp"
-            />
-            <img
-              alt={steamCleaningContent.image.alt}
-              decoding="async"
-              height="1024"
-              loading="lazy"
-              onError={() => setImageAvailable(false)}
-              src={steamCleaningContent.image.src}
-              width="1536"
-            />
-          </picture>
+          <Image
+            src={steamCleaningContent.image.src}
+            alt={steamCleaningContent.image.alt}
+            fill
+            sizes="(max-width: 980px) 100vw, 52vw"
+            unoptimized
+            onError={() => setImageAvailable(false)}
+          />
         ) : (
           <div className="sd-steam-image-placeholder" aria-hidden="true">
             <span />

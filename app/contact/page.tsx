@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 
 export default function ContactPage() {
   return (
-    <main id="main-content" className="public-site inner-site">
+    <main className="public-site inner-site">
       <SiteMotion />
       <SiteHeader />
 

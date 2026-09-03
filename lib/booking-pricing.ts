@@ -30,20 +30,6 @@ export function formatNprPrice(amount: number) {
 }
 
 /**
- * Service price labels are admin-managed prose, so most labels must remain
- * unchanged. A bare whole-number label is the one unambiguous exception: it
- * represents an NPR amount and needs the visible currency prefix customers
- * use elsewhere in the booking journey.
- */
-export function formatNprPriceLabel(priceLabel: string) {
-  const normalized = priceLabel.trim().replace(/\s+/gu, " ");
-  if (!/^\d[\d,]*$/u.test(normalized)) return normalized;
-
-  const amount = getExactNprPrice(normalized);
-  return amount === null ? normalized : formatNprPrice(amount);
-}
-
-/**
  * Only exact prices can safely be added to a delivery fee. Admins may enter a
  * fixed amount with or without an Rs prefix. The admin's "From Rs ..." label
  * also has one configured amount, so it can be included. Ranges and

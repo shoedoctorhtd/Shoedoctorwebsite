@@ -35,8 +35,8 @@ export default async function RestorationDetailPage({ params }: PageProps) {
   const afterSrc = story.afterImageUrl;
 
   return (
-    <main id="main-content" className="public-site inner-site donation-site donation-detail-site">
-      <SiteMotion />
+    <main className="public-site inner-site donation-site donation-detail-site">
+      <SiteMotion showLoader={false} />
       <SiteHeader />
       <article className="donation-detail donation-restoration-detail">
         <Link className="donation-detail__back" href="/shoe-donation">← Back to Shoe Donation</Link>

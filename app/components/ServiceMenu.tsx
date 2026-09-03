@@ -5,7 +5,6 @@ import {
   type Service,
   type ServiceCategory,
 } from "@/lib/data";
-import { formatNprPriceLabel } from "@/lib/booking-pricing";
 import { ArrowUpRight } from "./SiteChrome";
 
 const categoryCopy: Record<
@@ -157,7 +156,6 @@ export default function ServiceMenu({
 
 function ServiceCard({ service, index }: { service: Service; index: number }) {
   const badge = publicServiceBadge(service.badge);
-  const displayedPrice = formatNprPriceLabel(service.priceLabel);
   return (
     <article
       className={`menu-card ${service.tone}`}
@@ -182,7 +180,7 @@ function ServiceCard({ service, index }: { service: Service; index: number }) {
       <div className="menu-price">
         <div>
           <span>{priceContext(service.priceLabel)}</span>
-          <strong>{displayedPrice}</strong>
+          <strong>{service.priceLabel}</strong>
           {service.specialPriceLabel && <em>{service.specialPriceLabel}</em>}
         </div>
         <a

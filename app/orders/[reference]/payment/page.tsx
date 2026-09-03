@@ -11,5 +11,5 @@ export const metadata: Metadata = { title: "Secure QR payment", robots: { index:
 export default async function ProductPaymentRoute({ params }: { params: Promise<{ reference: string }> }) {
   const reference = normalizeProductOrderReferenceSearch((await params).reference);
   if (!reference) notFound();
-  return <main id="main-content" className={`public-site ${styles.page}`}><SiteHeader /><ProductPaymentPage reference={reference} /><SiteFooter /></main>;
+  return <main className={`public-site ${styles.page}`}><SiteHeader /><ProductPaymentPage reference={reference} /><SiteFooter /></main>;
 }
