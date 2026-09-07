@@ -34,6 +34,7 @@ const PRODUCT_DETAIL_KEYS = new Set([
   "packSize",
   "brand",
   "careInstructions",
+  "doctorsAdvice",
   "seoTitle",
   "seoDescription",
 ]);
@@ -165,6 +166,9 @@ export function parseProductDetails(value: unknown): ProductDetails {
     packSize: optionalText(input.packSize, 120, "Pack size"),
     brand: optionalText(input.brand, 120, "Brand"),
     careInstructions: productDetailList(input.careInstructions, 8, 320, "Care instructions"),
+    ...(hasOwn(input, "doctorsAdvice")
+      ? { doctorsAdvice: optionalText(input.doctorsAdvice, 1600, "Doctor's advice") }
+      : {}),
     seoTitle: optionalText(input.seoTitle, 160, "SEO title"),
     seoDescription: optionalText(input.seoDescription, 320, "SEO description"),
   };

@@ -6,12 +6,14 @@ import ProductDetailPurchase from "../../components/ProductDetailPurchase";
 import { ProductCartProvider } from "../../components/ProductCart";
 import ProductGallery from "../../components/ProductGallery";
 import ProductCareGuide from "../../components/ProductCareGuide";
+import ProductRelatedProducts from "../../components/ProductRelatedProducts";
 import ProfessionalCleaningCTA from "../../components/ProfessionalCleaningCTA";
 import ProductStructuredData from "../../components/ProductStructuredData";
 import styles from "../../components/ProductShop.module.css";
 import { getPublicProductBySlug } from "@/lib/product-data";
+import { listRelatedPublicProducts } from "@/lib/product-related";
 import { formatNpr } from "@/lib/money";
-import { productAvailabilityCopy, productCategoryLabel } from "../../components/product-presentation";
+import { productAvailabilityCopy, productBadgeLabel, productCategoryLabel } from "../../components/product-presentation";
 
 export const dynamic = "force-dynamic";
 
@@ -33,18 +35,28 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const product = await getPublicProductBySlug((await params).slug).catch(() => null);
   if (!product || !product.slug || product.priceNpr === null) notFound();
+  const relatedProducts = await listRelatedPublicProducts(product).catch(() => []);
   const valueProposition = product.details.valueProposition ?? product.shortDescription;
   const category = productCategoryLabel(product.category);
+  const badge = productBadgeLabel(product.badge);
   const hasCompareAtPrice = product.compareAtPriceNpr !== null && product.compareAtPriceNpr > product.priceNpr;
   return (
     <ProductCartProvider>
       <main className={`public-site ${styles.page}`}>
         <SiteHeader />
         <ProductStructuredData product={product} />
+        <nav className={styles.breadcrumbs} aria-label="Breadcrumb">
+          <ol>
+            <li><Link href="/">Home</Link></li>
+            <li><Link href="/products">Products</Link></li>
+            <li aria-current="page">{product.name}</li>
+          </ol>
+        </nav>
         <section className={styles.detail}>
           <ProductGallery key={product.slug} productName={product.name} images={product.images} />
           <div className={styles.detailInfo}>
             <p className="sd-kicker">{category ?? "Shoe Doctor shop"}</p>
+            {badge ? <span className={styles.tag}>{badge}</span> : null}
             <h1>{product.name}</h1>
             {valueProposition ? <p>{valueProposition}</p> : null}
             <p className={styles.detailPrice}>{formatNpr(product.priceNpr)}</p>
@@ -61,12 +73,13 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         <div className={styles.detailSections}>
           {product.fullDescription && product.fullDescription !== valueProposition ? (
             <section className={styles.careGuide} aria-labelledby="product-description-title">
-              <p className="sd-kicker">More about this product</p>
-              <h2 id="product-description-title">DETAILS, NOT GUESSWORK.</h2>
+              <p className="sd-kicker">Product details</p>
+              <h2 id="product-description-title">PRODUCT DETAILS.</h2>
               <p>{product.fullDescription}</p>
             </section>
           ) : null}
           <ProductCareGuide product={product} />
+          <ProductRelatedProducts products={relatedProducts} />
           <ProfessionalCleaningCTA />
         </div>
         <SiteFooter />

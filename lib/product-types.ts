@@ -67,6 +67,8 @@ export type ProductDetails = {
   packSize: string | null;
   brand: string | null;
   careInstructions: string[];
+  /** Undefined means an older client did not submit this newer optional field. */
+  doctorsAdvice?: string | null;
   seoTitle: string | null;
   seoDescription: string | null;
 };
@@ -83,6 +85,7 @@ export function emptyProductDetails(): ProductDetails {
     packSize: null,
     brand: null,
     careInstructions: [],
+    doctorsAdvice: null,
     seoTitle: null,
     seoDescription: null,
   };

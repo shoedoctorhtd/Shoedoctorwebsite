@@ -345,7 +345,7 @@ export async function updateProduct(
     category: input.category === undefined ? before.category : input.category,
     compareAtPriceNpr: input.compareAtPriceNpr === undefined ? before.compareAtPriceNpr : input.compareAtPriceNpr,
     badge: input.badge === undefined ? before.badge : input.badge,
-    details: input.details === undefined ? before.details : input.details,
+    details: mergeProductDetails(before.details, input.details),
   };
   if (next.status === "published") {
     const missing = getMissingProductPublicationRequirements(next, {
@@ -809,11 +809,28 @@ function parseStoredProductDetails(value: unknown): ProductDetails {
   const source = nullableText(value);
   if (!source) return emptyProductDetails();
   try {
-    return parseProductDetails(JSON.parse(source));
+    const parsed = JSON.parse(source) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return emptyProductDetails();
+    // Stored rows may outlive an older Worker during a rolling deploy. Keep
+    // request validation strict, but discard unknown stored keys so known
+    // care guidance remains visible rather than collapsing to an empty guide.
+    const record = parsed as Record<string, unknown>;
+    const supported = Object.fromEntries(
+      Object.keys(emptyProductDetails())
+        .filter((key) => Object.prototype.hasOwnProperty.call(record, key))
+        .map((key) => [key, record[key]]),
+    );
+    return parseProductDetails(supported);
   } catch {
     // A malformed legacy row must never take the catalogue or admin UI down.
     return emptyProductDetails();
   }
+}
+
+function mergeProductDetails(before: ProductDetails, input: ProductInput["details"] | undefined) {
+  if (input === undefined) return before;
+  if (input.doctorsAdvice !== undefined) return input;
+  return { ...input, doctorsAdvice: before.doctorsAdvice ?? null };
 }
 
 function serializeProductDetails(value: ProductDetails) {

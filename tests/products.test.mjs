@@ -16,6 +16,7 @@ import {
   parseInitialStockQuantity,
   parseInitialProductStock,
   parseOnlineProductOrder,
+  parseProductDetails,
   parseProductInput,
   productPublicationRequirementsMessage,
   productSlugFromName,
@@ -26,6 +27,8 @@ import { detectImageType, validateProductImage } from "../lib/product-image-vali
 import { clearSessionRetryToken, getSessionRetryToken } from "../app/components/ProductRetryToken.ts";
 import { auditValueDiff } from "../lib/audit.ts";
 import { HOMEPAGE_PRODUCT_LIMIT, selectHomepageProducts } from "../lib/product-home.ts";
+import { resolveCheckoutSource, selectCheckoutLines, shouldClearPersistentCart } from "../lib/product-direct-checkout.ts";
+import { selectRelatedPublicProducts } from "../lib/product-related.ts";
 
 const migrationUrl = new URL("../migrations/0012_product_catalogue_inventory.sql", import.meta.url);
 const migration0013Url = new URL("../migrations/0013_product_order_payments.sql", import.meta.url);
@@ -176,6 +179,42 @@ test("homepage care selection is capped, published-slug-safe, and deterministic"
   assert.equal(HOMEPAGE_PRODUCT_LIMIT, 4);
   assert.deepEqual(selected.map((product) => product.id), ["doctor-in", "doctor-out", "featured-in", "plain-in"]);
   assert.deepEqual(selectHomepageProducts([selected[0]]).map((product) => product.id), ["doctor-in"]);
+});
+
+test("Buy Now selects only its safe direct item and leaves cart selection intact", () => {
+  const cart = [
+    { productSlug: "saved-cleaner", quantity: 2 },
+    { productSlug: "saved-protector", quantity: 1 },
+  ];
+  const buyNow = resolveCheckoutSource({ mode: "buy-now", product: "suede-eraser", quantity: "3" });
+  assert.deepEqual(buyNow, { kind: "buy_now", item: { productSlug: "suede-eraser", quantity: 3 } });
+  assert.deepEqual(selectCheckoutLines(cart, buyNow), [{ productSlug: "suede-eraser", quantity: 3 }]);
+  assert.equal(shouldClearPersistentCart(buyNow), false);
+  assert.deepEqual(selectCheckoutLines(cart, resolveCheckoutSource({})), cart);
+  assert.equal(shouldClearPersistentCart(resolveCheckoutSource({})), true);
+
+  for (const value of [undefined, "", "0", "1.5", "-1", "101", "nope"]) {
+    assert.equal(
+      resolveCheckoutSource({ mode: "buy-now", product: "suede-eraser", quantity: value }).kind,
+      "invalid_buy_now",
+    );
+  }
+  assert.equal(resolveCheckoutSource({ mode: "buy-now", product: "Invalid slug", quantity: "1" }).kind, "invalid_buy_now");
+  const invalid = resolveCheckoutSource({ mode: "buy-now", product: "suede-eraser", quantity: "0" });
+  assert.deepEqual(selectCheckoutLines(cart, invalid), []);
+  assert.equal(shouldClearPersistentCart(invalid), false);
+});
+
+test("related products exclude the current item and prefer its category without inventing relationships", () => {
+  const candidates = [
+    { slug: "current-cleaner", name: "Current", category: "protection", stockQuantity: 3 },
+    { slug: "same-category", name: "Same", category: "protection", stockQuantity: 2 },
+    { slug: "other-category", name: "Other", category: "accessories", stockQuantity: 5 },
+    { slug: "same-category-two", name: "Same two", category: "protection", stockQuantity: 1 },
+  ];
+  const related = selectRelatedPublicProducts({ slug: "current-cleaner", category: "protection" }, candidates, 3);
+  assert.deepEqual(related.map((product) => product.slug), ["same-category", "same-category-two", "other-category"]);
+  assert.deepEqual(selectRelatedPublicProducts({ slug: "current-cleaner", category: "protection" }, candidates, 1).map((product) => product.slug), ["same-category"]);
 });
 
 test("0016 only permits harmless initial-stock cleanup before deleting an unused product", async (t) => {
@@ -380,6 +419,17 @@ test("product content input is bounded, price-protected, and participates in aud
   const diff = auditValueDiff(before, after);
   assert.deepEqual(diff.changedFields, ["fullDescription", "details"]);
   assert.equal(diff.newValues.fullDescription, "Updated factual product guidance.");
+});
+
+test("optional Doctor's Advice stays bounded and remains compatible with older detail payloads", () => {
+  const olderDetails = parseProductDetails({ brand: "Shoe Doctor" });
+  assert.equal(olderDetails.doctorsAdvice, undefined);
+  assert.equal(parseProductDetails({ doctorsAdvice: "Treat delicate materials gently." }).doctorsAdvice, "Treat delicate materials gently.");
+  assert.equal(parseProductDetails({ doctorsAdvice: "   " }).doctorsAdvice, null);
+  assert.throws(
+    () => parseProductDetails({ doctorsAdvice: "a".repeat(1601) }),
+    /Doctor's advice is too long/i,
+  );
 });
 
 test("a seeded draft can receive its real catalogue data, stock, image, and publication state", async (t) => {

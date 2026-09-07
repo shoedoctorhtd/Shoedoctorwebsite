@@ -1,11 +1,10 @@
 import styles from "./ProductShop.module.css";
 
 const trustItems = [
-  "Selected by Shoe Doctor",
-  "Material-conscious care",
-  "QR payment",
   "Cash on Delivery",
+  "QR Payment",
   "Delivery where available",
+  "Selected by Shoe Doctor",
 ];
 
 export default function ProductTrustStrip() {

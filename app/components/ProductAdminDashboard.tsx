@@ -592,6 +592,7 @@ export default function ProductAdminDashboard({
                 <label className={styles.full}>How to use <small>(one step per line)</small><textarea maxLength={3000} value={detailLines(details.howToUse)} onChange={(event) => changeDetails("howToUse", detailList(event.target.value))} /></label>
                 <label>Warnings <small>(one per line)</small><textarea maxLength={2000} value={detailLines(details.warnings)} onChange={(event) => changeDetails("warnings", detailList(event.target.value))} /></label>
                 <label>Care instructions <small>(one per line)</small><textarea maxLength={2000} value={detailLines(details.careInstructions)} onChange={(event) => changeDetails("careInstructions", detailList(event.target.value))} /></label>
+                <label className={styles.full}>Doctor&apos;s Advice <small>(optional product-specific guidance)</small><textarea maxLength={1600} value={details.doctorsAdvice ?? ""} onChange={(event) => changeDetails("doctorsAdvice", event.target.value || null)} /></label>
                 <label className={styles.full}>SEO title<input maxLength={160} value={details.seoTitle ?? ""} onChange={(event) => changeDetails("seoTitle", event.target.value || null)} /></label>
                 <label className={styles.full}>SEO description<textarea maxLength={320} value={details.seoDescription ?? ""} onChange={(event) => changeDetails("seoDescription", event.target.value || null)} /></label>
               </div>

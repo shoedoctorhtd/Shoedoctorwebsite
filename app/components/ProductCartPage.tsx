@@ -7,6 +7,7 @@ import type { ProductCard } from "@/lib/product-types";
 import { formatNpr } from "@/lib/money";
 import { useProductCart } from "./ProductCart";
 import { productAvailabilityCopy } from "./product-presentation";
+import QuantitySelector from "./QuantitySelector";
 import styles from "./ProductShop.module.css";
 
 export default function ProductCartPage({ products }: { products: ProductCard[] }) {
@@ -32,7 +33,7 @@ export default function ProductCartPage({ products }: { products: ProductCard[] 
                 {stockChanged ? <p className={styles.stockChanged}>Stock changed — {product ? productAvailabilityCopy(product.stockQuantity, product.lowStockThreshold) : "no longer available"}</p> : null}
               </div>
               <aside>
-                {product ? <div className={styles.quantityControl} aria-label={`Quantity for ${product.name}`}><button type="button" aria-label={`Decrease ${product.name}`} onClick={() => setQuantity(line.productSlug, line.quantity - 1, product.stockQuantity ?? 0)}>−</button><span aria-live="polite">{line.quantity}</span><button type="button" aria-label={`Increase ${product.name}`} disabled={line.quantity >= (product.stockQuantity ?? 0)} onClick={() => setQuantity(line.productSlug, line.quantity + 1, product.stockQuantity ?? 0)}>+</button></div> : null}
+                {product ? <QuantitySelector label={`Quantity for ${product.name}`} maximum={product.stockQuantity ?? 0} onChange={(quantity) => setQuantity(line.productSlug, quantity, product.stockQuantity ?? 0)} quantity={line.quantity} /> : null}
                 <strong>{formatNpr(product ? (product.priceNpr ?? 0) * line.quantity : 0)}</strong>
                 <button className={styles.linkButton} type="button" onClick={() => remove(line.productSlug)}>Remove</button>
               </aside>

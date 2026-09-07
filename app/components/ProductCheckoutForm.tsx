@@ -4,13 +4,14 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ProductCard } from "@/lib/product-types";
+import { selectCheckoutLines, shouldClearPersistentCart, type CheckoutSource } from "@/lib/product-direct-checkout";
 import { useProductCart } from "./ProductCart";
 import { formatNpr } from "@/lib/money";
 import { clearSessionRetryToken, getSessionRetryToken } from "./ProductRetryToken";
 import styles from "./ProductShop.module.css";
 
 const CHECKOUT_RETRY_SCOPE = "online-checkout";
-const CHECKOUT_PAYMENT_TOKEN_KEY = "shoe-doctor-product-payment-token-v1:online-checkout";
+const CHECKOUT_PAYMENT_TOKEN_PREFIX = "shoe-doctor-product-payment-token-v1:";
 const paymentTokenKey = (reference: string) => `shoe-doctor-product-payment-token-v1:${reference}`;
 
 function generatePaymentAccessToken() {
@@ -21,29 +22,40 @@ function generatePaymentAccessToken() {
   return btoa(binary).replace(/\+/gu, "-").replace(/\//gu, "_").replace(/=+$/gu, "");
 }
 
-function checkoutPaymentAccessToken() {
-  const existing = window.sessionStorage.getItem(CHECKOUT_PAYMENT_TOKEN_KEY);
+function checkoutPaymentAccessToken(scope: string) {
+  const key = `${CHECKOUT_PAYMENT_TOKEN_PREFIX}${scope}`;
+  const existing = window.sessionStorage.getItem(key);
   if (existing && /^[A-Za-z0-9_-]{43}$/u.test(existing)) return existing;
   const token = generatePaymentAccessToken();
-  window.sessionStorage.setItem(CHECKOUT_PAYMENT_TOKEN_KEY, token);
+  window.sessionStorage.setItem(key, token);
   return token;
 }
 
-export default function ProductCheckoutForm({ products }: { products: ProductCard[] }) {
-  const { lines, hydrated, clear } = useProductCart();
+export default function ProductCheckoutForm({
+  products,
+  checkoutSource,
+}: {
+  products: ProductCard[];
+  checkoutSource: CheckoutSource;
+}) {
+  const { lines: cartLines, hydrated, clear } = useProductCart();
   const router = useRouter();
   const [fulfillmentMethod, setFulfillmentMethod] = useState<"collection" | "delivery">("collection");
   const [paymentMethod, setPaymentMethod] = useState<"qr" | "cod" | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const productsBySlug = useMemo(() => new Map(products.filter((product) => product.slug).map((product) => [product.slug!, product])), [products]);
+  const lines = selectCheckoutLines(cartLines, checkoutSource);
+  const isBuyNow = checkoutSource.kind === "buy_now";
+  const checkoutScope = isBuyNow ? "buy-now" : CHECKOUT_RETRY_SCOPE;
+  const checkoutPaymentTokenKey = `${CHECKOUT_PAYMENT_TOKEN_PREFIX}${checkoutScope}`;
   const activeLines = lines.map((line) => ({ line, product: productsBySlug.get(line.productSlug) ?? null }));
   const stockProblem = activeLines.some(({ line, product }) => !product || product.stockQuantity === null || product.stockQuantity < line.quantity);
   const subtotal = activeLines.reduce((sum, { line, product }) => sum + (product?.priceNpr ?? 0) * line.quantity, 0);
 
   useEffect(() => {
-    if (paymentMethod !== "qr") window.sessionStorage.removeItem(CHECKOUT_PAYMENT_TOKEN_KEY);
-  }, [paymentMethod]);
+    if (paymentMethod !== "qr") window.sessionStorage.removeItem(checkoutPaymentTokenKey);
+  }, [checkoutPaymentTokenKey, paymentMethod]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -63,10 +75,10 @@ export default function ProductCheckoutForm({ products }: { products: ProductCar
         deliveryAddress: fulfillmentMethod === "delivery" ? String(form.get("deliveryAddress") ?? "") : null,
         customerNote: String(form.get("customerNote") ?? ""),
         paymentMethod,
-        paymentAccessToken: paymentMethod === "qr" ? checkoutPaymentAccessToken() : undefined,
+        paymentAccessToken: paymentMethod === "qr" ? checkoutPaymentAccessToken(checkoutScope) : undefined,
         items: lines.map((line) => ({ productSlug: line.productSlug, quantity: line.quantity })),
       };
-      const idempotencyToken = await getSessionRetryToken(CHECKOUT_RETRY_SCOPE, request);
+      const idempotencyToken = await getSessionRetryToken(checkoutScope, request);
       const response = await fetch("/api/product-orders", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -79,13 +91,13 @@ export default function ProductCheckoutForm({ products }: { products: ProductCar
       if (!response.ok || !result.order?.publicReference) {
         throw new Error(result.message ?? "Unable to place your order.");
       }
-      clearSessionRetryToken(CHECKOUT_RETRY_SCOPE, idempotencyToken);
-      clear();
+      clearSessionRetryToken(checkoutScope, idempotencyToken);
+      if (shouldClearPersistentCart(checkoutSource)) clear();
       if (paymentMethod === "qr") {
         const token = request.paymentAccessToken;
         if (!token) throw new Error("Unable to prepare secure payment access. Please try again.");
         window.sessionStorage.setItem(paymentTokenKey(result.order.publicReference), token);
-        window.sessionStorage.removeItem(CHECKOUT_PAYMENT_TOKEN_KEY);
+        window.sessionStorage.removeItem(checkoutPaymentTokenKey);
         router.push(`/orders/${encodeURIComponent(result.order.publicReference)}/payment`);
       } else {
         router.push(`/order-confirmation?reference=${encodeURIComponent(result.order.publicReference)}&payment=cod`);
@@ -99,11 +111,18 @@ export default function ProductCheckoutForm({ products }: { products: ProductCar
     }
   }
 
-  if (!hydrated) return <p>Loading checkout…</p>;
-  if (!lines.length) return <section className={styles.empty}><p className="sd-kicker">Checkout</p><h2>Your cart is empty.</h2><Link className="sd-primary-button" href="/products">Browse products</Link></section>;
+  if (checkoutSource.kind === "invalid_buy_now") {
+    return <section className={styles.empty}><p className="sd-kicker">Buy Now</p><h2>This product is no longer available.</h2><p>Please return to the store and choose an available product.</p><Link className="sd-primary-button" href="/products">Browse products</Link></section>;
+  }
+  if (!hydrated && !isBuyNow) return <p>Loading checkout…</p>;
+  if (!lines.length) return <section className={styles.empty}><p className="sd-kicker">Checkout</p><h2>{isBuyNow ? "This product is no longer available." : "Your cart is empty."}</h2><p>{isBuyNow ? "Please return to the store and choose an available product." : undefined}</p><Link className="sd-primary-button" href="/products">Browse products</Link></section>;
+  if (isBuyNow && stockProblem) {
+    return <section className={styles.empty}><p className="sd-kicker">Buy Now</p><h2>This product is no longer available.</h2><p>Please return to the store and choose an available product.</p><Link className="sd-primary-button" href="/products">Browse products</Link></section>;
+  }
   return (
     <div className={styles.checkoutGrid}>
       <form className={styles.form} onSubmit={submit}>
+        {isBuyNow ? <p className={`${styles.formNotice} ${styles.directCheckoutNotice}`}>Buying this item now. Your saved cart will stay unchanged.</p> : null}
         <h2 className={styles.checkoutSectionTitle}>Your details</h2>
         <label>Full name<input required minLength={2} maxLength={120} name="customerName" autoComplete="name" /></label>
         <label>Phone number<input required minLength={7} maxLength={32} name="phone" inputMode="tel" autoComplete="tel" /></label>
@@ -130,7 +149,7 @@ export default function ProductCheckoutForm({ products }: { products: ProductCar
         <button className={styles.checkoutButton} type="submit" disabled={busy || stockProblem}>{busy ? "Placing order…" : stockProblem ? "Resolve stock changes" : "Place order"}</button>
       </form>
       <aside className={styles.summary}>
-        <h2>Your order</h2>
+        <h2>{isBuyNow ? "Buy Now order" : "Your order"}</h2>
         {activeLines.map(({ line, product }) => <p key={line.productSlug}><span>{product?.name ?? "Unavailable"} × {line.quantity}</span><span>{formatNpr((product?.priceNpr ?? 0) * line.quantity)}</span></p>)}
         <p><span>Delivery</span><span>Confirmed before fulfilment</span></p>
         <strong><span>Current total</span><span>{formatNpr(subtotal)}</span></strong>

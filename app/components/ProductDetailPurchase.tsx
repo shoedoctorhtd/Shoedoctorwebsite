@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useProductCart } from "./ProductCart";
+import QuantitySelector from "./QuantitySelector";
 import styles from "./ProductShop.module.css";
 
 export default function ProductDetailPurchase({ productSlug, stockQuantity }: { productSlug: string; stockQuantity: number | null }) {
@@ -11,18 +13,18 @@ export default function ProductDetailPurchase({ productSlug, stockQuantity }: { 
   const [notice, setNotice] = useState("");
   if (!available) return <button className={styles.checkoutButton} type="button" disabled>Out of Stock</button>;
   return (
-    <div className={styles.purchaseRow}>
-      <div className={styles.quantityControl} aria-label="Quantity selector">
-        <button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} aria-label="Decrease quantity">−</button>
-        <span aria-live="polite">{quantity}</span>
-        <button type="button" onClick={() => setQuantity((value) => Math.min(available, value + 1))} aria-label="Increase quantity" disabled={quantity >= available}>+</button>
+    <div className={styles.purchasePanel}>
+      <QuantitySelector label="Quantity" maximum={available} onChange={setQuantity} quantity={quantity} />
+      <div className={styles.purchaseActions}>
+        <Link className={styles.buyNowButton} href={`/checkout?mode=buy-now&product=${encodeURIComponent(productSlug)}&quantity=${quantity}`}>Buy Now</Link>
+        <button className={styles.addToCartButton} type="button" onClick={() => {
+          add(productSlug, quantity, available);
+          setNotice(`${quantity} ${quantity === 1 ? "item" : "items"} added to cart.`);
+          window.setTimeout(() => setNotice(""), 1800);
+        }}>
+          {notice ? "Added to Cart" : "Add to Cart"}
+        </button>
       </div>
-      <button className={styles.checkoutButton} type="button" onClick={() => {
-        add(productSlug, quantity, available);
-        setNotice(`${quantity} ${quantity === 1 ? "item" : "items"} added to cart.`);
-      }}>
-        Add to Cart
-      </button>
       <span className="sr-only" aria-live="polite">{notice}</span>
     </div>
   );

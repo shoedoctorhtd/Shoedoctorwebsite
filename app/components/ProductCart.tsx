@@ -122,7 +122,7 @@ export function AddToCartButton({
 }
 
 /** Header remains usable on public pages that do not render a cart provider. */
-export function CartHeaderLink() {
+export function CartHeaderLink({ className }: { className?: string }) {
   const [count, setCount] = useState(0);
   useEffect(() => {
     const refresh = () => setCount(readCart().reduce((sum, line) => sum + line.quantity, 0));
@@ -135,7 +135,7 @@ export function CartHeaderLink() {
     };
   }, []);
   return (
-    <a className="sd-header-cart" href="/cart" aria-label={`Shopping cart${count ? `, ${count} items` : ""}`}>
+    <a className={`sd-header-cart${className ? ` ${className}` : ""}`} href="/cart" aria-label={`Shopping cart${count ? `, ${count} items` : ""}`}>
       Cart{count ? <span>{count}</span> : null}
     </a>
   );

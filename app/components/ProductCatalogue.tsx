@@ -49,10 +49,10 @@ export default function ProductCatalogue({ products }: { products: ProductCard[]
     return (
       <section className={styles.empty} aria-labelledby="products-empty-title">
         <p className="sd-kicker">Shoe Doctor shop</p>
-        <h2 id="products-empty-title">SHOP CARE WITH CONFIDENCE.</h2>
+        <h2 id="products-empty-title">NEW CARE ESSENTIALS ARE BEING PREPARED.</h2>
         <p>
-          Shoe Doctor only lists products that are ready to order. For a
-          treatment decision today, book professional shoe care with the team.
+          Need help with your shoes in the meantime? Book professional care
+          with Shoe Doctor.
         </p>
         <Link className="sd-primary-button" href="/#book">Book shoe care</Link>
       </section>
@@ -69,7 +69,7 @@ export default function ProductCatalogue({ products }: { products: ProductCard[]
             onClick={() => setSelectedCategory(null)}
             type="button"
           >
-            All care
+            All
           </button>
           {availableCategories.map((category) => (
             <button
@@ -94,9 +94,8 @@ export default function ProductCatalogue({ products }: { products: ProductCard[]
           <p className="sd-kicker">Not sure what your shoes need?</p>
           <h2 id="care-matcher-title">START WITH THE RIGHT KIND OF CARE.</h2>
           <p>
-            Product availability changes as Shoe Doctor completes each
-            catalogue record. Only categories with currently published items
-            are shown here.
+            Tell us what you are treating and we&apos;ll help you find the right
+            care essential. More Shoe Doctor care essentials are coming soon.
           </p>
         </div>
         {availableCareGuides.length ? (
@@ -120,12 +119,15 @@ function ProductCardItem({ product }: { product: ProductCard }) {
   const unavailable = product.stockQuantity === 0;
   const badge = productBadgeLabel(product.badge);
   const category = productCategoryLabel(product.category);
+  const productSlug = product.slug ?? "";
+  const productHref = `/products/${encodeURIComponent(productSlug)}`;
+  const buyNowHref = `/checkout?mode=buy-now&product=${encodeURIComponent(productSlug)}&quantity=1`;
   const hasCompareAtPrice = product.compareAtPriceNpr !== null
     && product.priceNpr !== null
     && product.compareAtPriceNpr > product.priceNpr;
   return (
     <article className={styles.card}>
-      <Link aria-label={`View ${product.name}`} className={styles.cardImageLink} href={`/products/${encodeURIComponent(product.slug ?? "")}`}>
+      <Link aria-label={`View ${product.name}`} className={styles.cardImageLink} href={productHref}>
         {product.primaryImage ? (
           <img
             className={styles.cardImage}
@@ -141,7 +143,7 @@ function ProductCardItem({ product }: { product: ProductCard }) {
           {category ? <span className={styles.cardCategory}>{category}</span> : <span />}
           {badge ? <span className={styles.tag}>{badge}</span> : null}
         </div>
-        <h3>{product.name}</h3>
+        <h3><Link className={styles.cardTitleLink} href={productHref}>{product.name}</Link></h3>
         {product.shortDescription ? <p className={styles.cardDescription}>{product.shortDescription}</p> : null}
         <div className={styles.priceStack}>
           <strong className={styles.price}>{formatNprOrPending(product.priceNpr)}</strong>
@@ -151,8 +153,13 @@ function ProductCardItem({ product }: { product: ProductCard }) {
           {productAvailabilityCopy(product.stockQuantity, product.lowStockThreshold)}
         </p>
         <div className={styles.cardActions}>
-          <Link href={`/products/${encodeURIComponent(product.slug ?? "")}`}>View product</Link>
-          <AddToCartButton className="" productSlug={product.slug ?? ""} stockQuantity={product.stockQuantity} />
+          {unavailable ? (
+            <button className={styles.buyNowButton} disabled type="button">Buy now</button>
+          ) : (
+            <Link className={styles.buyNowButton} href={buyNowHref}>Buy now</Link>
+          )}
+          <AddToCartButton className={styles.addToCartButton} productSlug={productSlug} stockQuantity={product.stockQuantity} />
+          <Link className={styles.viewDetailsLink} href={productHref}>View details <span aria-hidden="true">→</span></Link>
         </div>
       </div>
     </article>
