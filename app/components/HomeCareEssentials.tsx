@@ -5,7 +5,6 @@ import { ArrowUpRight } from "./SiteChrome";
 import { formatNprOrPending } from "@/lib/money";
 import { HOMEPAGE_PRODUCT_LIMIT } from "@/lib/product-home";
 import type { ProductCard } from "@/lib/product-types";
-import { productBadgeLabel } from "./product-presentation";
 import styles from "./HomeCareEssentials.module.css";
 
 export default function HomeCareEssentials({ products }: { products: ProductCard[] }) {
@@ -20,18 +19,18 @@ export default function HomeCareEssentials({ products }: { products: ProductCard
   if (!visibleProducts.length) return null;
 
   return (
-    <section aria-labelledby="care-essentials-heading" className={`${styles.section} sd-section`} data-reveal>
+    <section aria-labelledby="care-essentials-heading" className={styles.section}>
       <div className={styles.heading}>
         <div>
-          <p className="sd-kicker">The care cabinet</p>
-          <h2 id="care-essentials-heading">SHOE DOCTOR<br /><span>CARE ESSENTIALS.</span></h2>
+          <h2 id="care-essentials-heading">Shoe Doctor Care Essentials</h2>
         </div>
-        <p>Care products selected by Shoe Doctor for thoughtful cleaning, protection and everyday shoe maintenance.</p>
+        <Link className={styles.allProducts} href="/products">
+          View all products <ArrowUpRight />
+        </Link>
       </div>
 
       <div className={styles.grid}>
         {visibleProducts.map((product) => {
-          const badge = productBadgeLabel(product.badge);
           return (
             <article className={styles.card} key={product.slug}>
               <Link aria-label={`View ${product.name}`} className={styles.imageLink} href={`/products/${encodeURIComponent(product.slug)}`}>
@@ -40,18 +39,11 @@ export default function HomeCareEssentials({ products }: { products: ProductCard
                 ) : <span aria-hidden="true" className={styles.imageMissing} />}
               </Link>
               <div className={styles.cardBody}>
-                <div className={styles.cardLabels}>
-                  <span className={styles.genuine}>Genuine product</span>
-                  {badge ? <span className={styles.pick}>{badge}</span> : null}
-                </div>
                 <h3>{product.name}</h3>
-                <p className={styles.benefit}>{product.shortDescription}</p>
                 <div className={styles.cardFooter}>
                   <div>
                     <strong>{formatNprOrPending(product.priceNpr)}</strong>
-                    <span className={product.isOutOfStock ? styles.unavailable : product.isLowStock ? styles.limited : undefined}>
-                      {product.isOutOfStock ? "Currently unavailable" : product.isLowStock ? "Limited stock" : "In stock"}
-                    </span>
+                    {product.isLowStock ? <span className={styles.limited}>Limited availability</span> : null}
                   </div>
                   <Link href={`/products/${encodeURIComponent(product.slug)}`}>View product <ArrowUpRight /></Link>
                 </div>
@@ -60,8 +52,6 @@ export default function HomeCareEssentials({ products }: { products: ProductCard
           );
         })}
       </div>
-
-      <Link className={styles.allProducts} href="/products">View all care essentials <ArrowUpRight /></Link>
     </section>
   );
 }

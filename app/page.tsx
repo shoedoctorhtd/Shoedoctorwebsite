@@ -1,20 +1,14 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
+
 import type { Metadata } from "next";
-import { Fragment } from "react";
 import BookingForm from "./components/BookingForm";
 import HomeCareEssentials from "./components/HomeCareEssentials";
 import bookingStyles from "./components/BookingExperience.module.css";
-import HeroCleaningVisual from "./components/HeroCleaningVisual";
-import SiteMotion from "./components/SiteMotion";
-import SteamBrushHomeSection from "./components/SteamBrushHomeSection";
-import {
-  ArrowUpRight,
-  SiteFooter,
-  SiteHeader,
-} from "./components/SiteChrome";
-import { listPublicServices } from "@/lib/data";
-import { formatNprPriceLabel } from "@/lib/money";
+import { ArrowUpRight, SiteFooter, SiteHeader } from "./components/SiteChrome";
+import styles from "./HomePage.module.css";
+import { listPublicServices, type Service } from "@/lib/data";
 import { listHomepageProducts } from "@/lib/product-data";
+import { STEAM_ASSISTED_DEEP_CLEAN_ID } from "@/lib/steam-cleaning";
 
 export const dynamic = "force-dynamic";
 
@@ -27,115 +21,49 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-const steps = [
-  ["Choose care", "Pick the cleaning, repair or restoration your pair needs."],
-  ["Send details", "Tell us the material, condition and preferred date."],
-  ["We diagnose", "We confirm the treatment, turnaround and final price."],
-  ["Get it back", "Self collect or choose pickup and delivery where available."],
+const HOME_SERVICE_IDS = [
+  "basic-clean",
+  "deep-clean",
+  STEAM_ASSISTED_DEEP_CLEAN_ID,
+  "full-restoration",
 ];
 
-type TreatmentGraphic = "diagnose" | "clean" | "restore";
+function selectHomepageServices(services: Service[]) {
+  const selected = HOME_SERVICE_IDS
+    .map((id) => services.find((service) => service.id === id))
+    .filter((service): service is Service => Boolean(service));
+  const selectedIds = new Set(selected.map((service) => service.id));
 
-const treatmentPlans: Array<{
-  number: string;
-  name: string;
-  copy: string;
-  keywords: string[];
-  tone: TreatmentGraphic;
-  ariaLabel: string;
-}> = [
-  {
-    number: "01",
-    name: "Diagnose",
-    copy:
-      "We inspect the material, construction, stains and damage before deciding the safest treatment for your pair.",
-    keywords: ["Material", "Condition", "Damage", "Treatment plan"],
-    tone: "diagnose",
-    ariaLabel: "Learn about Shoe Doctor diagnosis",
-  },
-  {
-    number: "02",
-    name: "Clean",
-    copy:
-      "Material-specific cleaning for the upper, sole, interior, laces, stains and odour—with steam-assisted care where suitable.",
-    keywords: ["Surface", "Interior", "Stains", "Deodorizing"],
-    tone: "clean",
-    ariaLabel: "Learn about shoe cleaning",
-  },
-  {
-    number: "03",
-    name: "Restore",
-    copy:
-      "Repair, re-gluing, stitching, sole care, whitening, crease reduction and colour restoration to extend the life of your pair.",
-    keywords: ["Repair", "Recolour", "Reshape", "Protect"],
-    tone: "restore",
-    ariaLabel: "Learn about shoe restoration",
-  },
-];
-
-function TreatmentPlanGraphic({ type }: { type: TreatmentGraphic }) {
-  if (type === "diagnose") {
-    return (
-      <svg
-        aria-hidden="true"
-        className="sd-treatment-plan__graphic sd-treatment-plan__graphic--diagnose"
-        fill="none"
-        focusable="false"
-        viewBox="0 0 240 150"
-      >
-        <path
-          className="sd-treatment-plan__graphic-shoe"
-          d="M24 103c14-3 26-10 37-23l18-29 24 18c13 10 29 17 48 22l28 7c11 3 17 9 17 18H24v-13Z"
-        />
-        <path className="sd-treatment-plan__graphic-sole" d="M24 116h172c7 0 12 5 12 10H24v-10Z" />
-        <path className="sd-treatment-plan__graphic-scan" d="M42 44h68M37 61h74M118 40v42" />
-        <circle className="sd-treatment-plan__graphic-lens" cx="153" cy="55" r="23" />
-        <path className="sd-treatment-plan__graphic-handle" d="m170 72 25 25" />
-        <circle className="sd-treatment-plan__graphic-marker" cx="98" cy="91" r="4" />
-      </svg>
-    );
+  for (const service of services) {
+    if (selected.length >= 4) break;
+    if (!selectedIds.has(service.id)) {
+      selected.push(service);
+      selectedIds.add(service.id);
+    }
   }
 
-  if (type === "clean") {
-    return (
-      <svg
-        aria-hidden="true"
-        className="sd-treatment-plan__graphic sd-treatment-plan__graphic--clean"
-        fill="none"
-        focusable="false"
-        viewBox="0 0 240 150"
-      >
-        <path
-          className="sd-treatment-plan__graphic-shoe"
-          d="M24 103c14-3 26-10 37-23l18-29 24 18c13 10 29 17 48 22l28 7c11 3 17 9 17 18H24v-13Z"
-        />
-        <path className="sd-treatment-plan__graphic-sole" d="M24 116h172c7 0 12 5 12 10H24v-10Z" />
-        <path className="sd-treatment-plan__graphic-sweep" d="M31 82c41-30 85-32 149-2" />
-        <path className="sd-treatment-plan__graphic-steam" d="M53 39c-7 9-7 18 0 27M70 30c-7 10-7 20 0 31M88 37c-6 9-6 17 0 25" />
-        <path className="sd-treatment-plan__graphic-brush" d="M160 46l23 26m-16-34 24 26m-7-34 22 25" />
-      </svg>
-    );
-  }
+  return selected;
+}
 
-  return (
-    <svg
-      aria-hidden="true"
-      className="sd-treatment-plan__graphic sd-treatment-plan__graphic--restore"
-      fill="none"
-      focusable="false"
-      viewBox="0 0 240 150"
-    >
-      <path
-        className="sd-treatment-plan__graphic-shoe"
-        d="M24 103c14-3 26-10 37-23l18-29 24 18c13 10 29 17 48 22l28 7c11 3 17 9 17 18H24v-13Z"
-      />
-      <path className="sd-treatment-plan__graphic-sole" d="M24 116h172c7 0 12 5 12 10H24v-10Z" />
-      <path className="sd-treatment-plan__graphic-split" d="M117 47v68" />
-      <path className="sd-treatment-plan__graphic-stitch" d="M129 72c14 4 29 3 43-3" />
-      <path className="sd-treatment-plan__graphic-repair" d="M148 96c18-3 29-10 39-22" />
-      <path className="sd-treatment-plan__graphic-shine" d="m76 50 4 9 9 4-9 4-4 9-4-9-9-4 9-4 4-9Z" />
-    </svg>
-  );
+function localBrandOffers(services: Service[]) {
+  return services
+    .filter(
+      (service) =>
+        service.specialPriceLabel
+        && /made[- ]in[- ]nepal|nepali|local/iu.test(service.specialPriceLabel),
+    )
+    .slice(0, 3)
+    .map((service) => `${service.name}: ${service.specialPriceLabel}`);
+}
+
+function serviceAction(service: Service) {
+  if (service.id === STEAM_ASSISTED_DEEP_CLEAN_ID) {
+    return { href: "/steam-cleaning", label: "Explore Steam Cleaning" };
+  }
+  return {
+    href: `/?service=${encodeURIComponent(service.id)}#book`,
+    label: "Book this service",
+  };
 }
 
 export default async function Home({
@@ -153,345 +81,173 @@ export default async function Home({
   )
     ? params.service
     : services[0]?.id;
-  const marqueeServiceIds = [
-    "basic-clean",
-    "deep-clean",
-    "steam-assisted-deep-clean",
-    "express-wash-dry",
-    "full-restoration",
-  ];
-  const marqueeServices = marqueeServiceIds
-    .map((serviceId) => services.find((service) => service.id === serviceId))
-    .filter((service): service is (typeof services)[number] => Boolean(service));
+  const featuredServices = selectHomepageServices(services);
+  const offers = localBrandOffers(services);
   const publicWhatsAppUrl = "https://wa.me/9779761716743";
 
   return (
     <main id="main-content" className="public-site">
-      <SiteMotion />
       <SiteHeader />
 
-      <section className="sd-hero" id="top">
-        <div className="sd-hero-copy">
-          <p className="sd-eyebrow">
-            <span />
-            Care for every step
-          </p>
+      <section className={styles.hero} id="top">
+        <div className={styles.heroCopy}>
           <h1>
             YOUR PAIR,
-            <span>
-              BACK TO <em>LIFE.</em>
-            </span>
+            <span>BACK TO <em>LIFE.</em></span>
           </h1>
-          <p className="sd-hero-intro">
-            Professional cleaning, repair and restoration for the shoes that
-            carry your story.
+          <p>
+            Thoughtful cleaning, repair and restoration for the shoes that carry
+            your story.
           </p>
-          <div className="sd-hero-actions">
+          <div className={styles.heroActions}>
             <a className="sd-primary-button" href="/#book">
               Book your pair <ArrowUpRight />
             </a>
-            <a className="sd-play-link" href="/services">
-              <i>→</i>
-              Explore every service
+            <a className={styles.secondaryAction} href="#services-overview">
+              Explore services <span aria-hidden="true">→</span>
             </a>
           </div>
         </div>
 
-        <div className="sd-hero-visual" data-tilt>
-          <div className="sd-hero-glow" />
-          <div className="sd-orbit sd-orbit-one">
-            <span className="sd-orbit-label orbit-label-diagnose">
-              DIAGNOSE
-            </span>
-          </div>
-          <div className="sd-orbit sd-orbit-two">
-            <span className="sd-orbit-label orbit-label-clean">CLEAN</span>
-          </div>
-          <div className="sd-orbit sd-orbit-three">
-            <span className="sd-orbit-label orbit-label-restore">RESTORE</span>
-          </div>
-          <HeroCleaningVisual />
-          <div className="hero-cleaning-foam" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
-          <div className="hero-foam-cluster" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-            <i />
-            <i />
-            <i />
-            <i />
-            <i />
-            <i />
-          </div>
-          <div className="hero-clean-sparkles" aria-hidden="true">
-            <span>✦</span>
-            <span>✦</span>
-            <span>✦</span>
-          </div>
-          <div className="hero-cleaning-brush" aria-hidden="true">
-            <span className="hero-brush-wood">
-              <i />
-              <i />
-              <i />
-              <i />
-              <i />
-              <i />
-              <i />
-              <i />
-              <i />
-              <i />
-            </span>
-          </div>
-          <div className="hero-foam-bottle" aria-hidden="true">
-            <span className="hero-foam-bottle__pump" />
-            <span className="hero-foam-bottle__neck" />
-            <span className="hero-foam-bottle__body" />
-          </div>
-          <div className="hero-foam-spray" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-            <i />
-            <i />
-          </div>
-          <div className="hero-microfibre-towel" aria-hidden="true">
-            <span />
-          </div>
-          <div className="sd-hero-stat">
-            <strong>2–3 hrs</strong>
-            <span>Express wash & dry</span>
-          </div>
+        <div className={styles.heroVisual}>
+          <picture>
+            <source
+              sizes="(max-width: 760px) 100vw, (max-width: 1024px) 48vw, 640px"
+              srcSet="/hero-cleaning-sneaker-640.avif 640w, /hero-cleaning-sneaker-1024.avif 1024w, /hero-cleaning-sneaker-1536.avif 1536w"
+              type="image/avif"
+            />
+            <source
+              sizes="(max-width: 760px) 100vw, (max-width: 1024px) 48vw, 640px"
+              srcSet="/hero-cleaning-sneaker-640.webp 640w, /hero-cleaning-sneaker-1024.webp 1024w, /hero-cleaning-sneaker-1536.webp 1536w"
+              type="image/webp"
+            />
+            <img
+              alt="A clean, restored white and navy high-top sneaker"
+              className={styles.heroShoe}
+              decoding="async"
+              fetchPriority="high"
+              height="1024"
+              loading="eager"
+              sizes="(max-width: 760px) 100vw, (max-width: 1024px) 48vw, 640px"
+              src="/hero-cleaning-sneaker-1536.webp"
+              srcSet="/hero-cleaning-sneaker-640.webp 640w, /hero-cleaning-sneaker-1024.webp 1024w, /hero-cleaning-sneaker-1536.webp 1536w"
+              width="1536"
+            />
+          </picture>
         </div>
-
-        <div className="sd-hero-edge-copy" aria-hidden="true">
-          WE DIAGNOSE · WE CLEAN · WE RESTORE ·
-        </div>
-      </section>
-
-      <section className="sd-marquee" aria-label="Current service prices">
-        <div>
-          {[...marqueeServices, ...marqueeServices].map((service, index) => (
-            <Fragment key={`${service.id}-${index}`}>
-              <span>
-                {service.name.toUpperCase()} · {formatNprPriceLabel(service.priceLabel).toUpperCase()}
-              </span>
-              <i>✦</i>
-            </Fragment>
-          ))}
-        </div>
-      </section>
-
-      <SteamBrushHomeSection />
-
-      <section
-        aria-labelledby="treatment-plan-heading"
-        className="sd-home-services sd-section"
-        data-reveal
-        id="what-we-treat"
-      >
-        <div className="sd-treatment-plan__heading">
-          <p className="sd-kicker sd-treatment-plan__kicker">What we treat</p>
-          <h2 id="treatment-plan-heading">
-            <span className="sd-treatment-plan__headline-strong">
-              EVERY PAIR GETS
-            </span>
-            <span className="sd-treatment-plan__headline-accent">
-              A PROPER PLAN.
-            </span>
-          </h2>
-          <div className="sd-treatment-plan__supporting-copy">
-            <p>
-              We inspect the material, condition and damage before recommending
-              treatment. That means honest expectations and the right care
-              instead of a one-method-fits-all wash.
-            </p>
-            <a href="/services">
-              View our services <ArrowUpRight />
-            </a>
-          </div>
-        </div>
-
-        <div className="sd-treatment-plan__process">
-          <span className="sd-treatment-plan__process-line" aria-hidden="true" />
-          <ol className="sd-treatment-plan__cards" aria-label="Treatment process">
-            {treatmentPlans.map((item) => (
-              <li key={item.name}>
-                <a
-                  aria-label={item.ariaLabel}
-                  className={`sd-treatment-plan__card sd-treatment-plan__card--${item.tone}`}
-                  href="/services"
-                >
-                  <span className="sd-treatment-plan__card-number">
-                    {item.number}
-                  </span>
-                  <TreatmentPlanGraphic type={item.tone} />
-                  <div className="sd-treatment-plan__card-copy">
-                    <h3>{item.name}</h3>
-                    <p>{item.copy}</p>
-                  </div>
-                  <ul aria-label={`${item.name} treatment focus`}>
-                    {item.keywords.map((keyword) => (
-                      <li key={keyword}>{keyword}</li>
-                    ))}
-                  </ul>
-                  <span className="sd-treatment-plan__card-arrow" aria-hidden="true">
-                    <ArrowUpRight />
-                  </span>
-                </a>
-              </li>
-            ))}
-          </ol>
-        </div>
-
-        <p className="sd-treatment-plan__promise">
-          WE DIAGNOSE. WE CLEAN. WE RESTORE.
-        </p>
       </section>
 
       <HomeCareEssentials products={homepageProducts} />
 
-      <section className="sd-wash-lab sd-section" data-reveal>
-        <div className="sd-wash-copy">
-          <p className="sd-kicker">Inside the wash lab</p>
-          <h2>
-            SCRUB. RINSE.
-            <br />
-            <span>REVIVE.</span>
+      <section
+        aria-labelledby="services-overview-heading"
+        className={styles.services}
+        id="services-overview"
+      >
+        <header className={styles.sectionHeading}>
+          <div>
+            <p>Services</p>
+            <h2 id="services-overview-heading">Care that fits the pair.</h2>
+          </div>
+          <a href="/services">
+            View all services <ArrowUpRight />
+          </a>
+        </header>
+
+        {featuredServices.length ? (
+          <div className={styles.serviceGrid}>
+            {featuredServices.map((service) => {
+              const action = serviceAction(service);
+              const isSteam = service.id === STEAM_ASSISTED_DEEP_CLEAN_ID;
+              return (
+                <article className={styles.serviceCard} key={service.id}>
+                  <div className={styles.serviceMeta}>
+                    <span>{service.category}</span>
+                    {isSteam ? <span className={styles.newBadge}>New</span> : null}
+                  </div>
+                  <h3>{service.name}</h3>
+                  <p>{service.description}</p>
+                  {isSteam ? (
+                    <p className={styles.steamNote}>
+                      Steam is used only after material, adhesive and construction
+                      are checked.
+                    </p>
+                  ) : null}
+                  <div className={styles.serviceFooter}>
+                    <div>
+                      <strong>{service.priceLabel}</strong>
+                      {service.specialPriceLabel ? (
+                        <span>{service.specialPriceLabel}</span>
+                      ) : null}
+                    </div>
+                    <a href={action.href}>
+                      {action.label} <ArrowUpRight />
+                    </a>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : null}
+      </section>
+
+      {offers.length ? (
+        <section aria-labelledby="local-offer-heading" className={styles.localOffer}>
+          <div>
+            <p>Local-brand offer</p>
+            <h2 id="local-offer-heading">WEAR LOCAL. SAVE LOCAL.</h2>
+          </div>
+          <p>
+            For verified Nepali-brand footwear: {offers.join(" · ")}. We confirm
+            eligibility before work begins.
+          </p>
+          <a href="/#book">
+            Ask about eligibility <ArrowUpRight />
+          </a>
+        </section>
+      ) : null}
+
+      <section aria-labelledby="booking-process-heading" className={styles.process}>
+        <p>How it works</p>
+        <div>
+          <h2 id="booking-process-heading">
+            Book <span aria-hidden="true">→</span> We confirm and care{" "}
+            <span aria-hidden="true">→</span> Collect or receive
           </h2>
           <p>
-            Deep care is more than soap and water. We use material-safe
-            treatment, controlled brushing and careful drying to clean the pair
-            without damaging its shape, colour or construction.
+            We check the pair, confirm the suitable treatment and keep you updated
+            before any work begins.
           </p>
-          <a href="/services">
-            See cleaning treatments <ArrowUpRight />
-          </a>
         </div>
-
-        <div
-          className="sd-wash-stage"
-          role="img"
-          aria-label="Animated basketball sneaker being carefully scrubbed with foam"
-        >
-          <div className="wash-water-ring ring-one" />
-          <div className="wash-water-ring ring-two" />
-          <div className="wash-splash splash-one">✦</div>
-          <div className="wash-splash splash-two">✦</div>
-          <div className="wash-foam" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
-          <picture>
-            <source
-              media="(max-width: 640px)"
-              srcSet="/loader-basketball-sneaker-mobile.webp"
-              type="image/webp"
-            />
-            <source
-              media="(max-width: 1024px)"
-              srcSet="/loader-basketball-sneaker-tablet.webp"
-              type="image/webp"
-            />
-            <img
-              alt=""
-              aria-hidden="true"
-              className="wash-shoe"
-              decoding="async"
-              height="1024"
-              loading="lazy"
-              src="/loader-basketball-sneaker.png"
-              width="1536"
-            />
-          </picture>
-          <div className="wash-brush" aria-hidden="true">
-            <span className="brush-handle" />
-            <span className="brush-head">
-              <i />
-              <i />
-              <i />
-              <i />
-              <i />
-            </span>
-          </div>
-
-        </div>
-      </section>
-
-      <section className="sd-local-banner" data-reveal>
-        <div>
-          <span>Made-in-Nepal footwear gets special care</span>
-          <h2>WEAR LOCAL.<br />SAVE LOCAL.</h2>
-        </div>
-        <p>
-          Get Rs 50 off Basic Clean, Deep Clean and Premium Care for verified
-          Nepali-brand footwear.
-        </p>
-        <a href="/#book">
-          Claim your local-brand price <ArrowUpRight />
-        </a>
-      </section>
-
-      <section className="sd-process sd-section" data-reveal>
-        <div className="sd-process-title">
-          <p className="sd-kicker">Simple from start to finish</p>
-          <h2>
-            FOUR STEPS.
-            <br />
-            <span>ONE FRESH PAIR.</span>
-          </h2>
-        </div>
-        <div className="sd-step-list">
-          {steps.map(([name, description], index) => (
-            <article key={name}>
-              <span>0{index + 1}</span>
-              <div>
-                <h3>{name}</h3>
-                <p>{description}</p>
-              </div>
-              <i>↘</i>
-            </article>
-          ))}
-        </div>
+        <a href="/#book">Book your pair <ArrowUpRight /></a>
       </section>
 
       <section
         aria-labelledby="booking-intro-heading"
         className={bookingStyles.bookingSection}
       >
-        <aside className={bookingStyles.infoPanel} data-reveal>
+        <aside className={bookingStyles.infoPanel}>
           <p className={bookingStyles.introKicker}>Booking your pair</p>
           <h2 className={bookingStyles.infoTitle} id="booking-intro-heading">
-            START THE
+            BOOK YOUR
             <br />
-            <span className={bookingStyles.infoAccent}>COMEBACK.</span>
+            <span className={bookingStyles.infoAccent}>PAIR.</span>
           </h2>
           <p className={bookingStyles.introCopy}>
-            No payment now. Send your request and we&apos;ll call or message after
-            reviewing the service and footwear condition.
+            No payment is required to send a service booking request. We confirm
+            the treatment and final price with you before work begins.
           </p>
-
-          <ul className={bookingStyles.trustList}>
-            <li>No payment required now</li>
-            <li>Final price confirmed before work</li>
-            <li>All footwear types welcome</li>
-            <li>Booking reference provided instantly</li>
-          </ul>
+          <div className={bookingStyles.helpBlock}>
+            <p>Unsure what your shoes need? Send us a photo on WhatsApp.</p>
+            <a
+              className={bookingStyles.whatsappLink}
+              href={publicWhatsAppUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              WhatsApp the Doctor <ArrowUpRight />
+            </a>
+          </div>
         </aside>
         <BookingForm
           key={requestedService}
@@ -499,17 +255,6 @@ export default async function Home({
           initialServiceId={requestedService}
           whatsappUrl={publicWhatsAppUrl}
         />
-      </section>
-
-      <section className="sd-home-cta" data-reveal>
-        <p>Not sure what your pair needs?</p>
-        <h2>LET THE DOCTOR<br />DIAGNOSE IT.</h2>
-        <div>
-          <a className="sd-primary-button" href="/contact">
-            Contact us <ArrowUpRight />
-          </a>
-          <a href="https://wa.me/9779761716743">WhatsApp: 9761716743 ↗</a>
-        </div>
       </section>
 
       <SiteFooter />
