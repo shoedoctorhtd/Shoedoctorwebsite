@@ -4,113 +4,85 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  PRODUCT_CATEGORIES,
-  type ProductCard,
-  type ProductCategory,
-} from "@/lib/product-types";
+import type { ProductCard, ProductCategory } from "@/lib/product-types";
 import { formatNprOrPending } from "@/lib/money";
 import { AddToCartButton } from "./ProductCart";
 import {
-  PRODUCT_CATEGORY_LABELS,
   productAvailabilityCopy,
   productBadgeLabel,
   productCategoryLabel,
 } from "./product-presentation";
 import styles from "./ProductShop.module.css";
 
-type CareGuide = {
+type ShopFilter = {
+  id: "all" | "clean" | "protect" | "restore";
   label: string;
-  category: ProductCategory;
+  categories?: readonly ProductCategory[];
 };
 
-const careGuides: CareGuide[] = [
-  { label: "Sneakers", category: "quick_clean" },
-  { label: "Suede / Nubuck", category: "suede_nubuck" },
-  { label: "White Shoes", category: "restoration" },
-  { label: "Leather", category: "protection" },
-  { label: "Sports Shoes", category: "cleaning_kits" },
-  { label: "Rain Protection", category: "protection" },
-  { label: "Storage", category: "storage" },
+const SHOP_FILTERS: readonly ShopFilter[] = [
+  { id: "all", label: "All" },
+  { id: "clean", label: "Clean", categories: ["quick_clean", "cleaning_kits", "suede_nubuck"] },
+  { id: "protect", label: "Protect", categories: ["protection", "storage", "accessories"] },
+  { id: "restore", label: "Restore", categories: ["restoration"] },
 ];
 
+function matchesShopFilter(product: ProductCard, filterId: ShopFilter["id"]) {
+  const filter = SHOP_FILTERS.find((item) => item.id === filterId);
+  if (!filter?.categories) return true;
+  return product.category !== null && filter.categories.includes(product.category);
+}
+
+function compactDescription(description: string | null) {
+  if (!description) return null;
+  const compact = description.replace(/\s+/gu, " ").trim();
+  return compact.length > 96 ? `${compact.slice(0, 93).trimEnd()}…` : compact;
+}
+
 export default function ProductCatalogue({ products }: { products: ProductCard[] }) {
-  const [selectedCategory, setSelectedCategory] = useState<ProductCategory | null>(null);
-  const availableCategories = useMemo(() => {
-    const categories = new Set(products.flatMap((product) => product.category ? [product.category] : []));
-    return PRODUCT_CATEGORIES.filter((category) => categories.has(category));
-  }, [products]);
-  const visibleProducts = selectedCategory
-    ? products.filter((product) => product.category === selectedCategory)
-    : products;
-  const availableCareGuides = careGuides.filter((guide) => availableCategories.includes(guide.category));
+  const [selectedFilter, setSelectedFilter] = useState<ShopFilter["id"]>("all");
+  const visibleProducts = useMemo(
+    () => products.filter((product) => matchesShopFilter(product, selectedFilter)),
+    [products, selectedFilter],
+  );
+  const selectedFilterLabel = SHOP_FILTERS.find((filter) => filter.id === selectedFilter)?.label ?? "All";
 
   if (!products.length) {
     return (
       <section className={styles.empty} aria-labelledby="products-empty-title">
         <p className="sd-kicker">Shoe Doctor shop</p>
-        <h2 id="products-empty-title">NEW CARE ESSENTIALS ARE BEING PREPARED.</h2>
-        <p>
-          Need help with your shoes in the meantime? Book professional care
-          with Shoe Doctor.
-        </p>
-        <Link className="sd-primary-button" href="/#book">Book shoe care</Link>
+        <h2 id="products-empty-title">CARE ESSENTIALS ARE ON THE WAY.</h2>
+        <p>Need help with your shoes in the meantime? Book professional care with Shoe Doctor.</p>
+        <Link className="sd-primary-button" href="/#book">Book professional care</Link>
       </section>
     );
   }
 
   return (
     <>
-      {availableCategories.length > 1 ? (
-        <nav className={styles.categoryFilters} aria-label="Filter care products by category">
+      <nav className={styles.categoryFilters} aria-label="Filter care products by category">
+        {SHOP_FILTERS.map((filter) => (
           <button
-            aria-pressed={selectedCategory === null}
-            className={selectedCategory === null ? styles.categoryFilterActive : ""}
-            onClick={() => setSelectedCategory(null)}
+            aria-pressed={selectedFilter === filter.id}
+            className={selectedFilter === filter.id ? styles.categoryFilterActive : ""}
+            key={filter.id}
+            onClick={() => setSelectedFilter(filter.id)}
             type="button"
           >
-            All
+            {filter.label}
           </button>
-          {availableCategories.map((category) => (
-            <button
-              aria-pressed={selectedCategory === category}
-              className={selectedCategory === category ? styles.categoryFilterActive : ""}
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              type="button"
-            >
-              {PRODUCT_CATEGORY_LABELS[category]}
-            </button>
-          ))}
-        </nav>
-      ) : null}
+        ))}
+      </nav>
 
-      <div className={`${styles.grid} ${visibleProducts.length === 1 ? styles.gridSingle : ""}`}>
-        {visibleProducts.map((product) => <ProductCardItem key={product.slug ?? product.name} product={product} />)}
-      </div>
-
-      <section className={styles.careMatcher} aria-labelledby="care-matcher-title">
-        <div>
-          <p className="sd-kicker">Not sure what your shoes need?</p>
-          <h2 id="care-matcher-title">START WITH THE RIGHT KIND OF CARE.</h2>
-          <p>
-            Tell us what you are treating and we&apos;ll help you find the right
-            care essential. More Shoe Doctor care essentials are coming soon.
-          </p>
+      {visibleProducts.length ? (
+        <div className={`${styles.grid} ${visibleProducts.length === 1 ? styles.gridSingle : ""}`}>
+          {visibleProducts.map((product) => <ProductCardItem key={product.slug ?? product.name} product={product} />)}
         </div>
-        {availableCareGuides.length ? (
-          <div className={styles.careMatcherActions}>
-            {availableCareGuides.map((guide) => (
-              <button key={guide.label} onClick={() => setSelectedCategory(guide.category)} type="button">
-                {guide.label}<span>{PRODUCT_CATEGORY_LABELS[guide.category]}</span>
-              </button>
-            ))}
-            <Link href="/#book">Need professional help? Book Shoe Doctor →</Link>
-          </div>
-        ) : (
-          <Link className="sd-primary-button" href="/#book">Book professional shoe care</Link>
-        )}
-      </section>
+      ) : (
+        <p className={styles.filterEmpty} role="status">
+          No {selectedFilterLabel.toLowerCase()} care essentials are available right now. Please check back soon.
+        </p>
+      )}
     </>
   );
 }
@@ -121,10 +93,11 @@ function ProductCardItem({ product }: { product: ProductCard }) {
   const category = productCategoryLabel(product.category);
   const productSlug = product.slug ?? "";
   const productHref = `/products/${encodeURIComponent(productSlug)}`;
-  const buyNowHref = `/checkout?mode=buy-now&product=${encodeURIComponent(productSlug)}&quantity=1`;
   const hasCompareAtPrice = product.compareAtPriceNpr !== null
     && product.priceNpr !== null
     && product.compareAtPriceNpr > product.priceNpr;
+  const description = compactDescription(product.shortDescription);
+
   return (
     <article className={styles.card}>
       <Link aria-label={`View ${product.name}`} className={styles.cardImageLink} href={productHref}>
@@ -137,29 +110,22 @@ function ProductCardItem({ product }: { product: ProductCard }) {
             src={product.primaryImage.url}
           />
         ) : <span className={styles.cardImageMissing} aria-hidden="true" />}
+        {badge ? <span className={styles.tag}>{badge}</span> : null}
       </Link>
       <div className={styles.cardBody}>
-        <div className={styles.cardMeta}>
-          {category ? <span className={styles.cardCategory}>{category}</span> : <span />}
-          {badge ? <span className={styles.tag}>{badge}</span> : null}
-        </div>
+        {category ? <span className={styles.cardCategory}>{category}</span> : null}
         <h3><Link className={styles.cardTitleLink} href={productHref}>{product.name}</Link></h3>
-        {product.shortDescription ? <p className={styles.cardDescription}>{product.shortDescription}</p> : null}
         <div className={styles.priceStack}>
           <strong className={styles.price}>{formatNprOrPending(product.priceNpr)}</strong>
           {hasCompareAtPrice ? <span className={styles.comparePrice}>Was {formatNprOrPending(product.compareAtPriceNpr)}</span> : null}
         </div>
+        {description ? <p className={styles.cardDescription}>{description}</p> : null}
         <p className={`${styles.availability} ${unavailable ? styles.availabilityOut : ""}`}>
           {productAvailabilityCopy(product.stockQuantity, product.lowStockThreshold)}
         </p>
         <div className={styles.cardActions}>
-          {unavailable ? (
-            <button className={styles.buyNowButton} disabled type="button">Buy now</button>
-          ) : (
-            <Link className={styles.buyNowButton} href={buyNowHref}>Buy now</Link>
-          )}
-          <AddToCartButton className={styles.addToCartButton} productSlug={productSlug} stockQuantity={product.stockQuantity} />
-          <Link className={styles.viewDetailsLink} href={productHref}>View details <span aria-hidden="true">→</span></Link>
+          <AddToCartButton className={`${styles.addToCartButton} ${styles.cardAddToCartButton}`} productSlug={productSlug} stockQuantity={product.stockQuantity} />
+          <Link className={styles.viewProductButton} href={productHref}>View Product</Link>
         </div>
       </div>
     </article>

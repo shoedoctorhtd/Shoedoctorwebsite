@@ -810,3 +810,42 @@ test("public and admin routes enforce the catalogue, image-access, SEO, header, 
     "admin_product_permissions",
   ]) assert.match(migration, new RegExp(required));
 });
+
+test("public storefront uses the shared Shoe Doctor treatment and keeps purchase paths intact", async () => {
+  const [productsPage, catalogue, shopStyles, trustStrip, professionalCta, detailPurchase, cartPage, checkoutPage] = await Promise.all([
+    readFile(new URL("../app/products/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/ProductCatalogue.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/ProductShop.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/ProductTrustStrip.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/ProfessionalCleaningCTA.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/ProductDetailPurchase.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/cart/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/checkout/page.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(productsPage, /Shoe Doctor Care Essentials/);
+  assert.match(productsPage, /Everyday care, chosen by Shoe Doctor/);
+  assert.doesNotMatch(productsPage, /SHOP ESSENTIALS/);
+  assert.match(catalogue, /const SHOP_FILTERS/);
+  for (const label of ["All", "Clean", "Protect", "Restore"]) {
+    assert.match(catalogue, new RegExp(`label: "${label}"`));
+  }
+  assert.match(catalogue, /compactDescription/);
+  assert.match(catalogue, /AddToCartButton/);
+  assert.match(catalogue, /cardAddToCartButton/);
+  assert.match(catalogue, /View Product/);
+  assert.doesNotMatch(catalogue, /buyNowHref/);
+  assert.match(detailPurchase, /mode=buy-now/);
+  assert.match(trustStrip, /QR Payment/);
+  assert.match(trustStrip, /Cash on Delivery/);
+  assert.match(trustStrip, /Delivery where available/);
+  assert.match(professionalCta, /Home care isn&apos;t enough/);
+  assert.match(professionalCta, /Book professional care/);
+  assert.match(cartPage, /YOUR CARE CART/);
+  assert.match(checkoutPage, /YOUR ORDER/);
+  assert.match(shopStyles, /var\(--berry\)/);
+  assert.match(shopStyles, /var\(--blush\)/);
+  assert.match(shopStyles, /@media \(max-width: 680px\)[\s\S]*?\.categoryFilters/);
+  assert.match(shopStyles, /\.grid[\s\S]*?grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(shopStyles, /@media \(max-width: 980px\)[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+});

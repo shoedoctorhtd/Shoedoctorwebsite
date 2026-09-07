@@ -29,17 +29,13 @@ export default async function ProductsPage() {
         <SiteHeader />
         <section className={styles.storeHeader} aria-labelledby="products-page-title">
           <div>
-            <p className="sd-kicker">Shoe Doctor shop</p>
             <h1 id="products-page-title">Shoe Doctor Care Essentials</h1>
-            <p>Professional shoe-care products selected by Shoe Doctor.</p>
+            <p>Everyday care, chosen by Shoe Doctor for cleaner, longer-lasting pairs.</p>
           </div>
           <CartHeaderLink className={styles.storeCartLink} />
         </section>
         <section className={styles.catalogue} aria-labelledby="catalogue-heading">
-          <div className={styles.catalogueHead}>
-            <h2 id="catalogue-heading">SHOP ESSENTIALS.</h2>
-            <p>Choose the right care for everyday cleaning, protection and restoration.</p>
-          </div>
+          <h2 className="sr-only" id="catalogue-heading">Care essentials</h2>
           <ProductCatalogue products={products} />
         </section>
         <ProductTrustStrip />

@@ -6,7 +6,7 @@ export default function ProfessionalCleaningCTA() {
   return (
     <section className={styles.professionalCta} aria-labelledby="professional-cleaning-title">
       <div>
-        <p className="sd-kicker">Need a deeper clean?</p>
+        <p className="sd-kicker">Home care isn&apos;t enough?</p>
         <h2 id="professional-cleaning-title">LET THE DOCTOR TAKE A LOOK.</h2>
         <p>
           Home-care products support maintenance and minor cleanups. For deep
@@ -15,7 +15,7 @@ export default function ProfessionalCleaningCTA() {
         </p>
       </div>
       <Link className="sd-primary-button" href="/#book">
-        Book professional cleaning <ArrowUpRight />
+        Book professional care <ArrowUpRight />
       </Link>
     </section>
   );

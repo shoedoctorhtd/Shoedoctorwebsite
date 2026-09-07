@@ -44,7 +44,7 @@ export default function ProductRelatedProducts({ products }: { products: Related
                   {product.shortDescription ? <span>{product.shortDescription}</span> : null}
                   <span className={styles.relatedProductPrice}>{formatNprOrPending(product.priceNpr)}</span>
                   <span className={styles.relatedProductAvailability}>{productAvailabilityCopy(product.stockQuantity, product.lowStockThreshold)}</span>
-                  <span className={styles.relatedProductAction}>View details →</span>
+                  <span className={styles.relatedProductAction}>View Product</span>
                 </span>
               </Link>
             </article>
