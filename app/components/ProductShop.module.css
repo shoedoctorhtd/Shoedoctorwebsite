@@ -130,7 +130,7 @@
 .grid {
   display: grid;
   gap: clamp(14px, 2vw, 24px);
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .gridSingle {
@@ -180,7 +180,7 @@
 
 .cardImage,
 .cardImageMissing {
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 1 / .92;
   display: block;
   object-fit: cover;
   transition: transform 220ms ease;
@@ -308,7 +308,7 @@
 .cardActions {
   display: grid;
   gap: 8px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-top: auto;
   padding-top: 16px;
 }
@@ -347,12 +347,18 @@
 }
 
 .cardAddToCartButton,
-.buyNowButton,
-.checkoutButton {
+.checkoutButton,
+.buyNowButton {
   background: var(--berry);
   border-color: var(--berry);
   color: var(--white);
   text-decoration: none;
+}
+
+.cardAddToCartButton {
+  background: var(--white);
+  border-color: var(--ink);
+  color: var(--ink);
 }
 
 .addToCartButton:hover,
@@ -366,6 +372,13 @@
 .checkoutButton:hover {
   background: var(--coral);
   border-color: var(--coral);
+  transform: translateY(-1px);
+}
+
+.cardAddToCartButton:hover {
+  background: var(--sky);
+  border-color: var(--ink);
+  color: var(--ink);
   transform: translateY(-1px);
 }
 
@@ -1608,6 +1621,13 @@
   padding: 12px;
 }
 
+@media (max-width: 1180px) {
+  .grid,
+  .relatedProductsGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 980px) {
   .grid,
   .relatedProductsGrid {
@@ -1668,6 +1688,14 @@
 
   .categoryFilters button {
     flex: 0 0 auto;
+  }
+
+  .cardActions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cardActions .buyNowButton {
+    grid-column: 1 / -1;
   }
 
   .trustStrip {
@@ -1761,13 +1789,6 @@
     width: 100%;
   }
 
-  .grid,
-  .gridSingle,
-  .relatedProductsGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .cardActions,
   .purchaseActions {
     grid-template-columns: 1fr;
   }

@@ -93,6 +93,7 @@ function ProductCardItem({ product }: { product: ProductCard }) {
   const category = productCategoryLabel(product.category);
   const productSlug = product.slug ?? "";
   const productHref = `/products/${encodeURIComponent(productSlug)}`;
+  const buyNowHref = `/checkout?mode=buy-now&product=${encodeURIComponent(productSlug)}&quantity=1`;
   const hasCompareAtPrice = product.compareAtPriceNpr !== null
     && product.priceNpr !== null
     && product.compareAtPriceNpr > product.priceNpr;
@@ -124,6 +125,11 @@ function ProductCardItem({ product }: { product: ProductCard }) {
           {productAvailabilityCopy(product.stockQuantity, product.lowStockThreshold)}
         </p>
         <div className={styles.cardActions}>
+          {unavailable ? (
+            <button className={styles.buyNowButton} disabled type="button">Buy Now</button>
+          ) : (
+            <Link className={styles.buyNowButton} href={buyNowHref}>Buy Now</Link>
+          )}
           <AddToCartButton className={`${styles.addToCartButton} ${styles.cardAddToCartButton}`} productSlug={productSlug} stockQuantity={product.stockQuantity} />
           <Link className={styles.viewProductButton} href={productHref}>View Product</Link>
         </div>

@@ -833,8 +833,9 @@ test("public storefront uses the shared Shoe Doctor treatment and keeps purchase
   assert.match(catalogue, /compactDescription/);
   assert.match(catalogue, /AddToCartButton/);
   assert.match(catalogue, /cardAddToCartButton/);
+  assert.match(catalogue, /buyNowHref/);
+  assert.match(catalogue, /Buy Now/);
   assert.match(catalogue, /View Product/);
-  assert.doesNotMatch(catalogue, /buyNowHref/);
   assert.match(detailPurchase, /mode=buy-now/);
   assert.match(trustStrip, /QR Payment/);
   assert.match(trustStrip, /Cash on Delivery/);
@@ -846,6 +847,6 @@ test("public storefront uses the shared Shoe Doctor treatment and keeps purchase
   assert.match(shopStyles, /var\(--berry\)/);
   assert.match(shopStyles, /var\(--blush\)/);
   assert.match(shopStyles, /@media \(max-width: 680px\)[\s\S]*?\.categoryFilters/);
-  assert.match(shopStyles, /\.grid[\s\S]*?grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(shopStyles, /\.grid[\s\S]*?grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(shopStyles, /@media \(max-width: 980px\)[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
 });
