@@ -24,18 +24,23 @@ type NavigationItem = {
 
 const navigationItems: Record<NavigationKey, NavigationItem> = {
   home: { href: "/", key: "home", label: "Home" },
-  about: { href: "/about", key: "about", label: "About" },
+  about: { href: "/about", key: "about", label: "About Us" },
   services: { href: "/services", key: "services", label: "Services" },
   steam: { href: "/steam-cleaning", key: "steam", label: "Steam Cleaning" },
   products: { href: "/products", key: "products", label: "Products" },
   donate: { href: "/shoe-donation", key: "donate", label: "Donate Shoes" },
   blog: { href: "/blog", key: "blog", label: "Blog" },
-  contact: { href: "/contact", key: "contact", label: "Contact" },
+  contact: { href: "/contact", key: "contact", label: "Contact Us" },
 };
 
 const desktopNavigation = [
-  navigationItems.products,
+  navigationItems.home,
   navigationItems.about,
+  navigationItems.services,
+  navigationItems.steam,
+  navigationItems.products,
+  navigationItems.donate,
+  navigationItems.blog,
   navigationItems.contact,
 ];
 
@@ -43,31 +48,26 @@ const mobileNavigationRows = [
   {
     key: "primary",
     items: [
-      navigationItems.services,
-      navigationItems.products,
+      navigationItems.home,
       navigationItems.about,
-      navigationItems.contact,
+      navigationItems.donate,
+      navigationItems.services,
     ],
   },
   {
     key: "secondary",
     items: [
-      navigationItems.home,
       navigationItems.steam,
+      navigationItems.products,
       navigationItems.blog,
-      navigationItems.donate,
+      navigationItems.contact,
     ],
   },
 ];
 
-const footerNavigation = [
-  navigationItems.services,
-  navigationItems.products,
-  navigationItems.about,
-  navigationItems.contact,
-  navigationItems.donate,
-  navigationItems.blog,
-];
+const footerNavigation = desktopNavigation.filter(
+  (item) => item.key !== "home" && item.key !== "steam",
+);
 
 export function ArrowUpRight() {
   return (
@@ -113,44 +113,6 @@ function NavigationItems({ items, isCurrentPage }: NavigationItemsProps) {
         );
       })}
     </>
-  );
-}
-
-function ServicesDesktopMenu({
-  isCurrentPage,
-}: Pick<NavigationItemsProps, "isCurrentPage">) {
-  const servicesCurrent =
-    isCurrentPage(navigationItems.services.href)
-    || isCurrentPage(navigationItems.steam.href);
-
-  return (
-    <details
-      className={styles.servicesMenu}
-      data-current={servicesCurrent ? "true" : undefined}
-    >
-      <summary className={styles.servicesMenuSummary}>
-        Services
-        <span aria-hidden="true" className={styles.servicesMenuChevron} />
-      </summary>
-      <div className={styles.servicesMenuPanel}>
-        <a
-          aria-current={isCurrentPage(navigationItems.services.href) ? "page" : undefined}
-          href={navigationItems.services.href}
-        >
-          All services
-        </a>
-        <a
-          aria-current={isCurrentPage(navigationItems.steam.href) ? "page" : undefined}
-          className={styles.steamMenuLink}
-          href={navigationItems.steam.href}
-        >
-          <span>Steam Cleaning</span>
-          <span aria-hidden="true" className={styles.steamMenuBadge}>
-            New
-          </span>
-        </a>
-      </div>
-    </details>
   );
 }
 
@@ -253,7 +215,6 @@ export function SiteHeader() {
       <header className="sd-header">
         <Brand />
         <nav className="sd-desktop-nav" aria-label="Main navigation">
-          <ServicesDesktopMenu {...navigationProps} />
           <NavigationItems {...navigationProps} items={desktopNavigation} />
         </nav>
         <a className="sd-header-cta" href="/#book">
