@@ -130,6 +130,7 @@ export async function listHomepageProducts(limit = HOMEPAGE_PRODUCT_LIMIT): Prom
     .prepare(`
       ${PRODUCT_SELECT}
       WHERE p.status = 'published'
+        AND p.stock_quantity > 0
         AND p.slug IS NOT NULL
         AND length(trim(p.slug)) > 0
         AND p.short_description IS NOT NULL
@@ -137,7 +138,6 @@ export async function listHomepageProducts(limit = HOMEPAGE_PRODUCT_LIMIT): Prom
       ORDER BY
         CASE WHEN p.badge = 'doctors_pick' THEN 0 ELSE 1 END ASC,
         CASE WHEN p.featured = 1 THEN 0 ELSE 1 END ASC,
-        CASE WHEN p.stock_quantity > 0 THEN 0 ELSE 1 END ASC,
         p.updated_at DESC,
         p.name COLLATE NOCASE ASC,
         p.id ASC
@@ -153,7 +153,12 @@ export async function listHomepageProducts(limit = HOMEPAGE_PRODUCT_LIMIT): Prom
 
 export async function listFeaturedPublicProducts(limit = 4) {
   const products = await listPublicProducts();
-  return products.filter((product) => product.isLowStock === false || product.stockQuantity !== 0).slice(0, Math.max(1, Math.min(12, limit)));
+  return products
+    .filter(
+      (product) =>
+        typeof product.stockQuantity === "number" && product.stockQuantity > 0,
+    )
+    .slice(0, Math.max(1, Math.min(4, limit)));
 }
 
 export async function getPublicProductBySlug(slug: string): Promise<Product | null> {

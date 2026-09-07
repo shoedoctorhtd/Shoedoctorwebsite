@@ -42,7 +42,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const hasCompareAtPrice = product.compareAtPriceNpr !== null && product.compareAtPriceNpr > product.priceNpr;
   return (
     <ProductCartProvider>
-      <main className={`public-site ${styles.page}`}>
+      <main id="main-content" className={`public-site ${styles.page}`}>
         <SiteHeader />
         <ProductStructuredData product={product} />
         <nav className={styles.breadcrumbs} aria-label="Breadcrumb">

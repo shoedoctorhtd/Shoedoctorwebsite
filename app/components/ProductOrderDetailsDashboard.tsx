@@ -51,7 +51,7 @@ export default function ProductOrderDetailsDashboard({ initialOrder, receipts, a
   async function collectCod(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if (!canVerifyPayments) return; const amountCollected = Number(new FormData(event.currentTarget).get("amountCollected")); if (!window.confirm("Record this COD collection? This will not deduct stock again.")) return; await orderAction(`/api/admin/product-orders/${encodeURIComponent(order.id)}/payment/cod-collection`, { confirmation: true, amountCollected }, "product-cod-collection", "COD payment recorded. Stock was not deducted again."); }
 
   const isCancellable = order.status !== "completed" && order.status !== "cancelled";
-  return <main className={styles.shell}>
+  return <main id="main-content" className={styles.shell}>
     <nav className={styles.nav} aria-label="Product administration"><Link href="/admin">Dashboard</Link><Link href="/admin/product-orders">All product orders</Link><Link href="/admin/inventory">Inventory</Link></nav>
     <section className={styles.intro}><p className="section-kicker">Product order</p><h1>{order.publicReference}</h1><p>{order.channel === "online" ? "Online customer order" : "Offline shop sale"} · Created {formatDate(order.createdAt)}</p></section>
     {notice ? <p className={styles.notice} role="status">{notice}</p> : null}{error ? <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p> : null}

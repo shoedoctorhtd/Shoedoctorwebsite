@@ -657,7 +657,7 @@ export default function AdminDashboard({
   }
 
   return (
-    <main className="admin-shell">
+    <main id="main-content" className="admin-shell">
       <header className="admin-header">
         <Link className="admin-brand" href="/">
           <span>SD+</span>

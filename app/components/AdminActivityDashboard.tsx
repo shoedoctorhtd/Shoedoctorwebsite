@@ -93,7 +93,7 @@ export default function AdminActivityDashboard({ initial, filters, name, role, e
   const hasNext = last < initial.total;
 
   return (
-    <main className="admin-shell admin-management-shell">
+    <main id="main-content" className="admin-shell admin-management-shell">
       <AdminHeader name={name} role={role} />
       <section className="admin-welcome admin-welcome--compact">
         <div>

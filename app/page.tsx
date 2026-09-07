@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { Fragment } from "react";
 import BookingForm from "./components/BookingForm";
 import HomeCareEssentials from "./components/HomeCareEssentials";
-import Image from "next/image";
 import bookingStyles from "./components/BookingExperience.module.css";
+import HeroCleaningVisual from "./components/HeroCleaningVisual";
 import SiteMotion from "./components/SiteMotion";
 import SteamBrushHomeSection from "./components/SteamBrushHomeSection";
 import {
@@ -13,6 +13,7 @@ import {
   SiteHeader,
 } from "./components/SiteChrome";
 import { listPublicServices } from "@/lib/data";
+import { formatNprPriceLabel } from "@/lib/money";
 import { listHomepageProducts } from "@/lib/product-data";
 
 export const dynamic = "force-dynamic";
@@ -165,8 +166,8 @@ export default async function Home({
   const publicWhatsAppUrl = "https://wa.me/9779761716743";
 
   return (
-    <main className="public-site">
-      <SiteMotion showLoader />
+    <main id="main-content" className="public-site">
+      <SiteMotion />
       <SiteHeader />
 
       <section className="sd-hero" id="top">
@@ -209,32 +210,7 @@ export default async function Home({
           <div className="sd-orbit sd-orbit-three">
             <span className="sd-orbit-label orbit-label-restore">RESTORE</span>
           </div>
-          <div className="sd-hero-shoe-wrap">
-            <Image
-              className="sd-hero-shoe"
-              src="/hero-cleaning-sneaker.png"
-              alt="A clean, restored white and navy high-top sneaker"
-              width={1536}
-              height={1024}
-              priority
-              unoptimized
-              sizes="(max-width: 880px) 100vw, 55vw"
-            />
-            <Image
-              className="sd-hero-dirty-shoe"
-              src="/hero-cleaning-sneaker-dirty.png"
-              alt=""
-              aria-hidden="true"
-              width={1536}
-              height={1024}
-              priority
-              unoptimized
-              sizes="(max-width: 880px) 100vw, 55vw"
-            />
-            <span className="sd-hero-dirt-overlay" aria-hidden="true" />
-            <span className="sd-hero-foam-lather" aria-hidden="true" />
-            <span className="sd-hero-clean-shine" aria-hidden="true" />
-          </div>
+          <HeroCleaningVisual />
           <div className="hero-cleaning-foam" aria-hidden="true">
             <span />
             <span />
@@ -307,7 +283,9 @@ export default async function Home({
         <div>
           {[...marqueeServices, ...marqueeServices].map((service, index) => (
             <Fragment key={`${service.id}-${index}`}>
-              <span>{service.name.toUpperCase()} · {service.priceLabel.toUpperCase()}</span>
+              <span>
+                {service.name.toUpperCase()} · {formatNprPriceLabel(service.priceLabel).toUpperCase()}
+              </span>
               <i>✦</i>
             </Fragment>
           ))}
@@ -419,15 +397,28 @@ export default async function Home({
             <span />
             <span />
           </div>
-          <Image
-            className="wash-shoe"
-            src="/loader-basketball-sneaker.png"
-            alt=""
-            width={1536}
-            height={1024}
-            unoptimized
-            sizes="(max-width: 760px) 92vw, 52vw"
-          />
+          <picture>
+            <source
+              media="(max-width: 640px)"
+              srcSet="/loader-basketball-sneaker-mobile.webp"
+              type="image/webp"
+            />
+            <source
+              media="(max-width: 1024px)"
+              srcSet="/loader-basketball-sneaker-tablet.webp"
+              type="image/webp"
+            />
+            <img
+              alt=""
+              aria-hidden="true"
+              className="wash-shoe"
+              decoding="async"
+              height="1024"
+              loading="lazy"
+              src="/loader-basketball-sneaker.png"
+              width="1536"
+            />
+          </picture>
           <div className="wash-brush" aria-hidden="true">
             <span className="brush-handle" />
             <span className="brush-head">

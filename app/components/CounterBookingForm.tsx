@@ -65,7 +65,7 @@ export default function CounterBookingForm({ services, name, role }: Props) {
   }
 
   return (
-    <main className="admin-shell admin-management-shell">
+    <main id="main-content" className="admin-shell admin-management-shell">
       <AdminHeader name={name} role={role} backLabel="Bookings" />
       <section className="admin-welcome admin-welcome--compact">
         <div><p className="section-kicker">Authenticated operations</p><h1>COUNTER<br />BOOKING.</h1><p>This creates an admin-attributed booking. The service, delivery, multi-pair, and Hetauda rules remain server-calculated.</p></div>

@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 
 export default function SteamCleaningPage() {
   return (
-    <main className="public-site inner-site">
+    <main id="main-content" className="public-site inner-site">
       <SiteMotion />
       <SiteHeader />
 

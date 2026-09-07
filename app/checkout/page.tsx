@@ -20,5 +20,5 @@ export default async function CheckoutPage({
     listPublicProducts().catch((): ProductCard[] => []),
   ]);
   const checkoutSource = resolveCheckoutSource(params);
-  return <ProductCartProvider><main className={`public-site ${styles.page}`}><SiteHeader /><section className={styles.checkoutPage}><p className="sd-kicker">Shoe Doctor shop</p><h1>CHECK OUT.</h1><ProductCheckoutForm checkoutSource={checkoutSource} products={products} /></section><SiteFooter /></main></ProductCartProvider>;
+  return <ProductCartProvider><main id="main-content" className={`public-site ${styles.page}`}><SiteHeader /><section className={styles.checkoutPage}><p className="sd-kicker">Shoe Doctor shop</p><h1>CHECK OUT.</h1><ProductCheckoutForm checkoutSource={checkoutSource} products={products} /></section><SiteFooter /></main></ProductCartProvider>;
 }

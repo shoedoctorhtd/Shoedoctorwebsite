@@ -33,7 +33,7 @@ export default function DeletedBookingsDashboard({ initialBookings, name, role }
     finally { setBusy(null); }
   }
 
-  return <main className="admin-shell admin-management-shell">
+  return <main id="main-content" className="admin-shell admin-management-shell">
     <AdminHeader name={name} role={role} />
     <section className="admin-welcome admin-welcome--compact"><div><p className="section-kicker">Super Admin only</p><h1>DELETED<br />BOOKINGS.</h1><p>These records have been removed from active operations but remain stored, auditable, and recoverable.</p></div></section>
     {notice ? <p className="admin-notice" role="status">{notice}</p> : null}

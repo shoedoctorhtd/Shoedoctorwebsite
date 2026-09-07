@@ -67,7 +67,7 @@ export default function ProductAccessDashboard({
   }
 
   return (
-    <main className={styles.shell}>
+    <main id="main-content" className={styles.shell}>
       <nav className={styles.nav} aria-label="Administrator access navigation">
         <Link href="/admin">Dashboard</Link>
         <Link href="/admin/users">Admin users</Link>

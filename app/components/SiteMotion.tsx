@@ -2,16 +2,29 @@
 
 import { useEffect } from "react";
 
-export default function SiteMotion({
-  showLoader = true,
-}: {
-  showLoader?: boolean;
-}) {
+/**
+ * Enhances already-visible public content after paint. There is deliberately
+ * no blocking loader: direct links and no-JavaScript visits render the same
+ * readable document immediately.
+ */
+export default function SiteMotion() {
   useEffect(() => {
-    document.body.classList.add("motion-ready");
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     const revealItems = Array.from(
       document.querySelectorAll<HTMLElement>("[data-reveal]"),
     );
+    const revealAll = () => {
+      revealItems.forEach((item) => item.classList.add("is-revealed"));
+    };
+
+    if (reducedMotion || !("IntersectionObserver" in window)) {
+      revealAll();
+      return;
+    }
+
+    document.body.classList.add("motion-ready");
     const revealObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -26,12 +39,10 @@ export default function SiteMotion({
     revealItems.forEach((item) => revealObserver.observe(item));
 
     const finePointer = window.matchMedia("(pointer: fine)").matches;
-    const reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
     const tiltItems = Array.from(
       document.querySelectorAll<HTMLElement>("[data-tilt]"),
     );
+    const revealFallback = window.setTimeout(revealAll, 700);
 
     function tiltVisual(event: PointerEvent) {
       const element = event.currentTarget as HTMLElement;
@@ -52,7 +63,7 @@ export default function SiteMotion({
       element.style.setProperty("--move-y", "0px");
     }
 
-    if (finePointer && !reducedMotion) {
+    if (finePointer) {
       tiltItems.forEach((item) => {
         item.addEventListener("pointermove", tiltVisual);
         item.addEventListener("pointerleave", resetTilt);
@@ -60,6 +71,7 @@ export default function SiteMotion({
     }
 
     return () => {
+      window.clearTimeout(revealFallback);
       revealObserver.disconnect();
       tiltItems.forEach((item) => {
         item.removeEventListener("pointermove", tiltVisual);
@@ -69,29 +81,5 @@ export default function SiteMotion({
     };
   }, []);
 
-  return (
-    <>
-      {showLoader && (
-        <div className="site-loader" aria-hidden="true">
-          <div className="loader-branding">
-            <div className="loader-diagnosis-art">
-              <i />
-            </div>
-            <div className="loader-branding-copy">
-              <strong>
-                <span>SH</span>
-                <span className="loader-brand-plus">
-                  <span>+</span>
-                </span>
-                <span>E DOCTOR</span>
-              </strong>
-              <span className="loader-branding-tagline">
-                WE DIAGNOSE · WE CLEAN · WE RESTORE
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
+  return null;
 }

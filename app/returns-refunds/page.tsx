@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function ReturnsRefundsPage() {
   return (
-    <main className="public-site inner-site privacy-policy-page">
+    <main id="main-content" className="public-site inner-site privacy-policy-page">
       <SiteMotion />
       <SiteHeader />
 

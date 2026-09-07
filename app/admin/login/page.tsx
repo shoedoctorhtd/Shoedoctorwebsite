@@ -22,7 +22,7 @@ export default async function AdminLoginPage({
   if (user) redirect(nextPath);
 
   return (
-    <main className="admin-login-page">
+    <main id="main-content" className="admin-login-page">
       <section className="admin-login-card">
         <Link className="admin-login-brand" href="/">
           <span>SD+</span>

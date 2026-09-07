@@ -6,15 +6,68 @@
 import { usePathname } from "next/navigation";
 import styles from "./SiteChrome.module.css";
 
-const navItems = [
-  { href: "/", label: "Home" },
-  { href: "/about", label: "About Us" },
-  { href: "/services", label: "Services" },
-  { href: "/products", label: "Products" },
-  { href: "/shoe-donation", label: "Donate Shoes" },
-  { href: "/blog", label: "Blog" },
-  { href: "/contact", label: "Contact Us" },
+type NavigationKey =
+  | "home"
+  | "about"
+  | "services"
+  | "steam"
+  | "products"
+  | "donate"
+  | "blog"
+  | "contact";
+
+type NavigationItem = {
+  href: string;
+  key: NavigationKey;
+  label: string;
+};
+
+const navigationItems: Record<NavigationKey, NavigationItem> = {
+  home: { href: "/", key: "home", label: "Home" },
+  about: { href: "/about", key: "about", label: "About Us" },
+  services: { href: "/services", key: "services", label: "Services" },
+  steam: { href: "/steam-cleaning", key: "steam", label: "Steam Cleaning" },
+  products: { href: "/products", key: "products", label: "Products" },
+  donate: { href: "/shoe-donation", key: "donate", label: "Donate Shoes" },
+  blog: { href: "/blog", key: "blog", label: "Blog" },
+  contact: { href: "/contact", key: "contact", label: "Contact Us" },
+};
+
+const desktopNavigation = [
+  navigationItems.home,
+  navigationItems.about,
+  navigationItems.services,
+  navigationItems.steam,
+  navigationItems.products,
+  navigationItems.donate,
+  navigationItems.blog,
+  navigationItems.contact,
 ];
+
+const mobileNavigationRows = [
+  {
+    key: "primary",
+    items: [
+      navigationItems.home,
+      navigationItems.about,
+      navigationItems.donate,
+      navigationItems.services,
+    ],
+  },
+  {
+    key: "secondary",
+    items: [
+      navigationItems.steam,
+      navigationItems.products,
+      navigationItems.blog,
+      navigationItems.contact,
+    ],
+  },
+];
+
+const footerNavigation = desktopNavigation.filter(
+  (item) => item.key !== "home" && item.key !== "steam",
+);
 
 export function ArrowUpRight() {
   return (
@@ -25,40 +78,94 @@ export function ArrowUpRight() {
 }
 
 type NavigationItemsProps = {
+  items: readonly NavigationItem[];
   isCurrentPage: (href: string) => boolean;
 };
 
-function NavigationItems({ isCurrentPage }: NavigationItemsProps) {
+function NavigationItems({ items, isCurrentPage }: NavigationItemsProps) {
   return (
     <>
-      {navItems.slice(0, 3).map((item) => (
-        <a
-          aria-current={isCurrentPage(item.href) ? "page" : undefined}
-          href={item.href}
-          key={item.href}
-        >
-          {item.label}
-        </a>
-      ))}
-      <a
-        aria-current={isCurrentPage("/steam-cleaning") ? "page" : undefined}
-        className={`sd-steam-nav-trigger ${styles.steamNavTrigger}`}
-        data-current={isCurrentPage("/steam-cleaning")}
-        href="/steam-cleaning"
-      >
-        Steam Cleaning <span>New</span>
-      </a>
-      {navItems.slice(3).map((item) => (
-        <a
-          aria-current={isCurrentPage(item.href) ? "page" : undefined}
-          href={item.href}
-          key={item.href}
-        >
-          {item.label}
-        </a>
-      ))}
+      {items.map((item) => {
+        const isCurrent = isCurrentPage(item.href);
+        const isSteam = item.key === "steam";
+        return (
+          <a
+            aria-current={isCurrent ? "page" : undefined}
+            className={`sd-nav-item sd-nav-item--${item.key}${
+              isSteam ? ` sd-steam-nav-trigger ${styles.steamNavTrigger}` : ""
+            }`}
+            data-current={isSteam && isCurrent ? "true" : undefined}
+            data-nav-key={item.key}
+            href={item.href}
+            key={item.href}
+          >
+            {isSteam ? (
+              <span className={styles.steamLabel}>{item.label}</span>
+            ) : (
+              item.label
+            )}
+            {isSteam ? (
+              <span aria-hidden="true" className={styles.steamNewBadge}>
+                New
+              </span>
+            ) : null}
+          </a>
+        );
+      })}
     </>
   );
+}
+
+type QuickAction = {
+  href: string;
+  label: string;
+  tone: "default" | "secondary" | "accent";
+};
+
+function quickActionsForPath(pathname: string): QuickAction[] {
+  const call: QuickAction = { href: "tel:+9779761716743", label: "Call", tone: "default" };
+  const whatsapp: QuickAction = { href: "https://wa.me/9779761716743", label: "WhatsApp", tone: "secondary" };
+
+  if (pathname.startsWith("/shoe-donation")) {
+    return [
+      call,
+      whatsapp,
+      {
+        href: pathname === "/shoe-donation" ? "#donation-form" : "/shoe-donation#donation-form",
+        label: "Donate Now",
+        tone: "accent",
+      },
+    ];
+  }
+
+  if (pathname.startsWith("/steam-cleaning")) {
+    return [
+      call,
+      whatsapp,
+      { href: "/?service=steam-assisted-deep-clean#book", label: "Book Steam Clean", tone: "accent" },
+    ];
+  }
+
+  if (
+    pathname === "/products"
+    || pathname.startsWith("/products/")
+    || pathname === "/cart"
+    || pathname === "/checkout"
+    || pathname === "/order-confirmation"
+    || pathname.startsWith("/orders/")
+  ) {
+    return [
+      whatsapp,
+      { href: "/products", label: "Shop", tone: "secondary" },
+      { href: "/cart", label: "View Cart", tone: "accent" },
+    ];
+  }
+
+  return [
+    call,
+    whatsapp,
+    { href: "/#book", label: "Book Now", tone: "accent" },
+  ];
 }
 
 export function Brand({ footer = false }: { footer?: boolean }) {
@@ -85,7 +192,7 @@ export function Brand({ footer = false }: { footer?: boolean }) {
 }
 
 export function SiteHeader() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "/";
 
   function isCurrentPage(href: string) {
     return href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -94,6 +201,7 @@ export function SiteHeader() {
   const navigationProps = {
     isCurrentPage,
   };
+  const quickActions = quickActionsForPath(pathname);
 
   return (
     <>
@@ -107,19 +215,25 @@ export function SiteHeader() {
       <header className="sd-header">
         <Brand />
         <nav className="sd-desktop-nav" aria-label="Main navigation">
-          <NavigationItems {...navigationProps} />
+          <NavigationItems {...navigationProps} items={desktopNavigation} />
         </nav>
         <a className="sd-header-cta" href="/#book">
           Book your pair <ArrowUpRight />
         </a>
         <nav className="sd-mobile-nav" aria-label="Primary navigation">
-          <NavigationItems {...navigationProps} />
+          {mobileNavigationRows.map((row) => (
+            <div className="sd-mobile-nav-row" data-nav-row={row.key} key={row.key}>
+              <NavigationItems {...navigationProps} items={row.items} />
+            </div>
+          ))}
         </nav>
       </header>
       <nav className="sd-mobile-action-bar" aria-label="Quick actions">
-        <a href="tel:+9779761716743">Call</a>
-        <a href="https://wa.me/9779761716743">WhatsApp</a>
-        <a href="/#book">Book Now</a>
+        {quickActions.map((action) => (
+          <a data-quick-action={action.tone} href={action.href} key={action.label}>
+            {action.label}
+          </a>
+        ))}
       </nav>
     </>
   );
@@ -138,7 +252,7 @@ export function SiteFooter() {
         </div>
         <div className="sd-footer-links">
           <span>Explore</span>
-          {navItems.slice(1).map((item) => (
+          {footerNavigation.map((item) => (
             <a href={item.href} key={item.href}>
               {item.label}
             </a>

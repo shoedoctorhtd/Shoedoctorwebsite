@@ -1,6 +1,6 @@
 export default function AdminActivityLoading() {
   return (
-    <main className="admin-shell admin-management-shell" aria-busy="true">
+    <main id="main-content" className="admin-shell admin-management-shell" aria-busy="true">
       <section className="admin-welcome admin-welcome--compact">
         <div>
           <p className="section-kicker">Super Admin only</p>

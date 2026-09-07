@@ -109,7 +109,7 @@ export default function AdminUsersDashboard({ initialUsers, signedInName, signed
   }
 
   return (
-    <main className="admin-shell admin-management-shell">
+    <main id="main-content" className="admin-shell admin-management-shell">
       <AdminHeader name={signedInName} role={signedInRole} />
       <section className="admin-welcome"><p className="section-kicker">Access control</p><h1>ADMIN USERS</h1><p>Create individual accounts. Temporary passwords are displayed once and must be changed at first sign-in.</p></section>
       {notice && <p className="admin-notice" role="status">{notice}</p>}

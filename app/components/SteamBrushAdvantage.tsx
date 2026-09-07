@@ -1,5 +1,3 @@
-import Image from "next/image";
-
 type SteamAdvantageIconName = "steam" | "detail" | "gentle" | "expert";
 
 const steamAdvantageSteps: Array<{
@@ -8,6 +6,7 @@ const steamAdvantageSteps: Array<{
   icon: SteamAdvantageIconName;
   imageAlt: string;
   imageClass: string;
+  imageMobileSrc: string;
   imageSrc: string;
   tone: "coral" | "indigo" | "sky" | "lime";
 }> = [
@@ -18,6 +17,7 @@ const steamAdvantageSteps: Array<{
     icon: "steam",
     imageAlt: "Steam cleaning treatment lifting grime from a shoe surface",
     imageClass: "is-grime",
+    imageMobileSrc: "/images/steam-brush-loosens-grime-mobile.webp",
     imageSrc: "/images/steam-brush-loosens-grime.png",
     tone: "coral",
   },
@@ -28,6 +28,7 @@ const steamAdvantageSteps: Array<{
     icon: "detail",
     imageAlt: "Steam brush cleaning detailed shoe grooves and edges",
     imageClass: "is-details",
+    imageMobileSrc: "/images/steam-brush-reaches-details-mobile.webp",
     imageSrc: "/images/steam-brush-reaches-details.png",
     tone: "indigo",
   },
@@ -38,6 +39,7 @@ const steamAdvantageSteps: Array<{
     icon: "gentle",
     imageAlt: "A shoe being treated with controlled, gentle steam cleaning",
     imageClass: "is-gentle",
+    imageMobileSrc: "/images/steam-brush-gentler-cleaning-mobile.webp",
     imageSrc: "/images/steam-brush-gentler-cleaning.png",
     tone: "sky",
   },
@@ -48,6 +50,7 @@ const steamAdvantageSteps: Array<{
     icon: "expert",
     imageAlt: "Shoe Doctor steam-cleaning equipment used after material inspection",
     imageClass: "is-expert",
+    imageMobileSrc: "/images/steam-brush-expert-controlled-mobile.webp",
     imageSrc: "/images/steam-brush-expert-controlled.png",
     tone: "lime",
   },
@@ -153,14 +156,22 @@ export default function SteamBrushAdvantage({
                 <p>{step.description}</p>
               </div>
               <figure className="sd-steam-advantage__image-frame">
-                <Image
-                  className={`sd-steam-advantage__image ${step.imageClass}`}
-                  src={step.imageSrc}
-                  alt={step.imageAlt}
-                  fill
-                  sizes="(max-width: 640px) calc(100vw - 72px), (max-width: 980px) calc(50vw - 48px), 22vw"
-                  unoptimized
-                />
+                <picture>
+                  <source
+                    media="(max-width: 640px)"
+                    srcSet={step.imageMobileSrc}
+                    type="image/webp"
+                  />
+                  <img
+                    alt={step.imageAlt}
+                    className={`sd-steam-advantage__image ${step.imageClass}`}
+                    decoding="async"
+                    height="992"
+                    loading="lazy"
+                    src={step.imageSrc}
+                    width="1588"
+                  />
+                </picture>
               </figure>
             </li>
           ))}

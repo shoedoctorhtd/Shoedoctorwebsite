@@ -225,7 +225,7 @@ export default function InventoryDashboard({
     setReturnQuantity("1");
   }
 
-  return <main className={styles.shell}>
+  return <main id="main-content" className={styles.shell}>
     <nav className={styles.nav} aria-label="Product administration"><Link href="/admin">Dashboard</Link><Link href="/admin/products">Products</Link><Link href="/admin/product-orders">Product orders</Link></nav>
     <section className={styles.intro}><p className="section-kicker">Stock management</p><h1>INVENTORY</h1><p>Every addition, loss, sale, correction, cancellation restoration, and return is recorded permanently with before and after stock.</p></section>
     {notice ? <p className={styles.notice} role="status">{notice}</p> : null}

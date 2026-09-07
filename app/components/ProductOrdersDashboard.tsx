@@ -77,7 +77,7 @@ export default function ProductOrdersDashboard({ initialOrders, products, filter
   }
 
   const pages = Math.max(1, Math.ceil(total / pageSize));
-  return <main className={styles.shell}>
+  return <main id="main-content" className={styles.shell}>
     <nav className={styles.nav} aria-label="Product administration"><Link href="/admin">Dashboard</Link><Link href="/admin/products">Products</Link><Link href="/admin/inventory">Inventory</Link></nav>
     <section className={styles.intro}><p className="section-kicker">Shop management</p><h1>PRODUCT ORDERS</h1><p>Manage online and walk-in shop orders independently from shoe-cleaning bookings. Prices below are immutable snapshots from the completed sale.</p></section>
     {notice ? <p className={styles.notice} role="status">{notice}</p> : null}{error ? <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p> : null}

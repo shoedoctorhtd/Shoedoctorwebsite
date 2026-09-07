@@ -1399,7 +1399,7 @@ export default function CsrDonationsDashboard({
   ];
 
   return (
-    <main className="admin-shell csr-admin-shell">
+    <main id="main-content" className="admin-shell csr-admin-shell">
       <header className="admin-header">
         <Link className="admin-brand" href="/">
           <span>SD+</span>

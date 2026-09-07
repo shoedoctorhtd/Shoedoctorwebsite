@@ -8,6 +8,7 @@ import {
   getExactNprPrice,
   qualifiesForFreeHetaudaDelivery,
 } from "../lib/booking-pricing.ts";
+import { formatNprPriceLabel } from "../lib/money.ts";
 
 test("adds the fixed Express surcharge to the booking total", () => {
   const expressPrice = getExactNprPrice("+ Rs 149");
@@ -40,6 +41,13 @@ test("adds fixed admin prices entered without an Rs prefix", () => {
     serviceSubtotal: 1596,
     total: 1745,
   });
+});
+
+test("shows an NPR prefix for bare public service prices without changing price prose", () => {
+  assert.equal(formatNprPriceLabel("499"), "Rs 499");
+  assert.equal(formatNprPriceLabel("1,299"), "Rs 1,299");
+  assert.equal(formatNprPriceLabel("From Rs 299"), "From Rs 299");
+  assert.equal(formatNprPriceLabel("Price after inspection"), "Price after inspection");
 });
 
 test("calculates the screenshot mix when every service has one price", () => {

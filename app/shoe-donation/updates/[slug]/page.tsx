@@ -57,8 +57,8 @@ export default async function DonationUpdateDetailPage({ params }: PageProps) {
     const drive = update.item;
     const image = drive.coverImageUrl;
     return (
-      <main className="public-site inner-site donation-site donation-detail-site">
-        <SiteMotion showLoader={false} />
+      <main id="main-content" className="public-site inner-site donation-site donation-detail-site">
+        <SiteMotion />
         <SiteHeader />
         <article className="donation-detail">
           <Link className="donation-detail__back" href="/shoe-donation">← Back to Shoe Donation</Link>
@@ -94,8 +94,8 @@ export default async function DonationUpdateDetailPage({ params }: PageProps) {
   const gallery = [community.coverImageUrl, ...community.galleryImageUrls]
     .filter((url): url is string => Boolean(url));
   return (
-    <main className="public-site inner-site donation-site donation-detail-site">
-      <SiteMotion showLoader={false} />
+    <main id="main-content" className="public-site inner-site donation-site donation-detail-site">
+      <SiteMotion />
       <SiteHeader />
       <article className="donation-detail">
         <Link className="donation-detail__back" href="/shoe-donation">← Back to Shoe Donation</Link>

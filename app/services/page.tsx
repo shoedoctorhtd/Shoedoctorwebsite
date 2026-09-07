@@ -49,7 +49,7 @@ export default async function ServicesPage() {
   const services = await listPublicServices();
 
   return (
-    <main className="public-site inner-site">
+    <main id="main-content" className="public-site inner-site">
       <SiteMotion />
       <SiteHeader />
 
