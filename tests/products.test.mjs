@@ -714,7 +714,7 @@ test("homepage care essentials and permanent product deletion keep their public 
 });
 
 test("public and admin routes enforce the catalogue, image-access, SEO, header, permission, and atomic-write contracts", async () => {
-  const [catalogue, publicApi, productApi, publicImageRoute, adminImageRoute, publishRoute, checkoutApi, adminProductsApi, inventoryApi, globalInventoryApi, inventoryPage, inventory, permissions, header, headerStyles, globalStyles, migration, productData, productImages, sitemap, productStructuredData, blog, recommendation] = await Promise.all([
+  const [catalogue, publicApi, productApi, publicImageRoute, adminImageRoute, publishRoute, checkoutApi, adminProductsApi, inventoryApi, globalInventoryApi, inventoryPage, inventory, permissions, header, headerStyles, globalStyles, cart, migration, productData, productImages, sitemap, productStructuredData, blog, recommendation] = await Promise.all([
     readFile(new URL("../app/products/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/products/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/products/[slug]/route.ts", import.meta.url), "utf8"),
@@ -731,6 +731,7 @@ test("public and admin routes enforce the catalogue, image-access, SEO, header, 
     readFile(new URL("../app/components/SiteChrome.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/SiteChrome.module.css", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/ProductCart.tsx", import.meta.url), "utf8"),
     readFile(migrationUrl, "utf8"),
     readFile(new URL("../lib/product-data.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/product-images.ts", import.meta.url), "utf8"),
@@ -796,7 +797,16 @@ test("public and admin routes enforce the catalogue, image-access, SEO, header, 
   assert.match(header, /navigationItems\.home,[\s\S]*navigationItems\.about,[\s\S]*navigationItems\.donate,[\s\S]*navigationItems\.services/);
   assert.match(header, /navigationItems\.steam,[\s\S]*navigationItems\.products,[\s\S]*navigationItems\.blog,[\s\S]*navigationItems\.contact/);
   assert.match(header, /Book Steam Clean/);
+  assert.match(header, /CartQuickAction/);
+  assert.match(header, /kind: "cart"/);
   assert.match(headerStyles, /steamNewBadge/);
+  assert.match(headerStyles, /grid-template-columns: auto minmax\(0, 1fr\)/);
+  assert.match(headerStyles, /grid-column: 1/);
+  assert.match(headerStyles, /grid-column: 2/);
+  assert.match(cart, /export function CartQuickAction/);
+  assert.match(cart, /sd-product-cart-changed/);
+  assert.match(cart, /sd-mobile-cart-count/);
+  assert.match(globalStyles, /\.sd-mobile-cart-count/);
   assert.doesNotMatch(globalStyles, /\.sd-steam-nav-trigger span/);
   assert.doesNotMatch(globalStyles, /\.sd-mobile-nav > :nth-child/);
   for (const required of [

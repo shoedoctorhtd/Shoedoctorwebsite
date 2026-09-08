@@ -4,6 +4,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { usePathname } from "next/navigation";
+import { CartQuickAction } from "./ProductCart";
 import styles from "./SiteChrome.module.css";
 
 type NavigationKey =
@@ -118,6 +119,7 @@ function NavigationItems({ items, isCurrentPage }: NavigationItemsProps) {
 
 type QuickAction = {
   href: string;
+  kind?: "cart";
   label: string;
   tone: "default" | "secondary" | "accent";
 };
@@ -157,7 +159,7 @@ function quickActionsForPath(pathname: string): QuickAction[] {
     return [
       whatsapp,
       { href: "/products", label: "Shop", tone: "secondary" },
-      { href: "/cart", label: "View Cart", tone: "accent" },
+      { href: "/cart", kind: "cart", label: "View Cart", tone: "accent" },
     ];
   }
 
@@ -230,9 +232,18 @@ export function SiteHeader() {
       </header>
       <nav className="sd-mobile-action-bar" aria-label="Quick actions">
         {quickActions.map((action) => (
-          <a data-quick-action={action.tone} href={action.href} key={action.label}>
-            {action.label}
-          </a>
+          action.kind === "cart" ? (
+            <CartQuickAction
+              href={action.href}
+              key={action.label}
+              label={action.label}
+              tone={action.tone}
+            />
+          ) : (
+            <a data-quick-action={action.tone} href={action.href} key={action.label}>
+              {action.label}
+            </a>
+          )
         ))}
       </nav>
     </>

@@ -13440,6 +13440,48 @@ video {
     color: var(--ink);
   }
 
+  .sd-mobile-action-bar .sd-mobile-cart-action {
+    gap: 7px;
+    position: relative;
+  }
+
+  .sd-mobile-cart-icon-wrap {
+    display: inline-flex;
+    height: 18px;
+    position: relative;
+    width: 18px;
+  }
+
+  .sd-mobile-cart-icon {
+    fill: none;
+    height: 18px;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.9;
+    width: 18px;
+  }
+
+  .sd-mobile-cart-count {
+    align-items: center;
+    background: var(--berry);
+    border: 1px solid var(--paper);
+    border-radius: 999px;
+    color: var(--white);
+    display: flex;
+    font-family: var(--font-geist-mono), monospace;
+    font-size: 8px;
+    font-weight: 900;
+    height: 16px;
+    justify-content: center;
+    line-height: 1;
+    min-width: 16px;
+    padding: 0 3px;
+    position: absolute;
+    right: -9px;
+    top: -8px;
+  }
+
   .sd-hero {
     padding: clamp(38px, 8vw, 62px) 18px 42px;
   }

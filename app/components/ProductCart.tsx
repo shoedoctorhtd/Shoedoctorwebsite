@@ -41,6 +41,23 @@ function persistCart(lines: CartLine[]) {
   window.dispatchEvent(new Event("sd-product-cart-changed"));
 }
 
+function useStoredCartItemCount() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    const refresh = () => setCount(readCart().reduce((sum, line) => sum + line.quantity, 0));
+    refresh();
+    window.addEventListener("sd-product-cart-changed", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("sd-product-cart-changed", refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+
+  return count;
+}
+
 export function ProductCartProvider({ children }: { children: React.ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>([]);
   const [hydrated, setHydrated] = useState(false);
@@ -123,20 +140,41 @@ export function AddToCartButton({
 
 /** Header remains usable on public pages that do not render a cart provider. */
 export function CartHeaderLink({ className }: { className?: string }) {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    const refresh = () => setCount(readCart().reduce((sum, line) => sum + line.quantity, 0));
-    refresh();
-    window.addEventListener("sd-product-cart-changed", refresh);
-    window.addEventListener("storage", refresh);
-    return () => {
-      window.removeEventListener("sd-product-cart-changed", refresh);
-      window.removeEventListener("storage", refresh);
-    };
-  }, []);
+  const count = useStoredCartItemCount();
   return (
     <a className={`sd-header-cart${className ? ` ${className}` : ""}`} href="/cart" aria-label={`Shopping cart${count ? `, ${count} items` : ""}`}>
       Cart{count ? <span>{count}</span> : null}
+    </a>
+  );
+}
+
+export function CartQuickAction({
+  href,
+  label,
+  tone,
+}: {
+  href: string;
+  label: string;
+  tone: "default" | "secondary" | "accent";
+}) {
+  const count = useStoredCartItemCount();
+  const displayedCount = count > 99 ? "99+" : count;
+  return (
+    <a
+      aria-label={count ? `${label}, ${count} ${count === 1 ? "item" : "items"} in cart` : label}
+      className="sd-mobile-cart-action"
+      data-quick-action={tone}
+      href={href}
+    >
+      <span>{label}</span>
+      <span aria-hidden="true" className="sd-mobile-cart-icon-wrap">
+        <svg className="sd-mobile-cart-icon" viewBox="0 0 24 24">
+          <path d="M3 4h2l2.1 10.3a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.5L20 8H6.2" />
+          <circle cx="9.5" cy="20" r="1" />
+          <circle cx="17.5" cy="20" r="1" />
+        </svg>
+        {count ? <span className="sd-mobile-cart-count">{displayedCount}</span> : null}
+      </span>
     </a>
   );
 }
