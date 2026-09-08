@@ -6,6 +6,7 @@ import {
   type ServiceCategory,
 } from "@/lib/data";
 import { formatNprPriceLabel } from "@/lib/money";
+import { STEAM_ASSISTED_DEEP_CLEAN_ID } from "@/lib/steam-cleaning";
 import { ArrowUpRight } from "./SiteChrome";
 
 const categoryCopy: Record<
@@ -156,7 +157,9 @@ export default function ServiceMenu({
 }
 
 function ServiceCard({ service, index }: { service: Service; index: number }) {
-  const badge = publicServiceBadge(service.badge);
+  const badge = service.id === STEAM_ASSISTED_DEEP_CLEAN_ID
+    ? "NEW"
+    : publicServiceBadge(service.badge);
   const displayedPrice = formatNprPriceLabel(service.priceLabel);
   return (
     <article

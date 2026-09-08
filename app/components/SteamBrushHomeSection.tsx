@@ -1,7 +1,3 @@
-import {
-  steamCleaningContent,
-} from "@/lib/steam-cleaning";
-import { ArrowUpRight } from "./SiteChrome";
 import SteamBrushVisual from "./SteamBrushVisual";
 
 export default function SteamBrushHomeSection({
@@ -17,17 +13,21 @@ export default function SteamBrushHomeSection({
     >
       <div className="sd-steam-home-copy">
         <span className="sd-steam-badge">
-          {steamCleaningContent.homeBadge}
+          FIRST IN NEPAL
         </span>
         <h2 id="steam-home-heading">
-          STEAM <span>CLEANING.</span>
+          Steam-Assisted <span>Shoe Cleaning.</span>
         </h2>
         <p className="sd-steam-home-description">
-          {steamCleaningContent.serviceIntro}
+          We scrub, rinse and revive with controlled steam that helps loosen
+          stubborn grime before careful brushing and drying. We inspect every
+          pair first and use steam only where the material, adhesive and
+          condition allow, typically on durable mesh, selected synthetics and
+          rubber details.
         </p>
         <div className="sd-steam-home-actions">
           <a className="sd-steam-explore" href="/steam-cleaning">
-            EXPLORE STEAM CLEANING <ArrowUpRight />
+            Explore Steam Cleaning →
           </a>
         </div>
       </div>

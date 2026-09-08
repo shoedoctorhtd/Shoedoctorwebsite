@@ -13,6 +13,7 @@ import {
 } from "./components/SiteChrome";
 import { listPublicServices, type Service } from "@/lib/data";
 import { listHomepageProducts } from "@/lib/product-data";
+import { STEAM_ASSISTED_DEEP_CLEAN_ID } from "@/lib/steam-cleaning";
 
 export const dynamic = "force-dynamic";
 
@@ -86,8 +87,12 @@ export default async function Home({
     ...group,
     services: services
       .filter((service) => group.matches(service))
+      .sort(
+        (left, right) =>
+          Number(right.id === STEAM_ASSISTED_DEEP_CLEAN_ID) -
+          Number(left.id === STEAM_ASSISTED_DEEP_CLEAN_ID),
+      )
       .slice(0, 4)
-      .map((service) => service.name),
   }));
   const publicWhatsAppUrl = "https://wa.me/9779761716743";
 
@@ -252,7 +257,12 @@ export default async function Home({
                 {group.services.length ? (
                   <ul aria-label={`${group.title} services`}>
                     {group.services.map((service) => (
-                      <li key={service}>{service}</li>
+                      <li key={service.id}>
+                        {service.name}
+                        {service.id === STEAM_ASSISTED_DEEP_CLEAN_ID ? (
+                          <span className="sd-service-new">NEW</span>
+                        ) : null}
+                      </li>
                     ))}
                   </ul>
                 ) : null}
@@ -263,77 +273,6 @@ export default async function Home({
             </li>
           ))}
         </ol>
-      </section>
-
-      <section className="sd-wash-lab sd-wash-lab--compact sd-section" data-reveal>
-        <div className="sd-wash-copy">
-          <p className="sd-kicker">Inside the wash lab</p>
-          <h2>
-            SCRUB. RINSE.
-            <br />
-            <span>REVIVE.</span>
-          </h2>
-          <p>
-            Material-safe treatment, controlled brushing and careful drying for
-            a cleaner pair that keeps its shape.
-          </p>
-          <a href="/services">
-            See cleaning treatments <ArrowUpRight />
-          </a>
-        </div>
-
-        <div
-          className="sd-wash-stage"
-          role="img"
-          aria-label="Animated basketball sneaker being carefully scrubbed with foam"
-        >
-          <div className="wash-water-ring ring-one" />
-          <div className="wash-water-ring ring-two" />
-          <div className="wash-splash splash-one">✦</div>
-          <div className="wash-splash splash-two">✦</div>
-          <div className="wash-foam" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
-          <picture>
-            <source
-              media="(max-width: 640px)"
-              srcSet="/loader-basketball-sneaker-mobile.webp"
-              type="image/webp"
-            />
-            <source
-              media="(max-width: 1024px)"
-              srcSet="/loader-basketball-sneaker-tablet.webp"
-              type="image/webp"
-            />
-            <img
-              alt=""
-              aria-hidden="true"
-              className="wash-shoe"
-              decoding="async"
-              height="1024"
-              loading="lazy"
-              src="/loader-basketball-sneaker.png"
-              width="1536"
-            />
-          </picture>
-          <div className="wash-brush" aria-hidden="true">
-            <span className="brush-handle" />
-            <span className="brush-head">
-              <i />
-              <i />
-              <i />
-              <i />
-              <i />
-            </span>
-          </div>
-
-        </div>
       </section>
 
       <SteamBrushHomeSection compact />

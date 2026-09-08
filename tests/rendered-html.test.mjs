@@ -48,6 +48,95 @@ test("renders development preview metadata", async () => {
   assert.match(html, /autocomplete="tel"/i);
   assert.match(html, /autocomplete="email"/i);
   assert.match(html, /autocomplete="street-address"/i);
+
+  const desktopNav = html.match(
+    /<nav\b[^>]*class="sd-desktop-nav"[^>]*>([\s\S]*?)<\/nav>/i,
+  )?.[1];
+  const mobileNav = html.match(
+    /<nav\b[^>]*class="sd-mobile-nav"[^>]*>([\s\S]*?)<\/nav>/i,
+  )?.[1];
+  assert.ok(desktopNav);
+  assert.ok(mobileNav);
+
+  const linkHrefs = (markup) =>
+    [...markup.matchAll(/<a\b[^>]*href="([^"]+)"/gi)].map((match) => match[1]);
+  assert.deepEqual(linkHrefs(desktopNav), [
+    "/",
+    "/about",
+    "/services",
+    "/products",
+    "/shoe-donation",
+    "/blog",
+    "/contact",
+  ]);
+  assert.deepEqual(linkHrefs(mobileNav), [
+    "/",
+    "/about",
+    "/shoe-donation",
+    "/services",
+    "/products",
+    "/blog",
+    "/contact",
+  ]);
+  const mobileRows = [
+    ...mobileNav.matchAll(
+      /<div\b[^>]*class="sd-mobile-nav-row"[^>]*>([\s\S]*?)<\/div>/gi,
+    ),
+  ];
+  assert.deepEqual(mobileRows.map((row) => linkHrefs(row[1]).length), [4, 3]);
+  assert.doesNotMatch(desktopNav, /\/steam-cleaning|Steam Cleaning/i);
+  assert.doesNotMatch(mobileNav, /\/steam-cleaning|Steam Cleaning/i);
+  assert.equal((html.match(/href="\/steam-cleaning"/g) ?? []).length, 1);
+  assert.match(html, /FIRST IN NEPAL/i);
+  assert.match(html, /Steam-Assisted[\s\S]*Shoe Cleaning/i);
+});
+
+test("keeps steam cleaning available as a dedicated route and a NEW cleaning service", async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("test", `steam-${process.pid}-${Date.now()}`);
+  const { default: worker } = await import(workerUrl.href);
+  const env = {
+    ASSETS: {
+      fetch: async () => new Response("Not found", { status: 404 }),
+    },
+  };
+  const context = {
+    waitUntil() {},
+    passThroughOnException() {},
+  };
+
+  const [steamResponse, servicesResponse] = await Promise.all([
+    worker.fetch(
+      new Request("http://localhost/steam-cleaning", {
+        headers: { accept: "text/html" },
+      }),
+      env,
+      context,
+    ),
+    worker.fetch(
+      new Request("http://localhost/services", {
+        headers: { accept: "text/html" },
+      }),
+      env,
+      context,
+    ),
+  ]);
+  assert.equal(steamResponse.status, 200);
+  assert.equal(servicesResponse.status, 200);
+
+  const servicesHtml = await servicesResponse.text();
+  const cleanIndex = servicesHtml.indexOf("CLEAN. FRESH. READY.");
+  const steamIndex = servicesHtml.indexOf(
+    'data-service-id="steam-assisted-deep-clean"',
+  );
+  const repairIndex = servicesHtml.indexOf("FIX THE DAMAGE.");
+  assert.ok(cleanIndex >= 0);
+  assert.ok(steamIndex > cleanIndex);
+  assert.ok(repairIndex > steamIndex);
+  assert.match(
+    servicesHtml.slice(steamIndex, steamIndex + 900),
+    /menu-badge[^>]*>NEW</i,
+  );
 });
 
 test("renders donation confirmation and opt-in fields without public donor data", async () => {

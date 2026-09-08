@@ -5,13 +5,11 @@
 
 import { usePathname } from "next/navigation";
 import { CartQuickAction } from "./ProductCart";
-import styles from "./SiteChrome.module.css";
 
 type NavigationKey =
   | "home"
   | "about"
   | "services"
-  | "steam"
   | "products"
   | "donate"
   | "blog"
@@ -27,7 +25,6 @@ const navigationItems: Record<NavigationKey, NavigationItem> = {
   home: { href: "/", key: "home", label: "Home" },
   about: { href: "/about", key: "about", label: "About Us" },
   services: { href: "/services", key: "services", label: "Services" },
-  steam: { href: "/steam-cleaning", key: "steam", label: "Steam Cleaning" },
   products: { href: "/products", key: "products", label: "Products" },
   donate: { href: "/shoe-donation", key: "donate", label: "Donate Shoes" },
   blog: { href: "/blog", key: "blog", label: "Blog" },
@@ -38,7 +35,6 @@ const desktopNavigation = [
   navigationItems.home,
   navigationItems.about,
   navigationItems.services,
-  navigationItems.steam,
   navigationItems.products,
   navigationItems.donate,
   navigationItems.blog,
@@ -58,7 +54,6 @@ const mobileNavigationRows = [
   {
     key: "secondary",
     items: [
-      navigationItems.steam,
       navigationItems.products,
       navigationItems.blog,
       navigationItems.contact,
@@ -66,9 +61,7 @@ const mobileNavigationRows = [
   },
 ];
 
-const footerNavigation = desktopNavigation.filter(
-  (item) => item.key !== "home" && item.key !== "steam",
-);
+const footerNavigation = desktopNavigation.filter((item) => item.key !== "home");
 
 export function ArrowUpRight() {
   return (
@@ -88,28 +81,15 @@ function NavigationItems({ items, isCurrentPage }: NavigationItemsProps) {
     <>
       {items.map((item) => {
         const isCurrent = isCurrentPage(item.href);
-        const isSteam = item.key === "steam";
         return (
           <a
             aria-current={isCurrent ? "page" : undefined}
-            className={`sd-nav-item sd-nav-item--${item.key}${
-              isSteam ? ` sd-steam-nav-trigger ${styles.steamNavTrigger}` : ""
-            }`}
-            data-current={isSteam && isCurrent ? "true" : undefined}
+            className={`sd-nav-item sd-nav-item--${item.key}`}
             data-nav-key={item.key}
             href={item.href}
             key={item.href}
           >
-            {isSteam ? (
-              <span className={styles.steamLabel}>{item.label}</span>
-            ) : (
-              item.label
-            )}
-            {isSteam ? (
-              <span aria-hidden="true" className={styles.steamNewBadge}>
-                New
-              </span>
-            ) : null}
+            {item.label}
           </a>
         );
       })}

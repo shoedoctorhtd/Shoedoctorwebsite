@@ -654,9 +654,10 @@ test("public references, status transitions, image validation, and admin permiss
 });
 
 test("homepage care essentials and permanent product deletion keep their public and admin boundaries", async () => {
-  const [homePage, homeSection, homeStyles, productData, productHome, permanentDeleteRoute, restoreRoute, dashboard, adminProductsPage, lifecycleMigration] = await Promise.all([
+  const [homePage, homeSection, steamHome, homeStyles, productData, productHome, permanentDeleteRoute, restoreRoute, dashboard, adminProductsPage, lifecycleMigration] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/HomeCareEssentials.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/SteamBrushHomeSection.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/HomeCareEssentials.module.css", import.meta.url), "utf8"),
     readFile(new URL("../lib/product-data.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/product-home.ts", import.meta.url), "utf8"),
@@ -671,10 +672,15 @@ test("homepage care essentials and permanent product deletion keep their public 
   assert.match(homePage, /<HomeCareEssentials products=\{homepageProducts\} \/>/);
   assert.equal((homePage.match(/<HomeCareEssentials products=\{homepageProducts\} \/>/g) ?? []).length, 1);
   assert.ok(homePage.indexOf("<HomeCareEssentials products={homepageProducts} />") < homePage.indexOf('id="what-we-treat"'));
-  assert.ok(homePage.indexOf('id="what-we-treat"') < homePage.indexOf("sd-wash-lab--compact"));
-  assert.ok(homePage.indexOf("sd-wash-lab--compact") < homePage.indexOf("<SteamBrushHomeSection compact />"));
+  assert.ok(homePage.indexOf('id="what-we-treat"') < homePage.indexOf("<SteamBrushHomeSection compact />"));
   assert.ok(homePage.indexOf("<SteamBrushHomeSection compact />") < homePage.indexOf("sd-process--compact"));
-  assert.doesNotMatch(homePage, /sd-marquee|sd-local-banner|sd-home-cta/);
+  assert.equal((homePage.match(/<SteamBrushHomeSection compact \/>/g) ?? []).length, 1);
+  assert.doesNotMatch(homePage, /sd-wash-lab--compact|sd-marquee|sd-local-banner|sd-home-cta/);
+  assert.match(steamHome, /FIRST IN NEPAL/);
+  assert.match(steamHome, /Steam-Assisted <span>Shoe Cleaning\.<\/span>/);
+  assert.match(steamHome, /material, adhesive and[\s\S]*durable mesh, selected synthetics and[\s\S]*rubber details/);
+  assert.equal((steamHome.match(/href="\/steam-cleaning"/g) ?? []).length, 1);
+  assert.match(steamHome, /Explore Steam Cleaning →/);
   assert.match(homeSection, /if \(!visibleProducts\.length\) return null/);
   assert.doesNotMatch(homeSection, /Genuine product|shortDescription/);
   assert.match(homeSection, /View All Products/);
@@ -729,7 +735,7 @@ test("homepage care essentials and permanent product deletion keep their public 
 });
 
 test("public and admin routes enforce the catalogue, image-access, SEO, header, permission, and atomic-write contracts", async () => {
-  const [catalogue, publicApi, productApi, publicImageRoute, adminImageRoute, publishRoute, checkoutApi, adminProductsApi, inventoryApi, globalInventoryApi, inventoryPage, inventory, permissions, header, headerStyles, globalStyles, cart, migration, productData, productImages, sitemap, productStructuredData, blog, recommendation] = await Promise.all([
+  const [catalogue, publicApi, productApi, publicImageRoute, adminImageRoute, publishRoute, checkoutApi, adminProductsApi, inventoryApi, globalInventoryApi, inventoryPage, inventory, permissions, header, globalStyles, serviceMenu, cart, migration, productData, productImages, sitemap, productStructuredData, blog, recommendation] = await Promise.all([
     readFile(new URL("../app/products/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/products/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/products/[slug]/route.ts", import.meta.url), "utf8"),
@@ -744,8 +750,8 @@ test("public and admin routes enforce the catalogue, image-access, SEO, header, 
     readFile(new URL("../lib/product-inventory.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/product-permissions.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/components/SiteChrome.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/components/SiteChrome.module.css", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/ServiceMenu.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/ProductCart.tsx", import.meta.url), "utf8"),
     readFile(migrationUrl, "utf8"),
     readFile(new URL("../lib/product-data.ts", import.meta.url), "utf8"),
@@ -810,14 +816,15 @@ test("public and admin routes enforce the catalogue, image-access, SEO, header, 
   assert.match(header, /navigationItems\.products/);
   assert.match(header, /const mobileNavigationRows/);
   assert.match(header, /navigationItems\.home,[\s\S]*navigationItems\.about,[\s\S]*navigationItems\.donate,[\s\S]*navigationItems\.services/);
-  assert.match(header, /navigationItems\.steam,[\s\S]*navigationItems\.products,[\s\S]*navigationItems\.blog,[\s\S]*navigationItems\.contact/);
+  assert.match(header, /key: "secondary",[\s\S]*items: \[[\s\S]*navigationItems\.products,[\s\S]*navigationItems\.blog,[\s\S]*navigationItems\.contact/);
+  assert.doesNotMatch(header, /key: "steam"|label: "Steam Cleaning"|navigationItems\.steam/);
   assert.match(header, /Book Steam Clean/);
   assert.match(header, /CartQuickAction/);
   assert.match(header, /kind: "cart"/);
-  assert.match(headerStyles, /steamNewBadge/);
-  assert.match(headerStyles, /grid-template-columns: auto minmax\(0, 1fr\)/);
-  assert.match(headerStyles, /grid-column: 1/);
-  assert.match(headerStyles, /grid-column: 2/);
+  assert.match(globalStyles, /\.sd-desktop-nav \{[\s\S]*?justify-content: center/);
+  assert.match(globalStyles, /\.sd-mobile-nav-row\[data-nav-row="secondary"\] \{[\s\S]*?repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(globalStyles, /\.sd-mobile-nav a,[\s\S]*?min-height: 44px/);
+  assert.match(serviceMenu, /service\.id === STEAM_ASSISTED_DEEP_CLEAN_ID[\s\S]*?\? "NEW"/);
   assert.match(cart, /export function CartQuickAction/);
   assert.match(cart, /sd-product-cart-changed/);
   assert.match(cart, /sd-mobile-cart-count/);
