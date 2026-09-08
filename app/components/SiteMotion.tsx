@@ -3,11 +3,14 @@
 import { useEffect } from "react";
 
 /**
- * Enhances already-visible public content after paint. There is deliberately
- * no blocking loader: direct links and no-JavaScript visits render the same
- * readable document immediately.
+ * Enhances public content after paint. The branded loader is opt-in so the
+ * homepage can retain its original opening without delaying other routes.
  */
-export default function SiteMotion() {
+export default function SiteMotion({
+  showLoader = false,
+}: {
+  showLoader?: boolean;
+}) {
   useEffect(() => {
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
@@ -81,5 +84,25 @@ export default function SiteMotion() {
     };
   }, []);
 
-  return null;
+  return showLoader ? (
+    <div className="site-loader" aria-hidden="true">
+      <div className="loader-branding">
+        <div className="loader-diagnosis-art">
+          <i />
+        </div>
+        <div className="loader-branding-copy">
+          <strong>
+            <span>SH</span>
+            <span className="loader-brand-plus">
+              <span>+</span>
+            </span>
+            <span>E DOCTOR</span>
+          </strong>
+          <span className="loader-branding-tagline">
+            WE DIAGNOSE · WE CLEAN · WE RESTORE
+          </span>
+        </div>
+      </div>
+    </div>
+  ) : null;
 }

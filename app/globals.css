@@ -16168,3 +16168,172 @@ video {
     display: none;
   }
 }
+
+/* Focused homepage declutter pass. These modifiers leave shared pages and
+   the booking section untouched while lowering the weight of secondary blocks. */
+.sd-home-services--compact {
+  padding-block: clamp(52px, 6vw, 78px);
+}
+
+.sd-home-services--compact .sd-treatment-plan__heading {
+  gap: clamp(20px, 3vw, 42px);
+  margin-bottom: clamp(28px, 3.5vw, 40px);
+}
+
+.sd-home-services--compact .sd-treatment-plan__heading h2 {
+  font-size: clamp(2.3rem, 4.8vw, 5.35rem);
+}
+
+.sd-home-services--compact .sd-treatment-plan__supporting-copy p {
+  margin-bottom: 18px;
+}
+
+.sd-home-services--compact .sd-treatment-plan__cards {
+  max-width: 1280px;
+}
+
+.sd-home-services--compact .sd-treatment-plan__card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  padding: clamp(20px, 2vw, 26px);
+}
+
+.sd-home-services--compact .sd-treatment-plan__card--repair {
+  --treatment-surface: var(--lime);
+  --treatment-ink: var(--ink);
+  --treatment-line: rgba(17, 17, 15, 0.32);
+}
+
+.sd-home-services--compact .sd-treatment-plan__card-copy h3 {
+  font-size: clamp(2.15rem, 3.45vw, 3.75rem);
+  margin-bottom: 8px;
+}
+
+.sd-home-services--compact .sd-treatment-plan__card-copy p {
+  font-size: 0.93rem;
+  line-height: 1.5;
+  max-width: 30ch;
+}
+
+.sd-home-services--compact .sd-treatment-plan__card ul {
+  margin-top: auto;
+  padding: 12px 42px 0 0;
+}
+
+.sd-home-services--compact .sd-treatment-plan__card-arrow {
+  height: 38px;
+  right: 18px;
+  top: 18px;
+  width: 38px;
+}
+
+.sd-wash-lab--compact {
+  gap: clamp(34px, 5vw, 70px);
+  padding-block: clamp(52px, 6vw, 78px);
+}
+
+.sd-wash-lab--compact .sd-wash-copy h2 {
+  font-size: clamp(3rem, 5.2vw, 5.8rem);
+  margin-block: 20px;
+}
+
+.sd-wash-lab--compact .sd-wash-stage {
+  min-height: clamp(390px, 34vw, 470px);
+}
+
+.sd-steam-home--compact {
+  gap: clamp(30px, 4.5vw, 58px);
+  padding-block: clamp(50px, 6vw, 76px);
+}
+
+.sd-steam-home--compact .sd-steam-badge {
+  margin-bottom: 15px;
+}
+
+.sd-steam-home--compact .sd-steam-home-copy h2 {
+  font-size: clamp(2.6rem, 4.6vw, 5rem);
+  margin-top: 0;
+}
+
+.sd-steam-home--compact .sd-steam-home-description {
+  line-height: 1.6;
+  margin-top: 16px;
+  max-width: 48ch;
+}
+
+.sd-steam-home--compact .sd-steam-home-actions {
+  margin-top: 20px;
+}
+
+.sd-steam-home--compact .sd-steam-visual {
+  min-height: clamp(280px, 29vw, 390px);
+}
+
+.sd-process--compact {
+  gap: clamp(38px, 5vw, 72px);
+  padding-block: clamp(52px, 6vw, 76px);
+}
+
+.sd-process--compact .sd-process-title h2 {
+  font-size: clamp(2.8rem, 5vw, 5.4rem);
+  margin-top: 20px;
+}
+
+.sd-process--compact .sd-step-list article {
+  padding-block: 20px;
+}
+
+@media (max-width: 640px) {
+  .sd-home-services--compact {
+    padding-block: 44px;
+  }
+
+  .sd-home-services--compact .sd-treatment-plan__heading {
+    margin-bottom: 26px;
+  }
+
+  .sd-home-services--compact .sd-treatment-plan__heading h2 {
+    font-size: clamp(2.15rem, 10vw, 3.7rem);
+  }
+
+  .sd-home-services--compact .sd-treatment-plan__card {
+    gap: 12px;
+    padding: 18px;
+  }
+
+  .sd-home-services--compact .sd-treatment-plan__card-copy h3 {
+    font-size: clamp(2.15rem, 10vw, 3.2rem);
+  }
+
+  .sd-home-services--compact .sd-treatment-plan__card-copy p {
+    font-size: 0.95rem;
+  }
+
+  .sd-home-services--compact .sd-treatment-plan__card ul {
+    padding-top: 10px;
+  }
+
+  .sd-wash-lab--compact,
+  .sd-steam-home--compact,
+  .sd-process--compact {
+    padding-block: 44px;
+  }
+
+  .sd-wash-lab--compact .sd-wash-stage {
+    min-height: clamp(250px, 76vw, 310px);
+  }
+
+  .sd-steam-home--compact .sd-steam-home-copy h2 {
+    font-size: clamp(2.55rem, 12vw, 4rem);
+  }
+
+  .sd-steam-home--compact .sd-steam-visual {
+    min-height: clamp(245px, 72vw, 300px);
+  }
+
+  .sd-process--compact .sd-process-title h2 {
+    font-size: clamp(2.65rem, 11vw, 3.8rem);
+  }
+}

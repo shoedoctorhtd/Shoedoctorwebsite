@@ -1,6 +1,5 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
 import type { Metadata } from "next";
-import { Fragment } from "react";
 import BookingForm from "./components/BookingForm";
 import HomeCareEssentials from "./components/HomeCareEssentials";
 import bookingStyles from "./components/BookingExperience.module.css";
@@ -12,8 +11,7 @@ import {
   SiteFooter,
   SiteHeader,
 } from "./components/SiteChrome";
-import { listPublicServices } from "@/lib/data";
-import { formatNprPriceLabel } from "@/lib/money";
+import { listPublicServices, type Service } from "@/lib/data";
 import { listHomepageProducts } from "@/lib/product-data";
 
 export const dynamic = "force-dynamic";
@@ -34,109 +32,40 @@ const steps = [
   ["Get it back", "Self collect or choose pickup and delivery where available."],
 ];
 
-type TreatmentGraphic = "diagnose" | "clean" | "restore";
-
-const treatmentPlans: Array<{
-  number: string;
-  name: string;
+type CompactServiceGroup = {
+  id: "clean" | "repair" | "restore";
+  title: string;
   copy: string;
-  keywords: string[];
-  tone: TreatmentGraphic;
-  ariaLabel: string;
-}> = [
+  matches: (service: Service) => boolean;
+};
+
+const restorationServicePattern =
+  /restor|repaint|recolour|recolor|whiten|colour|color/i;
+
+const compactServiceGroups: CompactServiceGroup[] = [
   {
-    number: "01",
-    name: "Diagnose",
-    copy:
-      "We inspect the material, construction, stains and damage before deciding the safest treatment for your pair.",
-    keywords: ["Material", "Condition", "Damage", "Treatment plan"],
-    tone: "diagnose",
-    ariaLabel: "Learn about Shoe Doctor diagnosis",
+    id: "clean",
+    title: "CLEAN",
+    copy: "Routine refreshes, detailed cleaning and steam care when suitable.",
+    matches: (service) =>
+      service.category === "Cleaning" &&
+      !restorationServicePattern.test(service.name),
   },
   {
-    number: "02",
-    name: "Clean",
-    copy:
-      "Material-specific cleaning for the upper, sole, interior, laces, stains and odour—with steam-assisted care where suitable.",
-    keywords: ["Surface", "Interior", "Stains", "Deodorizing"],
-    tone: "clean",
-    ariaLabel: "Learn about shoe cleaning",
+    id: "repair",
+    title: "REPAIR",
+    copy: "Stitching, re-gluing and structural work for pairs that need support.",
+    matches: (service) =>
+      service.category === "Repairs" &&
+      !restorationServicePattern.test(service.name),
   },
   {
-    number: "03",
-    name: "Restore",
-    copy:
-      "Repair, re-gluing, stitching, sole care, whitening, crease reduction and colour restoration to extend the life of your pair.",
-    keywords: ["Repair", "Recolour", "Reshape", "Protect"],
-    tone: "restore",
-    ariaLabel: "Learn about shoe restoration",
+    id: "restore",
+    title: "RESTORE",
+    copy: "Whitening, colour work and full restoration to bring a pair back.",
+    matches: (service) => restorationServicePattern.test(service.name),
   },
 ];
-
-function TreatmentPlanGraphic({ type }: { type: TreatmentGraphic }) {
-  if (type === "diagnose") {
-    return (
-      <svg
-        aria-hidden="true"
-        className="sd-treatment-plan__graphic sd-treatment-plan__graphic--diagnose"
-        fill="none"
-        focusable="false"
-        viewBox="0 0 240 150"
-      >
-        <path
-          className="sd-treatment-plan__graphic-shoe"
-          d="M24 103c14-3 26-10 37-23l18-29 24 18c13 10 29 17 48 22l28 7c11 3 17 9 17 18H24v-13Z"
-        />
-        <path className="sd-treatment-plan__graphic-sole" d="M24 116h172c7 0 12 5 12 10H24v-10Z" />
-        <path className="sd-treatment-plan__graphic-scan" d="M42 44h68M37 61h74M118 40v42" />
-        <circle className="sd-treatment-plan__graphic-lens" cx="153" cy="55" r="23" />
-        <path className="sd-treatment-plan__graphic-handle" d="m170 72 25 25" />
-        <circle className="sd-treatment-plan__graphic-marker" cx="98" cy="91" r="4" />
-      </svg>
-    );
-  }
-
-  if (type === "clean") {
-    return (
-      <svg
-        aria-hidden="true"
-        className="sd-treatment-plan__graphic sd-treatment-plan__graphic--clean"
-        fill="none"
-        focusable="false"
-        viewBox="0 0 240 150"
-      >
-        <path
-          className="sd-treatment-plan__graphic-shoe"
-          d="M24 103c14-3 26-10 37-23l18-29 24 18c13 10 29 17 48 22l28 7c11 3 17 9 17 18H24v-13Z"
-        />
-        <path className="sd-treatment-plan__graphic-sole" d="M24 116h172c7 0 12 5 12 10H24v-10Z" />
-        <path className="sd-treatment-plan__graphic-sweep" d="M31 82c41-30 85-32 149-2" />
-        <path className="sd-treatment-plan__graphic-steam" d="M53 39c-7 9-7 18 0 27M70 30c-7 10-7 20 0 31M88 37c-6 9-6 17 0 25" />
-        <path className="sd-treatment-plan__graphic-brush" d="M160 46l23 26m-16-34 24 26m-7-34 22 25" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg
-      aria-hidden="true"
-      className="sd-treatment-plan__graphic sd-treatment-plan__graphic--restore"
-      fill="none"
-      focusable="false"
-      viewBox="0 0 240 150"
-    >
-      <path
-        className="sd-treatment-plan__graphic-shoe"
-        d="M24 103c14-3 26-10 37-23l18-29 24 18c13 10 29 17 48 22l28 7c11 3 17 9 17 18H24v-13Z"
-      />
-      <path className="sd-treatment-plan__graphic-sole" d="M24 116h172c7 0 12 5 12 10H24v-10Z" />
-      <path className="sd-treatment-plan__graphic-split" d="M117 47v68" />
-      <path className="sd-treatment-plan__graphic-stitch" d="M129 72c14 4 29 3 43-3" />
-      <path className="sd-treatment-plan__graphic-repair" d="M148 96c18-3 29-10 39-22" />
-      <path className="sd-treatment-plan__graphic-shine" d="m76 50 4 9 9 4-9 4-4 9-4-9-9-4 9-4 4-9Z" />
-    </svg>
-  );
-}
 
 export default async function Home({
   searchParams,
@@ -153,21 +82,18 @@ export default async function Home({
   )
     ? params.service
     : services[0]?.id;
-  const marqueeServiceIds = [
-    "basic-clean",
-    "deep-clean",
-    "steam-assisted-deep-clean",
-    "express-wash-dry",
-    "full-restoration",
-  ];
-  const marqueeServices = marqueeServiceIds
-    .map((serviceId) => services.find((service) => service.id === serviceId))
-    .filter((service): service is (typeof services)[number] => Boolean(service));
+  const serviceGroups = compactServiceGroups.map((group) => ({
+    ...group,
+    services: services
+      .filter((service) => group.matches(service))
+      .slice(0, 4)
+      .map((service) => service.name),
+  }));
   const publicWhatsAppUrl = "https://wa.me/9779761716743";
 
   return (
     <main id="main-content" className="public-site">
-      <SiteMotion />
+      <SiteMotion showLoader />
       <SiteHeader />
 
       <section className="sd-hero" id="top">
@@ -279,89 +205,67 @@ export default async function Home({
         </div>
       </section>
 
-      <section className="sd-marquee" aria-label="Current service prices">
-        <div>
-          {[...marqueeServices, ...marqueeServices].map((service, index) => (
-            <Fragment key={`${service.id}-${index}`}>
-              <span>
-                {service.name.toUpperCase()} · {formatNprPriceLabel(service.priceLabel).toUpperCase()}
-              </span>
-              <i>✦</i>
-            </Fragment>
-          ))}
-        </div>
-      </section>
-
-      <SteamBrushHomeSection />
+      <HomeCareEssentials products={homepageProducts} />
 
       <section
         aria-labelledby="treatment-plan-heading"
-        className="sd-home-services sd-section"
+        className="sd-home-services sd-home-services--compact sd-section"
         data-reveal
         id="what-we-treat"
       >
-        <div className="sd-treatment-plan__heading">
-          <p className="sd-kicker sd-treatment-plan__kicker">What we treat</p>
+        <div className="sd-treatment-plan__heading sd-treatment-plan__heading--compact">
+          <p className="sd-kicker sd-treatment-plan__kicker">Care options</p>
           <h2 id="treatment-plan-heading">
             <span className="sd-treatment-plan__headline-strong">
-              EVERY PAIR GETS
+              WHAT DOES YOUR
             </span>
             <span className="sd-treatment-plan__headline-accent">
-              A PROPER PLAN.
+              PAIR NEED?
             </span>
           </h2>
           <div className="sd-treatment-plan__supporting-copy">
             <p>
-              We inspect the material, condition and damage before recommending
-              treatment. That means honest expectations and the right care
-              instead of a one-method-fits-all wash.
+              Cleaning, repair and restoration matched to your pair after
+              inspection.
             </p>
             <a href="/services">
-              View our services <ArrowUpRight />
+              View all services <ArrowUpRight />
             </a>
           </div>
         </div>
 
-        <div className="sd-treatment-plan__process">
-          <span className="sd-treatment-plan__process-line" aria-hidden="true" />
-          <ol className="sd-treatment-plan__cards" aria-label="Treatment process">
-            {treatmentPlans.map((item) => (
-              <li key={item.name}>
-                <a
-                  aria-label={item.ariaLabel}
-                  className={`sd-treatment-plan__card sd-treatment-plan__card--${item.tone}`}
-                  href="/services"
-                >
-                  <span className="sd-treatment-plan__card-number">
-                    {item.number}
-                  </span>
-                  <TreatmentPlanGraphic type={item.tone} />
-                  <div className="sd-treatment-plan__card-copy">
-                    <h3>{item.name}</h3>
-                    <p>{item.copy}</p>
-                  </div>
-                  <ul aria-label={`${item.name} treatment focus`}>
-                    {item.keywords.map((keyword) => (
-                      <li key={keyword}>{keyword}</li>
+        <ol className="sd-treatment-plan__cards" aria-label="Shoe Doctor services">
+          {serviceGroups.map((group, index) => (
+            <li key={group.id}>
+              <a
+                aria-label={`View ${group.title.toLowerCase()} services`}
+                className={`sd-treatment-plan__card sd-treatment-plan__card--${group.id}`}
+                href="/services"
+              >
+                <span className="sd-treatment-plan__card-number">
+                  0{index + 1}
+                </span>
+                <div className="sd-treatment-plan__card-copy">
+                  <h3>{group.title}</h3>
+                  <p>{group.copy}</p>
+                </div>
+                {group.services.length ? (
+                  <ul aria-label={`${group.title} services`}>
+                    {group.services.map((service) => (
+                      <li key={service}>{service}</li>
                     ))}
                   </ul>
-                  <span className="sd-treatment-plan__card-arrow" aria-hidden="true">
-                    <ArrowUpRight />
-                  </span>
-                </a>
-              </li>
-            ))}
-          </ol>
-        </div>
-
-        <p className="sd-treatment-plan__promise">
-          WE DIAGNOSE. WE CLEAN. WE RESTORE.
-        </p>
+                ) : null}
+                <span className="sd-treatment-plan__card-arrow" aria-hidden="true">
+                  <ArrowUpRight />
+                </span>
+              </a>
+            </li>
+          ))}
+        </ol>
       </section>
 
-      <HomeCareEssentials products={homepageProducts} />
-
-      <section className="sd-wash-lab sd-section" data-reveal>
+      <section className="sd-wash-lab sd-wash-lab--compact sd-section" data-reveal>
         <div className="sd-wash-copy">
           <p className="sd-kicker">Inside the wash lab</p>
           <h2>
@@ -370,9 +274,8 @@ export default async function Home({
             <span>REVIVE.</span>
           </h2>
           <p>
-            Deep care is more than soap and water. We use material-safe
-            treatment, controlled brushing and careful drying to clean the pair
-            without damaging its shape, colour or construction.
+            Material-safe treatment, controlled brushing and careful drying for
+            a cleaner pair that keeps its shape.
           </p>
           <a href="/services">
             See cleaning treatments <ArrowUpRight />
@@ -433,21 +336,9 @@ export default async function Home({
         </div>
       </section>
 
-      <section className="sd-local-banner" data-reveal>
-        <div>
-          <span>Made-in-Nepal footwear gets special care</span>
-          <h2>WEAR LOCAL.<br />SAVE LOCAL.</h2>
-        </div>
-        <p>
-          Get Rs 50 off Basic Clean, Deep Clean and Premium Care for verified
-          Nepali-brand footwear.
-        </p>
-        <a href="/#book">
-          Claim your local-brand price <ArrowUpRight />
-        </a>
-      </section>
+      <SteamBrushHomeSection compact />
 
-      <section className="sd-process sd-section" data-reveal>
+      <section className="sd-process sd-process--compact sd-section" data-reveal>
         <div className="sd-process-title">
           <p className="sd-kicker">Simple from start to finish</p>
           <h2>
@@ -499,17 +390,6 @@ export default async function Home({
           initialServiceId={requestedService}
           whatsappUrl={publicWhatsAppUrl}
         />
-      </section>
-
-      <section className="sd-home-cta" data-reveal>
-        <p>Not sure what your pair needs?</p>
-        <h2>LET THE DOCTOR<br />DIAGNOSE IT.</h2>
-        <div>
-          <a className="sd-primary-button" href="/contact">
-            Contact us <ArrowUpRight />
-          </a>
-          <a href="https://wa.me/9779761716743">WhatsApp: 9761716743 ↗</a>
-        </div>
       </section>
 
       <SiteFooter />

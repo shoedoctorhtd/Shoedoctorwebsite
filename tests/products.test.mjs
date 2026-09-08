@@ -667,13 +667,22 @@ test("homepage care essentials and permanent product deletion keep their public 
     readFile(migration0016Url, "utf8"),
   ]);
   assert.match(homePage, /listHomepageProducts\(\)\.catch\(\(\) => \[\]\)/);
+  assert.match(homePage, /<SiteMotion showLoader \/>/);
   assert.match(homePage, /<HomeCareEssentials products=\{homepageProducts\} \/>/);
   assert.equal((homePage.match(/<HomeCareEssentials products=\{homepageProducts\} \/>/g) ?? []).length, 1);
+  assert.ok(homePage.indexOf("<HomeCareEssentials products={homepageProducts} />") < homePage.indexOf('id="what-we-treat"'));
+  assert.ok(homePage.indexOf('id="what-we-treat"') < homePage.indexOf("sd-wash-lab--compact"));
+  assert.ok(homePage.indexOf("sd-wash-lab--compact") < homePage.indexOf("<SteamBrushHomeSection compact />"));
+  assert.ok(homePage.indexOf("<SteamBrushHomeSection compact />") < homePage.indexOf("sd-process--compact"));
+  assert.doesNotMatch(homePage, /sd-marquee|sd-local-banner|sd-home-cta/);
   assert.match(homeSection, /if \(!visibleProducts\.length\) return null/);
-  assert.match(homeSection, /Genuine product/);
+  assert.doesNotMatch(homeSection, /Genuine product|shortDescription/);
+  assert.match(homeSection, /View All Products/);
+  assert.match(homeSection, /View Product/);
   assert.doesNotMatch(homeSection, /ProductStructuredData/);
   assert.match(homeStyles, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
-  assert.match(homeStyles, /scroll-snap-type: x mandatory/);
+  assert.match(homeStyles, /@media \(max-width: 620px\)[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.doesNotMatch(homeStyles, /scroll-snap-type/);
   assert.match(productData, /HOMEPAGE_PRODUCT_CANDIDATE_LIMIT = 12/);
   assert.match(productData, /WHERE p\.status = 'published'/);
   assert.match(productData, /AND p\.stock_quantity > 0/);

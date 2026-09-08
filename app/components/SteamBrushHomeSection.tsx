@@ -1,42 +1,33 @@
 import {
-  STEAM_ASSISTED_DEEP_CLEAN_ID,
   steamCleaningContent,
 } from "@/lib/steam-cleaning";
 import { ArrowUpRight } from "./SiteChrome";
 import SteamBrushVisual from "./SteamBrushVisual";
 
-const [homeHeadingLineOne, homeHeadingLineTwo, ...homeHeadingTail] =
-  steamCleaningContent.homeHeading.split(" ");
-const homeHeadingSecondLine = homeHeadingTail.slice(0, 2).join(" ");
-const homeHeadingOutline = homeHeadingTail.slice(2).join(" ");
-
-export default function SteamBrushHomeSection() {
+export default function SteamBrushHomeSection({
+  compact = false,
+}: {
+  compact?: boolean;
+}) {
   return (
-    <section className="sd-steam-home sd-section" data-reveal>
+    <section
+      aria-labelledby="steam-home-heading"
+      className={`sd-steam-home sd-section${compact ? " sd-steam-home--compact" : ""}`}
+      data-reveal
+    >
       <div className="sd-steam-home-copy">
         <span className="sd-steam-badge">
           {steamCleaningContent.homeBadge}
         </span>
-        <h2>
-          {homeHeadingLineOne} {homeHeadingLineTwo}
-          <br />
-          {homeHeadingSecondLine} <span>{homeHeadingOutline}</span>
+        <h2 id="steam-home-heading">
+          STEAM <span>CLEANING.</span>
         </h2>
         <p className="sd-steam-home-description">
-          {steamCleaningContent.homeDescription}
-        </p>
-        <p className="sd-steam-clarification">
-          {steamCleaningContent.homeSupporting}
+          {steamCleaningContent.serviceIntro}
         </p>
         <div className="sd-steam-home-actions">
-          <a
-            className="sd-primary-button"
-            href={`/?service=${STEAM_ASSISTED_DEEP_CLEAN_ID}#book`}
-          >
-            BOOK A STEAM CLEAN <ArrowUpRight />
-          </a>
           <a className="sd-steam-explore" href="/steam-cleaning">
-            LEARN HOW IT WORKS <ArrowUpRight />
+            EXPLORE STEAM CLEANING <ArrowUpRight />
           </a>
         </div>
       </div>
