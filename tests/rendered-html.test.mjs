@@ -125,18 +125,31 @@ test("keeps steam cleaning available as a dedicated route and a NEW cleaning ser
   assert.equal(servicesResponse.status, 200);
 
   const servicesHtml = await servicesResponse.text();
-  const cleanIndex = servicesHtml.indexOf("CLEAN. FRESH. READY.");
+  const cleanIndex = servicesHtml.indexOf("Everyday Care");
   const steamIndex = servicesHtml.indexOf(
     'data-service-id="steam-assisted-deep-clean"',
   );
-  const repairIndex = servicesHtml.indexOf("FIX THE DAMAGE.");
+  const repairIndex = servicesHtml.indexOf("Specialist Care");
   assert.ok(cleanIndex >= 0);
   assert.ok(steamIndex > cleanIndex);
   assert.ok(repairIndex > steamIndex);
   assert.match(
     servicesHtml.slice(steamIndex, steamIndex + 900),
-    /menu-badge[^>]*>NEW</i,
+    />NEW</i,
   );
+  assert.match(servicesHtml, /Intensive Care/);
+  assert.match(servicesHtml, /Not sure which service you need/);
+  assert.match(servicesHtml, /id="deep-clean"/);
+  assert.match(servicesHtml, /href="\/\?service=deep-clean#book"/);
+  assert.match(servicesHtml, /More inclusions/);
+  const steamHtml = await steamResponse.text();
+  assert.match(steamHtml, /Steam Shoe Cleaning in Hetauda/);
+  assert.match(steamHtml, /Rs 349/);
+  assert.match(steamHtml, /href="\/\?service=steam-assisted-deep-clean#book"/);
+  assert.match(steamHtml, /href="\/services#deep-clean"/);
+  assert.match(steamHtml, /When should I choose Deep Cleaning instead/);
+  assert.match(steamHtml, /Controlled application matters/);
+  assert.match(steamHtml, /<details>/);
 });
 
 test("renders donation confirmation and opt-in fields without public donor data", async () => {

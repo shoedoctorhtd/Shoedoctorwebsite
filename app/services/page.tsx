@@ -1,12 +1,9 @@
-/* eslint-disable @next/next/no-html-link-for-pages */
 import type { Metadata } from "next";
 import { listPublicServices } from "@/lib/data";
-import ServiceMenu from "../components/ServiceMenu";
+import ServicesExperience from "../components/ServicesExperience";
+import styles from "../components/ServicesExperience.module.css";
 import SiteMotion from "../components/SiteMotion";
-import SteamBrushAdvantage from "../components/SteamBrushAdvantage";
-import SteamBrushServiceTeaser from "../components/SteamBrushServiceTeaser";
 import {
-  ArrowUpRight,
   SiteFooter,
   SiteHeader,
 } from "../components/SiteChrome";
@@ -18,7 +15,7 @@ export const metadata: Metadata = {
     absolute: "Shoe Cleaning, Repair & Restoration Services | Shoe Doctor Nepal",
   },
   description:
-    "Explore Shoe Doctor Nepal's professional shoe cleaning in Hetauda, repair and restoration services. Steam-assisted deep cleaning is available after material inspection.",
+    "Explore Shoe Doctor Nepal's professional shoe cleaning in Hetauda, repair and restoration services. Compare routine cleaning, precision Steam Cleaning, intensive Deep Cleaning and specialist care with current prices.",
   alternates: { canonical: "/services" },
 };
 
@@ -53,28 +50,13 @@ export default async function ServicesPage() {
       <SiteMotion />
       <SiteHeader />
 
-      <section className="sd-page-hero services-hero">
-        <p className="sd-kicker">The complete treatment menu</p>
-        <h1>
-          CLEAN. REPAIR.
-          <br />
-          <span>RESTORE. REPEAT.</span>
-        </h1>
-        <div className="sd-page-hero-bottom">
-          <p>
-            Every service is chosen after diagnosis, because suede, leather,
-            mesh, canvas and synthetic footwear do not need the same care.
-          </p>
-          <a className="sd-primary-button" href="/#book">
-            Book a treatment <ArrowUpRight />
-          </a>
-        </div>
-      </section>
-
-      <div className="sd-services-page sd-section">
-        <SteamBrushServiceTeaser />
-        <SteamBrushAdvantage showHeader={false} />
-        <ServiceMenu services={services} />
+      <div className={styles.wrap}>
+        <header className={styles.intro}>
+          <p className={styles.eyebrow}>The treatment menu</p>
+          <h1>Shoe Care for Every Condition</h1>
+          <p>From everyday cleaning to deep treatment, steam-assisted care and full restoration — choose the level of care your shoes actually need.</p>
+        </header>
+        <ServicesExperience services={services} />
       </div>
 
       <section className="sd-faq sd-section" data-reveal>
@@ -94,14 +76,6 @@ export default async function ServicesPage() {
             </details>
           ))}
         </div>
-      </section>
-
-      <section className="sd-page-cta">
-        <p>Choose the service now. We’ll confirm the exact treatment later.</p>
-        <h2>YOUR NEXT FRESH<br />PAIR STARTS HERE.</h2>
-        <a className="sd-primary-button" href="/#book">
-          Book your pair <ArrowUpRight />
-        </a>
       </section>
 
       <SiteFooter />
