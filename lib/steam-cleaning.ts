@@ -8,13 +8,13 @@ export const steamCleaningContent = {
   homeSupporting:
     "Steam is used as part of our professional cleaning process—not as a one-method solution. Every pair is inspected first, and our technicians decide whether steam treatment is suitable for its material, adhesive and construction.",
   serviceBadge: "NEW AT SHOE DOCTOR",
-  serviceName: "Steam Cleaning",
+  serviceName: "Steam-Assisted Deep Clean",
   serviceTitle: "STEAM-ASSISTED DEEP CLEAN",
   serviceIntro:
-    "Controlled steam and brushing help loosen dirt from uppers, soles, seams and textured areas while reducing unnecessary water saturation.",
+    "A targeted steam-assisted treatment designed to help loosen embedded surface grime before material-safe brushing, cleaning, drying and finishing.",
   serviceSafety:
     "Steam treatment is not suitable for every shoe. Application depends on material, adhesive, colour stability and condition. Our technicians inspect every pair before treatment.",
-  priceLabel: "Rs 349",
+  priceLabel: "Price after inspection",
   turnaround: "After diagnosis",
   image: {
     src: "/images/steam-brush-cleaning.webp",
