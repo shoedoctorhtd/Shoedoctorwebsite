@@ -3,8 +3,7 @@ import type { Metadata } from "next";
 import { listPublicServices } from "@/lib/data";
 import ServiceMenu from "../components/ServiceMenu";
 import SiteMotion from "../components/SiteMotion";
-import SteamBrushAdvantage from "../components/SteamBrushAdvantage";
-import SteamBrushServiceTeaser from "../components/SteamBrushServiceTeaser";
+import styles from "./ServicesPage.module.css";
 import {
   ArrowUpRight,
   SiteFooter,
@@ -49,31 +48,31 @@ export default async function ServicesPage() {
   const services = await listPublicServices();
 
   return (
-    <main id="main-content" className="public-site inner-site">
-      <SiteMotion />
+    <main id="main-content" className={`public-site inner-site services-refined ${styles.page}`}>
+      <SiteMotion revealOnScroll />
       <SiteHeader />
 
       <section className="sd-page-hero services-hero">
-        <p className="sd-kicker">The complete treatment menu</p>
-        <h1>
-          CLEAN. REPAIR.
+        <p className="sd-kicker" data-reveal>The treatment menu</p>
+        <h1 data-reveal>
+          CARE FOR
           <br />
-          <span>RESTORE. REPEAT.</span>
+          <span>EVERY PAIR.</span>
         </h1>
-        <div className="sd-page-hero-bottom">
+        <div className="sd-page-hero-bottom" data-reveal>
           <p>
-            Every service is chosen after diagnosis, because suede, leather,
-            mesh, canvas and synthetic footwear do not need the same care.
+            Cleaning, steam-assisted care, repair and restoration — treatment
+            matched to your shoe.
           </p>
           <a className="sd-primary-button" href="/#book">
             Book a treatment <ArrowUpRight />
           </a>
         </div>
+        <span className="service-hero-mark" aria-hidden="true">+</span>
+        <p className="service-hero-signature" data-reveal>We diagnose. We clean. We restore.</p>
       </section>
 
       <div className="sd-services-page sd-section">
-        <SteamBrushServiceTeaser />
-        <SteamBrushAdvantage showHeader={false} />
         <ServiceMenu services={services} />
       </div>
 

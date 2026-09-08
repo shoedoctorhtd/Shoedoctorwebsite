@@ -91,7 +91,7 @@ test("renders development preview metadata", async () => {
   assert.match(html, /Steam-Assisted[\s\S]*Shoe Cleaning/i);
 });
 
-test("keeps steam cleaning available as a dedicated route and a NEW cleaning service", async () => {
+test("keeps all services bookable with primary cleaning, restoration and compact secondary treatments", async () => {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `steam-${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
@@ -125,17 +125,82 @@ test("keeps steam cleaning available as a dedicated route and a NEW cleaning ser
   assert.equal(servicesResponse.status, 200);
 
   const servicesHtml = await servicesResponse.text();
+  assert.match(servicesHtml, /<main\b[^>]*class="[^"]*\bservices-refined\b/i);
+
+  const primaryServiceIds = [
+    "basic-clean",
+    "deep-clean",
+    "steam-assisted-deep-clean",
+    "premium-care",
+  ];
+  const repairServiceIds = [
+    "minor-stitching",
+    "full-stitching",
+    "half-regluing",
+    "full-regluing",
+    "half-repaint",
+    "full-repaint",
+  ];
+  const addOnServiceIds = [
+    "express-wash-dry",
+    "repair-priority",
+    "delicate-materials",
+  ];
+  const allServiceIds = [
+    ...primaryServiceIds,
+    "full-restoration",
+    ...repairServiceIds,
+    ...addOnServiceIds,
+  ];
+
+  for (const id of allServiceIds) {
+    assert.equal(
+      servicesHtml.split(`data-service-id="${id}"`).length - 1,
+      1,
+      `${id} remains available once in the treatment menu`,
+    );
+    assert.ok(
+      servicesHtml.includes(`href="/?service=${encodeURIComponent(id)}#book"`),
+      `${id} transfers the selected treatment into booking`,
+    );
+  }
+
+  const primaryCards = [...servicesHtml.matchAll(
+    /<article\b(?=[^>]*\bdata-service-card)(?=[^>]*\bdata-service-id="([^"]+)")[^>]*>([\s\S]*?)<\/article>/gi,
+  )];
+  assert.deepEqual(
+    primaryCards.map((card) => card[1]).sort(),
+    [...primaryServiceIds].sort(),
+  );
+
   const cleanIndex = servicesHtml.indexOf("CLEAN. FRESH. READY.");
-  const steamIndex = servicesHtml.indexOf(
-    'data-service-id="steam-assisted-deep-clean"',
+  const restorationIndex = servicesHtml.indexOf(
+    'data-service-id="full-restoration"',
   );
   const repairIndex = servicesHtml.indexOf("FIX THE DAMAGE.");
   assert.ok(cleanIndex >= 0);
-  assert.ok(steamIndex > cleanIndex);
-  assert.ok(repairIndex > steamIndex);
+  for (const id of primaryServiceIds) {
+    const index = servicesHtml.indexOf(`data-service-id="${id}"`);
+    assert.ok(index > cleanIndex && index < restorationIndex);
+  }
+  assert.ok(repairIndex > restorationIndex);
+  assert.match(servicesHtml, /BEYOND CLEANING\./i);
+
+  for (const id of [...repairServiceIds, ...addOnServiceIds]) {
+    const start = servicesHtml.indexOf(`data-service-id="${id}"`);
+    const nextService = servicesHtml.indexOf("data-service-id=", start + 1);
+    const row = servicesHtml.slice(start, nextService < 0 ? undefined : nextService);
+    assert.match(row, /<details\b/i, `${id} has expandable treatment details`);
+    assert.match(row, /<summary\b[\s\S]*?<\/summary>/i);
+    assert.ok(start > repairIndex);
+  }
+
+  const steamCard = primaryCards.find((card) => card[1] === "steam-assisted-deep-clean")?.[2];
+  assert.ok(steamCard);
+  assert.match(steamCard, /menu-badge[^>]*>NEW</i);
   assert.match(
-    servicesHtml.slice(steamIndex, steamIndex + 900),
-    /menu-badge[^>]*>NEW</i,
+    steamCard,
+    /<a\b[^>]*href="\/steam-cleaning"[^>]*>[\s\S]*?Learn More[\s\S]*?<\/a>/i,
   );
 });
 

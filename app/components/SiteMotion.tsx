@@ -8,8 +8,10 @@ import { useEffect } from "react";
  */
 export default function SiteMotion({
   showLoader = false,
+  revealOnScroll = false,
 }: {
   showLoader?: boolean;
+  revealOnScroll?: boolean;
 }) {
   useEffect(() => {
     const reducedMotion = window.matchMedia(
@@ -45,7 +47,7 @@ export default function SiteMotion({
     const tiltItems = Array.from(
       document.querySelectorAll<HTMLElement>("[data-tilt]"),
     );
-    const revealFallback = window.setTimeout(revealAll, 700);
+    const revealFallback = revealOnScroll ? undefined : window.setTimeout(revealAll, 700);
 
     function tiltVisual(event: PointerEvent) {
       const element = event.currentTarget as HTMLElement;
@@ -82,7 +84,7 @@ export default function SiteMotion({
       });
       document.body.classList.remove("motion-ready");
     };
-  }, []);
+  }, [revealOnScroll]);
 
   return showLoader ? (
     <div className="site-loader" aria-hidden="true">
