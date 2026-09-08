@@ -679,7 +679,13 @@ test("homepage care essentials and permanent product deletion keep their public 
   assert.doesNotMatch(homeSection, /Genuine product|shortDescription/);
   assert.match(homeSection, /View All Products/);
   assert.match(homeSection, /View Product/);
+  assert.match(homeSection, /className=\{styles\.section\}/);
+  assert.match(homeSection, /styles\.inner/);
+  assert.match(homeSection, /sd-primary-button/);
   assert.doesNotMatch(homeSection, /ProductStructuredData/);
+  assert.doesNotMatch(homeSection, /sd-section/);
+  assert.match(homeStyles, /var\(--blue\)/);
+  assert.match(homeStyles, /padding: clamp\(42px, 5vw, 68px\)/);
   assert.match(homeStyles, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(homeStyles, /@media \(max-width: 620px\)[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.doesNotMatch(homeStyles, /scroll-snap-type/);

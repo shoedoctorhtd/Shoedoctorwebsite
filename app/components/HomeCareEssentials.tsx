@@ -19,37 +19,42 @@ export default function HomeCareEssentials({ products }: { products: ProductCard
   if (!visibleProducts.length) return null;
 
   return (
-    <section aria-labelledby="care-essentials-heading" className={`${styles.section} sd-section`} data-reveal>
-      <div className={styles.heading}>
-        <div>
-          <p className="sd-kicker">The care cabinet</p>
-          <h2 id="care-essentials-heading">SHOE DOCTOR<br /><span>CARE ESSENTIALS.</span></h2>
+    <section aria-labelledby="care-essentials-heading" className={styles.section} data-reveal>
+      <div className={styles.inner}>
+        <div className={styles.heading}>
+          <p className={`${styles.kicker} sd-kicker`}>Shoe Doctor care essentials</p>
+          <h2 id="care-essentials-heading">
+            <span className={styles.headlineStrong}>CARE</span>
+            <span className={styles.headlineAccent}>ESSENTIALS.</span>
+          </h2>
+          <p className={styles.intro}>Selected products for thoughtful cleaning, protection and everyday care.</p>
         </div>
-        <p>Selected products for thoughtful cleaning, protection and everyday care.</p>
-      </div>
 
-      <div className={styles.grid}>
-        {visibleProducts.map((product) => {
-          return (
-            <article className={styles.card} key={product.slug}>
-              <Link aria-label={`View ${product.name}`} className={styles.imageLink} href={`/products/${encodeURIComponent(product.slug)}`}>
-                {product.primaryImage ? (
-                  <img alt={product.primaryImage.altText ?? product.name} decoding="async" loading="lazy" src={product.primaryImage.url} />
-                ) : <span aria-hidden="true" className={styles.imageMissing} />}
-              </Link>
-              <div className={styles.cardBody}>
-                <h3>{product.name}</h3>
-                <div className={styles.cardFooter}>
-                  <strong>{formatNprOrPending(product.priceNpr)}</strong>
-                  <Link href={`/products/${encodeURIComponent(product.slug)}`}>View Product <ArrowUpRight /></Link>
+        <div className={styles.grid}>
+          {visibleProducts.map((product) => {
+            return (
+              <article className={styles.card} key={product.slug}>
+                <Link aria-label={`View ${product.name}`} className={styles.imageLink} href={`/products/${encodeURIComponent(product.slug)}`}>
+                  {product.primaryImage ? (
+                    <img alt={product.primaryImage.altText ?? product.name} decoding="async" loading="lazy" src={product.primaryImage.url} />
+                  ) : <span aria-hidden="true" className={styles.imageMissing} />}
+                </Link>
+                <div className={styles.cardBody}>
+                  <h3>{product.name}</h3>
+                  <div className={styles.cardFooter}>
+                    <strong>{formatNprOrPending(product.priceNpr)}</strong>
+                    <Link href={`/products/${encodeURIComponent(product.slug)}`}>View Product <ArrowUpRight /></Link>
+                  </div>
                 </div>
-              </div>
-            </article>
-          );
-        })}
-      </div>
+              </article>
+            );
+          })}
+        </div>
 
-      <Link className={styles.allProducts} href="/products">View All Products <ArrowUpRight /></Link>
+        <div className={styles.actions}>
+          <Link className={`${styles.allProducts} sd-primary-button`} href="/products">View All Products <ArrowUpRight /></Link>
+        </div>
+      </div>
     </section>
   );
 }
