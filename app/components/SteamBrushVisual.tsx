@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { steamCleaningContent } from "@/lib/steam-cleaning";
 
-const processSteps = ["STEAM", "BRUSH", "WIPE", "RESTORE"];
+const processSteps = ["STEAM", "BRUSH", "WIPE", "FINISH"];
 
 export default function SteamBrushVisual() {
   const [imageAvailable, setImageAvailable] = useState(true);

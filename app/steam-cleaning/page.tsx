@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { listPublicServices } from "@/lib/data";
+import { formatNprPriceLabel } from "@/lib/money";
 import SteamBrushAdvantage from "../components/SteamBrushAdvantage";
 import SteamBrushCleaningSection from "../components/SteamBrushCleaningSection";
 import SteamBrushVisual from "../components/SteamBrushVisual";
@@ -18,14 +20,22 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Steam Gun Brush Shoe Cleaning Services | Shoe Doctor Nepal",
+    absolute: "Steam Cleaning: Precision Steam + Brush | Shoe Doctor Nepal",
   },
   description:
-    "Explore Shoe Doctor's Steam Gun Brush Cleaning process, combining controlled steam and specialised brushing for sole grooves, seams, edges and difficult-to-reach areas.",
+    "Discover controlled steam gun and brush cleaning for everyday grime, soles and seams. Compare Steam and Deep Cleaning, material suitability and care at Shoe Doctor.",
   alternates: { canonical: "/steam-cleaning" },
 };
 
-export default function SteamCleaningPage() {
+export default async function SteamCleaningPage() {
+  const services = await listPublicServices();
+  const steamService = services.find(
+    (service) => service.id === STEAM_ASSISTED_DEEP_CLEAN_ID,
+  );
+  const delicateService = services.find(
+    (service) => service.id === "delicate-materials",
+  );
+
   return (
     <main id="main-content" className="public-site inner-site">
       <SiteMotion />
@@ -35,17 +45,22 @@ export default function SteamCleaningPage() {
         <span className="sd-steam-badge">
           {steamCleaningContent.serviceBadge}
         </span>
-        <p className="sd-kicker">NEW AT SHOE DOCTOR</p>
+        <p className="sd-kicker">Precision Steam + Brush Treatment</p>
         <h1>
-          A NEW SHOE-CARE
+          STEAM
           <br />
-          <span>EXPERIENCE.</span>
+          <span>CLEANING.</span>
         </h1>
         <div className="sd-page-hero-bottom">
           <p>
-            A professional steam-assisted shoe-cleaning experience that pairs
-            controlled steam with specialised brushing to detail suitable
-            grooves, seams, edges and difficult corners.
+            Controlled steam-assisted cleaning designed to loosen dirt from
+            shoes while reducing unnecessary water saturation.
+            {steamService && (
+              <>
+                {" "}
+                <strong>{formatNprPriceLabel(steamService.priceLabel)}</strong>
+              </>
+            )}
           </p>
           <a
             className="sd-primary-button"
@@ -83,7 +98,18 @@ export default function SteamCleaningPage() {
                 <strong>{faq.question}</strong>
                 <i>+</i>
               </summary>
-              <p>{faq.answer}</p>
+              <p>
+                {faq.answer}
+                {delicateService &&
+                  faq.question === "Can suede or nubuck be Steam Cleaned?" && (
+                    <>
+                      {" "}
+                      <a href={`/?service=${delicateService.id}#book`}>
+                        Explore suede and nubuck care.
+                      </a>
+                    </>
+                  )}
+              </p>
             </details>
           ))}
         </div>

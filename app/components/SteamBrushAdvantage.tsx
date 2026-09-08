@@ -11,9 +11,9 @@ const steamAdvantageSteps: Array<{
   tone: "coral" | "indigo" | "sky" | "lime";
 }> = [
   {
-    title: "LOOSENS GRIME",
+    title: "HEAT + MOISTURE",
     description:
-      "Steam helps soften dried dirt, surface grime and stubborn buildup.",
+      "Heat helps soften dried or greasy dirt; moisture helps it release from the surface.",
     icon: "steam",
     imageAlt: "Steam cleaning treatment lifting grime from a shoe surface",
     imageClass: "is-grime",
@@ -22,9 +22,9 @@ const steamAdvantageSteps: Array<{
     tone: "coral",
   },
   {
-    title: "REACHES DETAILS",
+    title: "STEAM PRESSURE",
     description:
-      "Targets grooves, stitching, sole edges and difficult corners.",
+      "Targets sole edges, seams, grooves and textures for precision cleaning.",
     icon: "detail",
     imageAlt: "Steam brush cleaning detailed shoe grooves and edges",
     imageClass: "is-details",
@@ -33,9 +33,9 @@ const steamAdvantageSteps: Array<{
     tone: "indigo",
   },
   {
-    title: "GENTLER CLEANING",
+    title: "BRUSH + REMOVE",
     description:
-      "Reduces the need for excessive brushing and aggressive scrubbing.",
+      "A suitable brush lifts loosened dirt; wiping and detailing remove it.",
     icon: "gentle",
     imageAlt: "A shoe being treated with controlled, gentle steam cleaning",
     imageClass: "is-gentle",
@@ -44,9 +44,9 @@ const steamAdvantageSteps: Array<{
     tone: "sky",
   },
   {
-    title: "EXPERT CONTROLLED",
+    title: "MATERIAL-SPECIFIC",
     description:
-      "Carefully applied by trained Shoe Doctor technicians according to the shoe material.",
+      "We adjust steam exposure, brush type and technique for each inspected pair.",
     icon: "expert",
     imageAlt: "Shoe Doctor steam-cleaning equipment used after material inspection",
     imageClass: "is-expert",
@@ -114,11 +114,11 @@ export default function SteamBrushAdvantage({
       <span className="sd-steam-advantage__mist" aria-hidden="true" />
       {showHeader && (
         <header className="sd-steam-advantage__header">
-          <p className="sd-kicker">THE STEAM CLEANING ADVANTAGE</p>
+          <p className="sd-kicker">WHY STEAM HELPS</p>
           <h3 id="steam-advantage-heading">CLEANER. CAREFUL. DETAILED.</h3>
           <p>
-            Our steam-cleaning process is designed to care for your shoes from
-            the surface to the finest details.
+            Steam works together with brushing, wiping and detailing, plus
+            suitable cleaning products where required.
           </p>
         </header>
       )}

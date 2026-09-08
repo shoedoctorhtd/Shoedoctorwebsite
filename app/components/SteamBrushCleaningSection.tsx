@@ -19,10 +19,10 @@ export default function SteamBrushCleaningSection() {
           <span className="sd-steam-badge">
             {steamCleaningContent.serviceBadge}
           </span>
-          <p className="sd-kicker">ADVANCED SHOE CLEANING TECHNOLOGY</p>
+          <p className="sd-kicker">WHAT IS STEAM CLEANING?</p>
           <h2>{steamCleaningContent.serviceTitle}</h2>
           <p className="sd-steam-service-subheading">
-            Not just washed. Steam-assisted.
+            Precision care. Less soaking.
           </p>
         </div>
         <div className="sd-steam-service-copy">
@@ -52,7 +52,7 @@ export default function SteamBrushCleaningSection() {
         </div>
 
         <aside className="sd-steam-best-used">
-          <p className="sd-kicker">BEST USED FOR</p>
+          <p className="sd-kicker">BEST FOR, AFTER INSPECTION</p>
           <ul>
             {steamCleaningBestUsedFor.map((item) => (
               <li key={item}>{item}</li>
@@ -63,12 +63,16 @@ export default function SteamBrushCleaningSection() {
 
       <div className="sd-steam-service-bottom">
         <div className="sd-steam-comparison">
-          <p className="sd-kicker">THE DIFFERENCE</p>
+          <p className="sd-kicker">BASIC, STEAM OR DEEP?</p>
           <h3>
-            REGULAR CLEANING.
+            CHOOSE THE
             <br />
-            DETAILED FURTHER.
+            RIGHT CLEAN.
           </h3>
+          <p>
+            <strong>Basic Cleaning: routine maintenance.</strong> For lightly
+            dirty shoes, everyday dust and regular upkeep.
+          </p>
           <div>
             {steamCleaningComparison.map((column) => (
               <article key={column.title}>
@@ -81,19 +85,24 @@ export default function SteamBrushCleaningSection() {
               </article>
             ))}
           </div>
+          <p>
+            Steam Cleaning is not better than Deep Cleaning. They suit
+            different levels and types of dirt: a targeted refresh or
+            comprehensive inside-and-out care.
+          </p>
         </div>
 
         <div className="sd-steam-information">
           <aside className="sd-steam-callout">
-            <strong>STEAM HELPS LOOSEN THE DIRT</strong>
+            <strong>LOW-WATER PRECISION CLEANING</strong>
             <p>
-              Steam does not make dirt disappear. It helps soften stubborn
-              buildup so the detailing brush and microfiber towel can remove
-              it more effectively.
+              Steam is still water. Targeting dirty areas uses less liquid
+              water than heavily wetting or soaking the whole shoe. This makes
+              it an efficient refresh for regular-to-moderate surface dirt.
             </p>
           </aside>
           <aside className="sd-steam-safety">
-            <strong>MATERIAL-SAFE TREATMENT</strong>
+            <strong>CONTROLLED APPLICATION MATTERS</strong>
             <p>{steamCleaningContent.serviceSafety}</p>
           </aside>
         </div>
