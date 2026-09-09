@@ -804,7 +804,8 @@ test("public and admin routes enforce the catalogue, image-access, SEO, header, 
   assert.match(globalInventoryApi, /listInventoryMovements\(undefined, \{ page \}\)/);
   assert.match(inventoryPage, /initialCompletedOrders/);
   assert.match(inventory, /db\.batch\(/);
-  assert.match(inventory, /stock_quantity >= CASE id/);
+  // Actual transaction tests cover all-or-none stock and the D1 parameter cap.
+  assert.match(inventory, /stock_quantity >= r\.quantity/);
   assert.match(inventory, /checkout_idempotency_token/);
   assert.match(inventory, /stock_restored_at IS NULL/);
   assert.match(inventory, /updated_at = \?/);

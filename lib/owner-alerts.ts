@@ -56,7 +56,8 @@ export async function deliverOwnerAlertEvent(id: string) {
     }
 
     const audit = parseAuditLog(row);
-    const delivery = await sendOwnerEmail(buildOwnerAlertEmail(audit));
+    const content = await enrichAdminActivity(audit);
+    const delivery = await sendOwnerEmail(renderOwnerAlertEmail(content));
     const status = delivery.status === "sent" ? "sent" : delivery.status === "not_configured" ? "skipped" : "failed";
     const result = await recordOwnerAlertResult(
       id,
@@ -154,6 +155,7 @@ export async function deliverPendingOwnerAlerts(limit = 10) {
     .prepare(`
       SELECT id FROM owner_alert_events
       WHERE delivery_status = 'pending'
+         OR (delivery_status = 'sending' AND lease_expires_at <= strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
       ORDER BY created_at ASC
       LIMIT ?
     `)
@@ -165,6 +167,28 @@ export async function deliverPendingOwnerAlerts(limit = 10) {
 
 export function buildOwnerAlertEmail(audit: AuditLog) {
   return renderOwnerAlertEmail(audit);
+}
+
+/** Stock and sale lines come from immutable ledger snapshots, including on retry. */
+async function enrichAdminActivity(audit: AuditLog) {
+  if (audit.entityType !== "product_order" || !audit.entityId) return audit;
+  const db = await getDatabase();
+  const [items, movements] = await Promise.all([
+    db.prepare(`SELECT product_name_snapshot AS productName, sku_snapshot AS sku,
+      quantity, unit_price_npr AS unitPriceNpr, line_total_npr AS lineTotalNpr
+      FROM product_order_items WHERE order_id = ? ORDER BY id`)
+      .bind(audit.entityId).all<{ productName: string; sku: string; quantity: number; unitPriceNpr: number; lineTotalNpr: number }>(),
+    db.prepare(`SELECT i.product_name_snapshot AS productName, m.previous_stock AS previousStock,
+      m.stock_change AS stockChange, m.resulting_stock AS resultingStock
+      FROM inventory_movements m JOIN product_order_items i
+      ON i.order_id = m.related_order_id AND i.product_id = m.product_id
+      WHERE m.related_order_id = ? AND m.movement_type = ? ORDER BY m.id`)
+      .bind(audit.entityId, audit.action === "COUNTER_SALE_REVERSED" || audit.action === "PRODUCT_ORDER_CANCELLED"
+        ? "order_cancellation_restore" : "offline_sale")
+      .all<{ productName: string; previousStock: number; stockChange: number; resultingStock: number }>(),
+  ]);
+  return { ...audit, saleItems: items.results, inventoryChanges: movements.results,
+    adminUrl: `https://www.shoedoctor.com.np/admin/${audit.action.startsWith("COUNTER_SALE_") ? "counter-inventory" : "product-orders"}/${encodeURIComponent(audit.entityId)}` };
 }
 
 async function recordOwnerAlertResult(

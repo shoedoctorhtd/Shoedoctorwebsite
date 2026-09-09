@@ -372,7 +372,7 @@ export async function updateProduct(
     ? "PRODUCT_ARCHIVED"
     : before.status !== input.status
       ? input.status === "published" ? "PRODUCT_PUBLISHED" : "PRODUCT_UNPUBLISHED"
-      : "PRODUCT_UPDATED");
+      : before.priceNpr !== next.priceNpr ? "PRODUCT_PRICE_CHANGED" : "PRODUCT_UPDATED");
   try {
     const result = await db.batch([
       db
@@ -395,7 +395,7 @@ export async function updateProduct(
         entityType: "product",
         entityId: id,
         previousValues: diff.previousValues,
-        newValues: diff.newValues,
+        newValues: { ...diff.newValues, product: next.name, sku: next.sku },
         changedFields: diff.changedFields,
         createdAt: now,
         requestId: operationId,

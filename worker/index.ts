@@ -1,6 +1,7 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import { deliverPendingOwnerAlerts } from "../lib/owner-alerts";
 
 interface Env {
   ASSETS: Fetcher;
@@ -61,7 +62,15 @@ const worker = {
       }, allowedWidths);
     }
 
-    return handler.fetch(request, env, ctx);
+    const response = await handler.fetch(request, env, ctx);
+    if (url.pathname.startsWith("/api/admin/") && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+      // Only persisted audit events are delivered, after the business action.
+      // waitUntil keeps post-commit email alive without holding up the response.
+      ctx.waitUntil(deliverPendingOwnerAlerts(25).catch((error) => {
+        console.error("Unable to drain admin activity alerts.", error);
+      }));
+    }
+    return response;
   },
 };
 

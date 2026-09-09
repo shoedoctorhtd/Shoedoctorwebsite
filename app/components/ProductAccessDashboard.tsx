@@ -16,10 +16,10 @@ const labels: Record<ProductAdminPermission, string> = {
   manage_product_images: "Manage images",
   view_inventory: "View inventory",
   adjust_inventory: "Adjust inventory",
-  record_offline_sales: "Record offline sales",
+  record_offline_sales: "Record counter sales",
   view_product_orders: "View product orders",
   manage_product_orders: "Manage product orders",
-  cancel_product_orders: "Cancel product orders",
+  cancel_product_orders: "Cancel orders / reverse counter sales",
   verify_product_payments: "Verify product payments",
 };
 

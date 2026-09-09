@@ -7,6 +7,8 @@ export type OwnerAlertAuditRecord = {
   actorType: string;
   administratorName: string | null;
   administratorRole: string | null;
+  administratorEmail?: string | null;
+  entityId?: string | null;
   action: string;
   entityType: string;
   bookingReference: string | null;
@@ -15,11 +17,14 @@ export type OwnerAlertAuditRecord = {
   newValues: Record<string, unknown> | null;
   reason: string | null;
   createdAt: string;
+  saleItems?: Array<{ productName: string; sku: string; quantity: number; unitPriceNpr: number; lineTotalNpr: number }>;
+  inventoryChanges?: Array<{ productName: string; previousStock: number; stockChange: number; resultingStock: number }>;
+  adminUrl?: string | null;
 };
 
 export function buildOwnerAlertEmail(audit: OwnerAlertAuditRecord) {
   const actor = audit.administratorName
-    ? `${audit.administratorName}${audit.administratorRole ? ` (${audit.administratorRole})` : ""}`
+    ? `${audit.administratorName}${audit.administratorRole ? ` (${audit.administratorRole})` : ""}${audit.administratorEmail ? ` <${audit.administratorEmail}>` : ""}`
     : audit.actorType === "system"
       ? "System"
       : audit.actorType === "customer"
@@ -29,40 +34,53 @@ export function buildOwnerAlertEmail(audit: OwnerAlertAuditRecord) {
   const timestamp = formatNepalDate(audit.createdAt);
   const before = audit.previousValues ? formatValues(audit.previousValues) : "None";
   const after = audit.newValues ? formatValues(audit.newValues) : "None";
+  const activity = audit.action === "COUNTER_SALE_CREATED" ? "Counter Product Sale"
+    : audit.action === "COUNTER_SALE_REVERSED" ? "Counter Sale Reversed"
+    : audit.action.replaceAll("_", " ");
+  const products = audit.saleItems?.map((item) => `${item.productName} (${item.sku}) × ${item.quantity}\nRs ${item.unitPriceNpr} × ${item.quantity} = Rs ${item.lineTotalNpr}`).join("\n\n");
+  const changes = audit.inventoryChanges?.map((item) => `${item.productName}: ${item.previousStock} → ${item.resultingStock} (${item.stockChange > 0 ? "+" : ""}${item.stockChange})`).join("\n");
+  const details: string[][] = [
+    ...(products ? [["Products", products], ["Total Sale", `Rs ${audit.saleItems!.reduce((sum, item) => sum + item.lineTotalNpr, 0)}`]] : []),
+    ...(changes ? [["Inventory Changes", changes]] : []),
+  ];
   const text = [
-    "SHOE DOCTOR HIGH-RISK ACTIVITY",
+    "SHOE DOCTOR ADMIN ALERT",
     "",
     `Administrator: ${actor}`,
     `Action: ${audit.action}`,
+    `Admin Activity: ${activity}`,
     `Record: ${target}`,
     `When: ${timestamp}`,
     `Before: ${before}`,
     `After: ${after}`,
     `Reason: ${audit.reason ?? "Not provided"}`,
+    ...details.map(([label, value]) => `${label}:\n${value}`),
+    ...(audit.adminUrl ? [`View in Admin: ${audit.adminUrl}`] : []),
   ].join("\n");
   const rows = [
     ["Administrator", actor],
     ["Action", audit.action],
+    ["Admin Activity", activity],
     ["Record", target],
     ["When", timestamp],
     ["Before", before],
     ["After", after],
     ["Reason", audit.reason ?? "Not provided"],
+    ...details,
   ]
     .map(([label, value]) => `<tr><th scope="row" style="padding:8px;text-align:left;vertical-align:top;">${escapeHtml(label)}</th><td style="padding:8px;white-space:pre-wrap;">${escapeHtml(value)}</td></tr>`)
     .join("");
   return {
-    subject: `Shoe Doctor security alert - ${headerValue(audit.action)}${audit.bookingReference ? ` - ${headerValue(audit.bookingReference)}` : ""}`,
+    subject: `Shoe Doctor Admin Alert — ${audit.action === "COUNTER_SALE_CREATED" ? "Counter Sale" : headerValue(activity)}${audit.bookingReference ? ` ${headerValue(audit.bookingReference)}` : ""}`,
     text,
-    html: `<!doctype html><html lang="en"><body style="font-family:Arial,sans-serif;color:#171412"><h1 style="color:#7b1738">Shoe Doctor security alert</h1><table role="presentation" style="border-collapse:collapse">${rows}</table></body></html>`,
+    html: `<!doctype html><html lang="en"><body style="font-family:Arial,sans-serif;color:#171412"><h1 style="color:#7b1738">Shoe Doctor Admin Alert</h1><table role="presentation" style="border-collapse:collapse">${rows}</table>${audit.adminUrl ? `<p><a href="${escapeHtml(audit.adminUrl)}">${audit.action.startsWith("COUNTER_SALE_") ? "View Counter Sale in Admin" : "View in Admin"}</a></p>` : ""}</body></html>`,
   };
 }
 
 function formatValues(values: Record<string, unknown>) {
   return Object.entries(values)
     .map(([key, value]) => `${key}: ${typeof value === "string" ? value : JSON.stringify(value)}`)
-    .join("; ")
-    .slice(0, 1800);
+    .join("; ");
 }
 
 function formatNepalDate(value: string) {

@@ -6,7 +6,7 @@ export async function GET() {
   try {
     return Response.json(
       { products: (await listPublicProducts()).map(toPublicProductCard) },
-      { headers: { "Cache-Control": "public, max-age=30, s-maxage=60" } },
+      { headers: { "Cache-Control": "no-store" } },
     );
   } catch {
     // A not-yet-applied local migration must not leak an internal D1 error.

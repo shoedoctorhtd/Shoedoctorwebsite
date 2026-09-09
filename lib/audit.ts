@@ -151,6 +151,9 @@ export function buildOwnerAlertEventInsert(
         id, audit_log_id, event_key, alert_type, delivery_status, attempt_count,
         created_at, updated_at
       ) ${insertValues}
+      ON CONFLICT(event_key) DO UPDATE SET id = excluded.id
+      WHERE owner_alert_events.audit_log_id = excluded.audit_log_id
+        AND owner_alert_events.delivery_status = 'pending'
     `)
     .bind(...values, ...(input.conditionalOn?.bindings ?? []));
 }

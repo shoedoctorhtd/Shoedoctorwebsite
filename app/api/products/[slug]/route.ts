@@ -6,7 +6,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
   const { slug } = await params;
   const product = await getPublicProductBySlug(slug).catch(() => null);
   return product
-    ? Response.json({ product: toPublicProduct(product) }, { headers: { "Cache-Control": "public, max-age=30, s-maxage=60" } })
+    ? Response.json({ product: toPublicProduct(product) }, { headers: { "Cache-Control": "no-store" } })
     : Response.json({ message: "Product not found." }, { status: 404 });
 }
 

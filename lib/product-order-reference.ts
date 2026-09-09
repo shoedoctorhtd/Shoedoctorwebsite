@@ -10,6 +10,7 @@ const ATTEMPTS_PER_SUFFIX_LENGTH = 10;
 const MAX_SUFFIX_LENGTH = 8;
 
 type ProductOrderReferenceOptions = {
+  channel?: "online" | "offline";
   date?: Date;
   generateSuffix?: (length: number) => string;
   maxSuffixLength?: number;
@@ -26,6 +27,7 @@ export function buildPublicProductOrderReference(dateCode: string, suffix: strin
 }
 
 export async function generatePublicProductOrderReference({
+  channel = "online",
   date = new Date(),
   generateSuffix = generateSecureReferenceSuffix,
   maxSuffixLength = MAX_SUFFIX_LENGTH,
@@ -46,7 +48,9 @@ export async function generatePublicProductOrderReference({
       if (suffix.length !== length || !isSuffix(suffix)) {
         throw new Error("Product order reference generator returned an invalid suffix.");
       }
-      const reference = buildPublicProductOrderReference(dateCode, suffix);
+      const reference = channel === "offline"
+        ? `CS-20${dateCode}-${suffix}`
+        : buildPublicProductOrderReference(dateCode, suffix);
       if (await tryPersist(reference)) return reference;
     }
   }
@@ -55,6 +59,7 @@ export async function generatePublicProductOrderReference({
 
 export function normalizeProductOrderReferenceSearch(value: unknown) {
   const normalized = String(value ?? "").trim().toUpperCase().replace(/\s+/gu, "");
+  if (/^CS-\d{8}-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{3,8}$/u.test(normalized)) return normalized;
   const match = /^(?:PO-)?(\d{6})-([ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{3,})$/u.exec(normalized);
   return match ? `${PRODUCT_ORDER_PREFIX}-${match[1]}-${match[2]}` : null;
 }

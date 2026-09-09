@@ -80,6 +80,7 @@ export async function createOnlineProductOrder(
 export async function recordOfflineProductSale(
   request: OfflineSaleRequest,
   actor: AdminActor,
+  expectedPrices?: Record<string, number>,
 ): Promise<ProductOrderCreationResult> {
   return createProductOrder({
     channel: "offline",
@@ -96,6 +97,7 @@ export async function recordOfflineProductSale(
     paymentAccessTokenHash: null,
     items: request.items,
     actor,
+    expectedPrices,
   });
 }
 
@@ -114,11 +116,24 @@ async function createProductOrder(input: {
   paymentAccessTokenHash: string | null;
   items: Array<{ productSlug: string; quantity: number }>;
   actor: AdminActor | null;
+  expectedPrices?: Record<string, number>;
 }): Promise<ProductOrderCreationResult> {
+  const requestFingerprint = await fingerprintSaleRequest(input);
+  const checkReplay = async (order: ProductOrder) => {
+    const db = await getDatabase();
+    const stored = await db.prepare("SELECT checkout_request_fingerprint FROM product_orders WHERE id = ?")
+      .bind(order.id).first<{ checkout_request_fingerprint: string | null }>();
+    if (order.channel !== input.channel || order.createdByAdminId !== (input.actor?.id ?? null)
+      || (stored?.checkout_request_fingerprint && stored.checkout_request_fingerprint !== requestFingerprint)) {
+      throw new Error("This request token was already used for a different sale. Refresh and try again.");
+    }
+    return order;
+  };
   const replay = await getProductOrderByCheckoutToken(input.idempotencyToken);
   if (replay) {
     // A client retry can also drain a pending durable outbox entry left by a
     // prior interrupted response; it never replays the stock transaction.
+    await checkReplay(replay);
     void deliverProductOrderNotifications(replay.id).catch(() => undefined);
     return { kind: "duplicate", order: replay };
   }
@@ -126,12 +141,17 @@ async function createProductOrder(input: {
   const products = await loadCheckoutProducts(input.items);
   const prepared = prepareCheckoutItems(products, input.items);
   if (prepared.kind === "stock_conflict") return prepared;
+  if (input.expectedPrices && prepared.items.some((item) => input.expectedPrices![item.slug!] !== item.priceNpr)) {
+    return { kind: "stock_conflict", message: "A selling price changed. Refresh the products and confirm the new total." };
+  }
 
   for (let referenceAttempt = 0; referenceAttempt < 3; referenceAttempt += 1) {
     const publicReference = await generatePublicProductOrderReference({
+      channel: input.channel,
       tryPersist: async (reference) => !(await orderExistsWithReference(reference)),
     });
-    const attempted = await persistProductOrder({ ...input, publicReference, items: prepared.items });
+    const attempted = await persistProductOrder({ ...input, publicReference, requestFingerprint, items: prepared.items });
+    if (attempted.kind === "duplicate") await checkReplay(attempted.order);
     if (attempted.kind !== "reference_collision") return attempted;
   }
   throw new Error("Unable to allocate a product order reference. Please try again.");
@@ -153,6 +173,7 @@ async function persistProductOrder(input: {
   items: NormalizedCheckoutItem[];
   actor: AdminActor | null;
   publicReference: string;
+  requestFingerprint: string;
 }): Promise<ProductOrderCreationResult | { kind: "reference_collision" }> {
   const db = await getDatabase() as unknown as Database;
   const now = new Date().toISOString();
@@ -176,8 +197,8 @@ async function persistProductOrder(input: {
           total, status, payment_method, payment_status, payment_amount,
           payment_access_token_hash, checkout_idempotency_token, created_by_admin_id,
           stock_committed_at, stock_commit_operation_id, last_inventory_mutation_id,
-          created_at, updated_at
-        ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+          created_at, updated_at, checkout_request_fingerprint
+        ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         WHERE ${marker.sql}
       `).bind(
         orderId, input.publicReference, input.channel, input.customerName,
@@ -185,7 +206,7 @@ async function persistProductOrder(input: {
         input.deliveryAddress, input.customerNote, subtotal, subtotal, status,
         input.paymentMethod, input.paymentStatus, subtotal, input.paymentAccessTokenHash,
         input.idempotencyToken, input.actor?.id ?? null, now, operationId,
-        operationId, now, now, ...marker.bindings,
+        operationId, now, now, input.requestFingerprint, ...marker.bindings,
       ),
       ...input.items.map((item) => db.prepare(`
         INSERT INTO product_order_items (
@@ -217,7 +238,7 @@ async function persistProductOrder(input: {
       )),
       buildAuditLogInsert(db as never, {
         actor: input.actor ?? { actorType: "customer", name: "Product customer" },
-        action: input.channel === "online" ? "PRODUCT_ORDER_CREATED" : "PRODUCT_OFFLINE_SALE_RECORDED",
+        action: input.channel === "online" ? "PRODUCT_ORDER_CREATED" : "COUNTER_SALE_CREATED",
         entityType: "product_order",
         entityId: orderId,
         bookingReference: input.publicReference,
@@ -237,7 +258,7 @@ async function persistProductOrder(input: {
           bindings: [orderId, operationId],
         },
       }),
-      buildProductOrderNotificationInsert(db as never, {
+      ...(input.channel === "online" ? [buildProductOrderNotificationInsert(db as never, {
         id: ownerNotificationId,
         orderId,
         recipientKind: "owner",
@@ -245,7 +266,7 @@ async function persistProductOrder(input: {
         eventKey: `product-order:${orderId}:owner-created`,
         createdAt: now,
         operationId,
-      }),
+      })] : []),
       ...(customerNotificationId && input.customerEmail
         ? [buildProductOrderNotificationInsert(db as never, {
             id: customerNotificationId,
@@ -285,42 +306,47 @@ function buildGuardedSaleUpdate(
   now: string,
   idempotencyToken: string,
 ) {
-  const caseQty = items.map(() => "WHEN ? THEN ?").join(" ");
-  const caseUpdated = items.map(() => "WHEN ? THEN ?").join(" ");
-  const ids = items.map(() => "?").join(", ");
-  const updateCaseQuantityBindings = items.flatMap((item) => [item.id, item.quantity]);
-  const updateCaseUpdatedBindings = items.flatMap((item) => [item.id, item.updatedAt]);
-  const subqueryQuantityBindings = items.flatMap((item) => [item.id, item.quantity]);
-  const subqueryUpdatedBindings = items.flatMap((item) => [item.id, item.updatedAt]);
+  // One bound JSON value keeps a full 20-product cart below D1's 100-parameter
+  // limit. Materialize eligibility before any row changes for all-or-none stock.
   return db.prepare(`
+    WITH requested AS MATERIALIZED (
+      SELECT json_extract(value, '$.id') AS id,
+             json_extract(value, '$.quantity') AS quantity,
+             json_extract(value, '$.updatedAt') AS updated_at
+      FROM json_each(?)
+    ), eligible AS MATERIALIZED (
+      SELECT p.id, r.quantity FROM products p JOIN requested r ON r.id = p.id
+      WHERE p.status = 'published' AND p.stock_quantity IS NOT NULL
+        AND p.stock_quantity >= r.quantity AND p.updated_at = r.updated_at
+    )
     UPDATE products
-    SET stock_quantity = stock_quantity - CASE id ${caseQty} END,
+    SET stock_quantity = stock_quantity - (SELECT quantity FROM eligible WHERE eligible.id = products.id),
         last_inventory_mutation_id = ?, updated_at = ?
-    WHERE id IN (${ids})
-      AND status = 'published'
-      AND stock_quantity IS NOT NULL
-      AND stock_quantity >= CASE id ${caseQty} END
-      AND updated_at = CASE id ${caseUpdated} END
+    WHERE id IN (SELECT id FROM eligible)
       AND NOT EXISTS (SELECT 1 FROM product_orders WHERE checkout_idempotency_token = ?)
-      AND (
-        SELECT COUNT(*) FROM products p
-        WHERE p.id IN (${ids})
-          AND p.status = 'published'
-          AND p.stock_quantity IS NOT NULL
-          AND p.stock_quantity >= CASE p.id ${caseQty} END
-          AND p.updated_at = CASE p.id ${caseUpdated} END
-      ) = ?
+      AND (SELECT COUNT(*) FROM eligible) = ?
   `).bind(
-    ...updateCaseQuantityBindings, operationId, now,
-    ...items.map((item) => item.id),
-    ...updateCaseQuantityBindings,
-    ...updateCaseUpdatedBindings,
-    idempotencyToken,
-    ...items.map((item) => item.id),
-    ...subqueryQuantityBindings,
-    ...subqueryUpdatedBindings,
-    items.length,
+    JSON.stringify(items.map((item) => ({ id: item.id, quantity: item.quantity, updatedAt: item.updatedAt }))),
+    operationId, now, idempotencyToken, items.length,
   );
+}
+
+async function fingerprintSaleRequest(input: {
+  channel: string; actor: AdminActor | null; items: Array<{ productSlug: string; quantity: number }>;
+  customerName: string | null; customerPhone: string | null; customerEmail: string | null;
+  fulfillmentMethod: string; deliveryAddress: string | null; customerNote: string | null;
+  paymentMethod: string | null; paymentStatus: string; expectedPrices?: Record<string, number>;
+}) {
+  const canonical = JSON.stringify({
+    channel: input.channel, actorId: input.actor?.id ?? null,
+    items: [...input.items].sort((a, b) => a.productSlug.localeCompare(b.productSlug))
+      .map((item) => [item.productSlug, item.quantity, input.expectedPrices?.[item.productSlug] ?? null]),
+    customer: [input.customerName, input.customerPhone, input.customerEmail],
+    fulfillment: [input.fulfillmentMethod, input.deliveryAddress, input.customerNote],
+    payment: [input.paymentMethod, input.paymentStatus],
+  });
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function markerCondition(items: Array<{ id: string }>, operationId: string) {
@@ -401,7 +427,7 @@ export async function adjustProductInventory(
       entityType: "inventory_movement",
       entityId: movementId,
       previousValues: { stockQuantity: previous },
-      newValues: { stockQuantity: previous + delta, stockChange: delta, movementType: input.movementType },
+      newValues: { product: product.name, sku: product.sku, stockQuantity: previous + delta, stockChange: delta, movementType: input.movementType },
       changedFields: ["stockQuantity"],
       reason: input.reason,
       requestId: input.idempotencyKey,
@@ -488,7 +514,7 @@ export async function cancelProductOrder(
   const order = await getProductOrder(orderId);
   if (!order) return { kind: "not_found" as const };
   if (order.status === "cancelled" || order.stockRestoredAt) return { kind: "already_cancelled" as const, order };
-  if (!canCancelProductOrderStatus(order.status)) {
+  if (!canCancelProductOrderStatus(order.status) && !(order.channel === "offline" && order.status === "completed")) {
     throw new Error("Completed orders must be handled through customer returns; cancellation cannot restore the full sale safely.");
   }
   if (!order.items.length) throw new Error("This order has no items to restore.");
@@ -499,6 +525,13 @@ export async function cancelProductOrder(
   const caseQty = items.map(() => "WHEN ? THEN ?").join(" ");
   const ids = items.map(() => "?").join(", ");
   const marker = markerCondition(items.map((item) => ({ id: item.productId })), operationId);
+  // All restoration prerequisites belong in the write, including status and
+  // prior returns. A stale read must never partially restore a transaction.
+  const eligible = `EXISTS (
+    SELECT 1 FROM product_orders WHERE id = ? AND updated_at = ?
+      AND status <> 'cancelled' AND stock_restored_at IS NULL
+      AND (status <> 'completed' OR channel = 'offline')
+  ) AND NOT EXISTS (SELECT 1 FROM product_order_returns WHERE order_id = ?)`;
   const batch = await db.batch([
     db.prepare(`
       UPDATE products
@@ -506,14 +539,11 @@ export async function cancelProductOrder(
           last_inventory_mutation_id = ?, updated_at = ?
       WHERE id IN (${ids})
         AND stock_quantity IS NOT NULL
-        AND EXISTS (
-          SELECT 1 FROM product_orders
-          WHERE id = ? AND status <> 'cancelled' AND stock_restored_at IS NULL
-        )
-        AND (SELECT COUNT(*) FROM products WHERE id IN (${ids})) = ?
+        AND ${eligible}
+        AND (SELECT COUNT(*) FROM products WHERE id IN (${ids}) AND stock_quantity IS NOT NULL) = ?
     `).bind(
       ...items.flatMap((item) => [item.productId, item.quantity]), operationId, now,
-      ...items.map((item) => item.productId), orderId,
+      ...items.map((item) => item.productId), orderId, order.updatedAt, orderId,
       ...items.map((item) => item.productId), items.length,
     ),
     db.prepare(`
@@ -542,7 +572,7 @@ export async function cancelProductOrder(
     )),
     buildAuditLogInsert(db as never, {
       actor,
-      action: "PRODUCT_ORDER_CANCELLED",
+      action: order.channel === "offline" ? "COUNTER_SALE_REVERSED" : "PRODUCT_ORDER_CANCELLED",
       entityType: "product_order",
       entityId: orderId,
       bookingReference: order.publicReference,
@@ -553,8 +583,8 @@ export async function cancelProductOrder(
       requestId: idempotencyKey,
       createdAt: now,
       conditionalOn: {
-        sql: "EXISTS (SELECT 1 FROM product_orders WHERE id = ? AND stock_restored_at = ?)",
-        bindings: [orderId, now],
+        sql: "EXISTS (SELECT 1 FROM product_orders WHERE id = ? AND last_inventory_mutation_id = ?)",
+        bindings: [orderId, operationId],
       },
     }),
     buildAuditLogInsert(db as never, {
@@ -569,8 +599,8 @@ export async function cancelProductOrder(
       requestId: `${idempotencyKey}:stock`,
       createdAt: now,
       conditionalOn: {
-        sql: "EXISTS (SELECT 1 FROM product_orders WHERE id = ? AND stock_restored_at = ?)",
-        bindings: [orderId, now],
+        sql: "EXISTS (SELECT 1 FROM product_orders WHERE id = ? AND last_inventory_mutation_id = ?)",
+        bindings: [orderId, operationId],
       },
     }),
   ]);
