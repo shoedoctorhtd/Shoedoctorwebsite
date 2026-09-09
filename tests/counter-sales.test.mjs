@@ -234,19 +234,26 @@ test("central activity outbox adopts explicit legacy alerts; reads and retries g
   await h.alerts.deliverPendingOwnerAlerts(); assert.equal(h.emails.length, 1);
 });
 
-test("counter APIs enforce separate permissions and ignore forged administrator fields", async (t) => {
+test("counter inventory admits normal admins while reversals remain permission-gated", async (t) => {
   const h = harness(t); h.product("shoe-wipes", 5);
-  const grants = new Set();
-  h.mocks.set(resolve(root, "lib/admin-auth.ts"), { requireAdminApi: async (_request, options) => grants.has(options.productPermission)
-    ? { user: actor } : { response: Response.json({ message: "Forbidden" }, { status: 403 }) } });
+  const requiredPermissions = [];
+  h.mocks.set(resolve(root, "lib/admin-auth.ts"), { requireAdminApi: async (_request, options) => {
+    requiredPermissions.push(options.productPermission);
+    return options.productPermission === "cancel_product_orders"
+      ? { response: Response.json({ message: "Forbidden" }, { status: 403 }) }
+      : { user: actor };
+  } });
   const api = h.load("app/api/admin/counter-inventory/route.ts");
   const body = { ...h.request([["shoe-wipes", 1]]), expectedPrices: { "shoe-wipes": 99 }, adminId: "forged", adminName: "Forged" };
   const make = () => new Request("https://example.test/api/admin/counter-inventory", { method: "POST", body: JSON.stringify(body) });
-  assert.equal((await api.POST(make())).status, 403);
-  grants.add("record_offline_sales"); const response = await api.POST(make()); assert.equal(response.status, 201);
+  assert.equal((await api.GET(new Request("https://example.test/api/admin/counter-inventory"))).status, 200);
+  const response = await api.POST(make()); assert.equal(response.status, 201);
   const order = (await response.json()).order; assert.equal(order.createdByAdminId, actor.id);
+  const history = h.load("app/api/admin/counter-inventory/history/route.ts");
+  assert.equal((await history.GET(new Request("https://example.test/api/admin/counter-inventory/history"))).status, 200);
   const reverse = h.load("app/api/admin/counter-inventory/[id]/reverse/route.ts");
   assert.equal((await reverse.POST(make(), { params: Promise.resolve({ id: order.id }) })).status, 403);
+  assert.deepEqual(requiredPermissions, [undefined, undefined, undefined, "cancel_product_orders"]);
   const permissions = h.load("lib/product-permissions.ts");
   assert.equal(await permissions.hasProductAdminPermission(actor, "cancel_product_orders"), false);
   assert.equal(await permissions.hasProductAdminPermission({ ...actor, role: "super_admin" }, "cancel_product_orders"), true);
