@@ -36,10 +36,16 @@ export function buildOwnerAlertEmail(audit: OwnerAlertAuditRecord) {
   const after = audit.newValues ? formatValues(audit.newValues) : "None";
   const activity = audit.action === "COUNTER_SALE_CREATED" ? "Counter Product Sale"
     : audit.action === "COUNTER_SALE_REVERSED" ? "Counter Sale Reversed"
+    : audit.action === "ADMIN_PERMISSIONS_UPDATED" ? "Admin Access Updated"
     : audit.action.replaceAll("_", " ");
   const products = audit.saleItems?.map((item) => `${item.productName} (${item.sku}) × ${item.quantity}\nRs ${item.unitPriceNpr} × ${item.quantity} = Rs ${item.lineTotalNpr}`).join("\n\n");
   const changes = audit.inventoryChanges?.map((item) => `${item.productName}: ${item.previousStock} → ${item.resultingStock} (${item.stockChange > 0 ? "+" : ""}${item.stockChange})`).join("\n");
   const details: string[][] = [
+    ...(audit.action === "ADMIN_PERMISSIONS_UPDATED" ? [
+      ["Admin", String(audit.newValues?.adminName ?? audit.entityId ?? "")],
+      ["Granted", ((audit.newValues?.granted as string[]) ?? []).join(", ") || "None"],
+      ["Removed", ((audit.newValues?.removed as string[]) ?? []).join(", ") || "None"],
+    ] : []),
     ...(products ? [["Products", products], ["Total Sale", `Rs ${audit.saleItems!.reduce((sum, item) => sum + item.lineTotalNpr, 0)}`]] : []),
     ...(changes ? [["Inventory Changes", changes]] : []),
   ];

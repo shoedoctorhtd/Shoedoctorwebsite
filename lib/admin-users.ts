@@ -2,8 +2,11 @@ import { buildAuditLogInsert, buildOwnerAlertEventInsert } from "./audit";
 import { getDatabase } from "./data";
 import { hashPassword, normalizeEmail, verifyPassword } from "./admin-auth";
 import type { AdminActor, AdminRole } from "./admin-types";
+import { assertAdminPermissionSchema, assertPermissionManager, listAdminPermissions, permissionGrantStatements } from "./admin-permissions";
+import { parseAdminPermissions, permissionLabel, type AdminPermission } from "./admin-permission-policy";
 
 export type ManagedAdminUser = {
+  permissions?: AdminPermission[];
   id: string;
   name: string;
   email: string;
@@ -40,23 +43,26 @@ export async function listAdminUsers(): Promise<ManagedAdminUser[]> {
       ORDER BY active DESC, role ASC, created_at ASC
     `)
     .all<AdminRow>();
-  return result.results.map(parseAdminUser);
+  return Promise.all(result.results.map(async (row) => ({ ...parseAdminUser(row), permissions: row.role === "admin" ? await listAdminPermissions(row.id) : [] })));
 }
 
 export async function getManagedAdminUser(id: string): Promise<ManagedAdminUser | null> {
   const db = await getDatabase();
   const row = await findAdmin(db, id);
-  return row ? parseAdminUser(row) : null;
+  return row ? { ...parseAdminUser(row), permissions: row.role === "admin" ? await listAdminPermissions(row.id) : [] } : null;
 }
 
 export async function createManagedAdmin(
-  input: { name: unknown; email: unknown; role: unknown; confirmation?: unknown },
+  input: { name: unknown; email: unknown; role: unknown; confirmation?: unknown; permissions?: unknown },
   actor: AdminActor,
 ) {
+  await assertPermissionManager(actor);
+  await assertAdminPermissionSchema();
   const name = cleanName(input.name);
   const email = normalizeEmail(input.email);
   const role = input.role === "super_admin" ? "super_admin" : input.role === "admin" ? "admin" : null;
   if (!name || !email || !role) throw new Error("Name, email, and a valid role are required.");
+  const permissions = role === "super_admin" ? [] : parseAdminPermissions(input.permissions ?? []);
   if (role === "super_admin" && normalizeEmail(input.confirmation) !== email) {
     throw new Error("Type the new Super Admin email to confirm this role assignment.");
   }
@@ -74,7 +80,7 @@ export async function createManagedAdmin(
   const auditId = crypto.randomUUID();
   const ownerAlertEventId = crypto.randomUUID();
   const now = new Date().toISOString();
-  const snapshot = { name, email, role, active: true, mustChangePassword: true };
+  const snapshot = { name, email, role, active: true, mustChangePassword: true, permissions, granted: permissions.map(permissionLabel), removed: [] };
   await db.batch([
     db
       .prepare(`
@@ -84,6 +90,7 @@ export async function createManagedAdmin(
         ) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, 1)
       `)
       .bind(id, name, email, email, passwordHash, role, now, actor.id, now),
+    ...permissionGrantStatements(db, id, permissions, actor.id, now),
     buildAuditLogInsert(db, {
       id: auditId,
       actor,
@@ -113,6 +120,7 @@ export async function createManagedAdmin(
       updatedAt: now,
       lastLoginAt: null,
       mustChangePassword: true,
+      permissions,
     } satisfies ManagedAdminUser,
     temporaryPassword,
     ownerAlertEventId,
@@ -125,6 +133,7 @@ export async function setManagedAdminActive(
   actor: AdminActor,
   expectedUpdatedAt?: string | null,
 ) {
+  await assertPermissionManager(actor);
   const db = await getDatabase();
   const target = await findAdmin(db, targetId);
   if (!target) return { kind: "not_found" as const };
@@ -200,6 +209,7 @@ export async function changeManagedAdminRole(
   actor: AdminActor,
   expectedUpdatedAt?: string | null,
 ) {
+  await assertPermissionManager(actor);
   const db = await getDatabase();
   const target = await findAdmin(db, targetId);
   if (!target) return { kind: "not_found" as const };
@@ -268,6 +278,7 @@ export async function resetManagedAdminAccess(
   actor: AdminActor,
   expectedUpdatedAt?: string | null,
 ) {
+  await assertPermissionManager(actor);
   const db = await getDatabase();
   const target = await findAdmin(db, targetId);
   if (!target) return { kind: "not_found" as const };

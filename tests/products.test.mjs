@@ -811,9 +811,9 @@ test("public and admin routes enforce the catalogue, image-access, SEO, header, 
   assert.match(inventory, /updated_at = \?/);
   assert.match(inventory, /canCancelProductOrderStatus/);
   assert.doesNotMatch(inventory, /LIMIT 500/);
-  assert.match(permissions, /user\.role === "super_admin"/);
-  assert.match(permissions, /admin_product_permissions/);
-  assert.match(permissions, /cancel_product_orders/);
+  assert.match(permissions, /hasAdminPermission/);
+  assert.match(permissions, /replaceAdminPermissions/);
+  assert.match(permissions, /isProductAdminPermission/);
   assert.match(header, /navigationItems\.products/);
   assert.match(header, /const mobileNavigationRows/);
   assert.match(header, /navigationItems\.home,[\s\S]*navigationItems\.about,[\s\S]*navigationItems\.donate,[\s\S]*navigationItems\.services/);

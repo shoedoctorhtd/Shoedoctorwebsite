@@ -124,10 +124,11 @@ test("booking mutation routes derive the actor from the verified session and enf
   assert.match(statusRoute, /requireAdminApi\(request,[\s\S]*action: "BOOKING_STATUS_CHANGED"/);
   assert.doesNotMatch(statusRoute, /roles:\s*\["super_admin"\]/);
   assert.match(noteRoute, /auth\.user/);
-  for (const route of [deletionRoute, detailsRoute, restoreRoute, serviceRoute]) {
+  for (const route of [deletionRoute, detailsRoute, restoreRoute]) {
     assert.match(route, /roles:\s*\["super_admin"\]/);
     assert.match(route, /requireAdminApi\(request/);
   }
+  assert.match(serviceRoute, /permission: "services"/);
   assert.match(deletionRoute, /confirmationReference/);
   assert.match(deletionRoute, /parseRequiredAdminReason/);
   assert.match(deletionRoute, /entityId: id/);

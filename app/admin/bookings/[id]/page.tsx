@@ -9,9 +9,9 @@ export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ id: string }> };
 
 export default async function BookingDetailsPage({ params }: Props) {
-  const user = await requireAdminUser("/admin");
-  if (user.mustChangePassword) redirect("/admin/change-password");
   const { id } = await params;
+  const user = await requireAdminUser(`/admin/bookings/${encodeURIComponent(id)}`);
+  if (user.mustChangePassword) redirect("/admin/change-password");
   const booking = await getBookingForAdmin(id, user.role === "super_admin");
   if (!booking) notFound();
   const audit = user.role === "super_admin"

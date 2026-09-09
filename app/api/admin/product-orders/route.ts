@@ -28,6 +28,7 @@ export async function POST(request: Request) {
     mutation: true,
     entityType: "product_order",
     productPermission: "record_offline_sales",
+    permission: "view_product_orders",
   });
   if (auth.response) return auth.response;
   try {

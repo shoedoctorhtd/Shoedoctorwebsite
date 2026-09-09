@@ -33,7 +33,15 @@ export async function getCounterInventory(search = "", page = 1): Promise<Counte
         AND date(created_at, '+5 hours', '+45 minutes') = date('now', '+5 hours', '+45 minutes')) AS salesToday`)
       .first<{ inStock: number; lowStock: number; outOfStock: number; salesToday: number }>(),
   ]);
-  return { ...catalogue, summary: summary ?? { inStock: 0, lowStock: 0, outOfStock: 0, salesToday: 0 } };
+  return {
+    ...catalogue,
+    // This catalogue contains published products only. Use their public image
+    // URLs so counter-only staff do not need access to draft product management.
+    products: catalogue.products.map((product) => ({ ...product, images: product.images.map((image) => ({
+      ...image, url: `/api/products/images/${encodeURIComponent(image.id)}`,
+    })) })),
+    summary: summary ?? { inStock: 0, lowStock: 0, outOfStock: 0, salesToday: 0 },
+  };
 }
 
 export async function listCounterSales(page = 1): Promise<CounterHistory> {

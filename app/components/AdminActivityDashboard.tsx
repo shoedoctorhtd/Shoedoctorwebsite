@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { useAdminAccess, AdminLink as Link } from "./AdminAccessProvider";
 import { useState } from "react";
 import AdminHeader from "@/app/components/AdminHeader";
 import type { AdminRole } from "@/lib/admin-types";
@@ -55,6 +55,7 @@ function retryable(record: AuditLog) {
 }
 
 export default function AdminActivityDashboard({ initial, filters, name, role, error }: Props) {
+  const { can } = useAdminAccess();
   const [records, setRecords] = useState(initial.records);
   const [notice, setNotice] = useState<string | null>(error);
   const [busy, setBusy] = useState<string | null>(null);
@@ -136,7 +137,7 @@ export default function AdminActivityDashboard({ initial, filters, name, role, e
             <aside>
               <span className="admin-role-pill">{record.actorType}</span>
               {record.ownerAlertStatus ? <span className={`admin-alert-status ${record.ownerAlertStatus}`}>Owner alert: {record.ownerAlertStatus}</span> : null}
-              {retryable(record) ? <button type="button" disabled={busy === record.id} onClick={() => void retryAlert(record)}>{busy === record.id ? "Retrying..." : "Retry alert"}</button> : null}
+              {can("notifications") && retryable(record) ? <button type="button" disabled={busy === record.id} onClick={() => void retryAlert(record)}>{busy === record.id ? "Retrying..." : "Retry alert"}</button> : null}
             </aside>
           </article>)}
         </div> : <div className="admin-empty"><strong>No activity matches these filters.</strong><p>New administrator and booking actions will appear here after migration 0011 is applied.</p></div>}

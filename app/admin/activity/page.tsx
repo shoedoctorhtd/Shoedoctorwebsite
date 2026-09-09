@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import AdminActivityDashboard from "@/app/components/AdminActivityDashboard";
-import { requireSuperAdminUser } from "@/lib/admin-auth";
+import { requireAdminUser } from "@/lib/admin-auth";
 import { listAuditLogs, type AuditLogPage } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +11,7 @@ type Props = { searchParams: Promise<Search> };
 function one(value: string | string[] | undefined) { return typeof value === "string" ? value : undefined; }
 
 export default async function AdminActivityPage({ searchParams }: Props) {
-  const user = await requireSuperAdminUser("/admin/activity");
+  const user = await requireAdminUser("/admin/activity");
   if (user.mustChangePassword) redirect("/admin/change-password");
   const search = await searchParams;
   const filters = { administrator: one(search.administrator), bookingReference: one(search.bookingReference), action: one(search.action), entityType: one(search.entityType), from: one(search.from), to: one(search.to) };

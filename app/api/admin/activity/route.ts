@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const auth = await requireAdminApi(request, {
     action: "AUDIT_LOG_LIST",
-    roles: ["super_admin"],
+    permission: "audit_logs",
     entityType: "audit_log",
   });
   if (auth.response) return auth.response;

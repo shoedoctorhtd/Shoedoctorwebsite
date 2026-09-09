@@ -1,5 +1,5 @@
 import CsrDonationsDashboard from "@/app/components/CsrDonationsDashboard";
-import { requireSuperAdminUser } from "@/lib/admin-auth";
+import { requireAdminUser } from "@/lib/admin-auth";
 import { redirect } from "next/navigation";
 import {
   getCsrAdminInitialData,
@@ -14,7 +14,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function CsrDonationsAdminPage() {
-  const user = await requireSuperAdminUser("/admin/csr-donations");
+  const user = await requireAdminUser("/admin/csr-donations");
   if (user.mustChangePassword) redirect("/admin/change-password");
 
   let requests: DonationRequest[] = [];

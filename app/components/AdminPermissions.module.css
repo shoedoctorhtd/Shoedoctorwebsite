@@ -1,0 +1,20 @@
+.fields { grid-column: 1 / -1; width: 100%; }
+.heading, .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.heading { justify-content: space-between; }
+.heading h3 { margin: 10px 0; }
+.actions button { background: #fffef8; color: #171412; border: 1px solid #817d73; padding: 10px 14px; cursor: pointer; font: inherit; font-size: 13px; font-weight: 700; }
+.hint { color: #625d57; font-size: 13px; line-height: 1.5; }
+.groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 18px 0; }
+.groups fieldset { border: 1px solid #cac7bc; padding: 12px; min-width: 0; }
+.groups legend { font-weight: 800; padding: 0 6px; }
+.groups label { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; cursor: pointer; }
+.groups input[type="checkbox"] { appearance: auto; accent-color: #7b1738; flex: 0 0 18px; width: 18px; height: 18px; min-height: 0; padding: 0; margin: 2px 0 0; }
+.groups strong { font-size: 13px; }
+.groups small { display: block; font-weight: 400; color: #625d57; font-size: 12px; line-height: 1.45; margin-top: 4px; }
+.dialog { background: #fffef8; color: #171412; border: 1px solid #171412; width: min(860px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); overflow-y: auto; padding: clamp(16px, 3vw, 30px); margin: auto; }
+.dialog::backdrop { background: #171412a6; }
+.dialog h2 { overflow-wrap: anywhere; }
+.moduleNav { flex-wrap: wrap; }
+.moduleNav > a[aria-current="page"] { background: var(--ink, #171412); color: var(--white, #fffef8); }
+@media (max-width: 900px) { .moduleNav { flex-wrap: nowrap; overflow-x: auto; } }
+@media (max-width: 620px) { .groups { grid-template-columns: 1fr; gap: 10px; } }

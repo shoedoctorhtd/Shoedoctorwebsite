@@ -10,5 +10,5 @@ export async function requireProductPagePermission(
   returnTo: string,
 ) {
   if (await hasProductAdminPermission(user, permission)) return;
-  redirect(`/admin?forbidden=${encodeURIComponent(returnTo)}`);
+  redirect(`/admin/access-denied?from=${encodeURIComponent(returnTo)}`);
 }

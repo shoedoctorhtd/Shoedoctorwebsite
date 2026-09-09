@@ -21,7 +21,7 @@ function requireCsrAdmin(
   return requireAdminApi(request, {
     action: `CSR_${request.method}`,
     mutation,
-    roles: ["super_admin"],
+    permissions: request.url.includes("/emails/") ? ["donations", "notifications"] : ["donations"],
     entityType: "csr",
   });
 }

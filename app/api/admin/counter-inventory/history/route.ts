@@ -3,7 +3,7 @@ import { listCounterSales } from "@/lib/counter-sales";
 import { parsePage } from "@/lib/product-validation";
 
 export async function GET(request: Request) {
-  const auth = await requireAdminApi(request, { action: "COUNTER_HISTORY_VIEW" });
+  const auth = await requireAdminApi(request, { action: "COUNTER_HISTORY_VIEW", permission: "counter_inventory" });
   if (auth.response) return auth.response;
   return Response.json(await listCounterSales(parsePage(new URL(request.url).searchParams.get("page"))), { headers: { "Cache-Control": "private, no-store" } });
 }

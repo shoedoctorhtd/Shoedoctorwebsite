@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const auth = await requireAdminApi(request, {
     action: "ADMIN_USER_LIST",
-    roles: ["super_admin"],
+    permission: "admin_management",
     entityType: "admin_user",
   });
   if (auth.response) return auth.response;
@@ -25,10 +25,11 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
     const result = await createManagedAdmin(
-      { name: body.name, email: body.email, role: body.role, confirmation: body.confirmation },
+      { name: body.name, email: body.email, role: body.role, confirmation: body.confirmation, permissions: body.permissions },
       auth.user,
     );
-    await deliverOwnerAlertEvent(result.ownerAlertEventId);
+    try { await deliverOwnerAlertEvent(result.ownerAlertEventId); }
+    catch { console.error("Administrator creation alert remains queued for retry."); }
     return Response.json(
       { user: result.user, temporaryPassword: result.temporaryPassword },
       { status: 201, headers: { "Cache-Control": "no-store" } },

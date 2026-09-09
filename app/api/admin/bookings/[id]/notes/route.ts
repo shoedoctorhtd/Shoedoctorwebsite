@@ -8,7 +8,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, context: RouteContext) {
   const auth = await requireAdminApi(request, {
-    action: "BOOKING_OPERATIONAL_NOTE_ADDED",
+    action: "BOOKING_OPERATIONAL_NOTE_ADDED", permission: "bookings",
     mutation: true,
     entityType: "booking_operational_note",
   });

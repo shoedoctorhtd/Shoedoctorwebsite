@@ -11,7 +11,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   const auth = await requireAdminApi(request, {
     action: "SERVICE_UPDATE",
     mutation: true,
-    roles: ["super_admin"],
+    permission: "services",
     entityType: "service",
   });
   if (auth.response) return auth.response;
@@ -44,7 +44,7 @@ export async function DELETE(request: Request, context: RouteContext) {
   const auth = await requireAdminApi(request, {
     action: "SERVICE_DELETE",
     mutation: true,
-    roles: ["super_admin"],
+    permission: "services",
     entityType: "service",
   });
   if (auth.response) return auth.response;

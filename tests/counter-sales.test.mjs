@@ -56,12 +56,12 @@ function harness(t) {
     if (!existsSync(absolute) && !absolute.endsWith(".ts")) absolute += ".ts";
     if (mocks.has(absolute)) return mocks.get(absolute);
     if (cache.has(absolute)) return cache.get(absolute).exports;
-    const module = { exports: {} };
-    cache.set(absolute, module);
+    const loadedModule = { exports: {} };
+    cache.set(absolute, loadedModule);
     const source = ts.transpileModule(readFileSync(absolute, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
     const require = (specifier) => load(specifier.startsWith("@/") ? specifier : resolve(dirname(absolute), specifier));
-    new Function("require", "module", "exports", source)(require, module, module.exports);
-    return module.exports;
+    new Function("require", "module", "exports", source)(require, loadedModule, loadedModule.exports);
+    return loadedModule.exports;
   }
   function product(slug, stock = 10, price = 99) {
     sqlite.prepare(`INSERT INTO products (id, sku, slug, name, short_description, full_description,
@@ -200,7 +200,11 @@ test("product price, inventory and permission changes queue one useful managemen
   const before = await products.getAdminProduct("shoe-wipes");
   await products.updateProduct("shoe-wipes", { ...before, priceNpr: 149 }, actor);
   await h.inventory.adjustProductInventory("shoe-wipes", { movementType: "restock", quantity: 2, count: null, reason: "New shipment", idempotencyKey: crypto.randomUUID() }, actor);
-  await h.load("lib/product-permissions.ts").replaceProductAdminPermissions(actor.id, ["view_inventory"], actor);
+  // Permission edits require a separately verified Super Admin, never the target actor.
+  h.sqlite.exec("UPDATE admin_users SET role = 'super_admin' WHERE id = 'other-admin'");
+  h.sqlite.prepare("INSERT INTO admin_sessions (id, admin_user_id, token_hash, created_at, expires_at) VALUES ('owner-session', 'other-admin', 'owner-hash', '2026-09-09', '2099-01-01')").run();
+  const manager = { ...actor, id: "other-admin", role: "super_admin", sessionId: "owner-session" };
+  await h.load("lib/product-permissions.ts").replaceProductAdminPermissions(actor.id, ["view_inventory"], manager, "2026-09-09");
   await h.alerts.deliverPendingOwnerAlerts();
   assert.equal(h.emails.length, 3);
   const price = h.emails.find((email) => email.subject.includes("PRICE CHANGED"));
@@ -246,7 +250,9 @@ test("counter inventory admits normal admins while reversals remain permission-g
   const api = h.load("app/api/admin/counter-inventory/route.ts");
   const body = { ...h.request([["shoe-wipes", 1]]), expectedPrices: { "shoe-wipes": 99 }, adminId: "forged", adminName: "Forged" };
   const make = () => new Request("https://example.test/api/admin/counter-inventory", { method: "POST", body: JSON.stringify(body) });
-  assert.equal((await api.GET(new Request("https://example.test/api/admin/counter-inventory"))).status, 200);
+  const catalogue = await api.GET(new Request("https://example.test/api/admin/counter-inventory"));
+  assert.equal(catalogue.status, 200);
+  assert.equal((await catalogue.json()).products[0].images[0].url, "/api/products/images/img-shoe-wipes");
   const response = await api.POST(make()); assert.equal(response.status, 201);
   const order = (await response.json()).order; assert.equal(order.createdByAdminId, actor.id);
   const history = h.load("app/api/admin/counter-inventory/history/route.ts");

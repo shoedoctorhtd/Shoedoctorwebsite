@@ -8,7 +8,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, context: RouteContext) {
   const auth = await requireAdminApi(request, {
-    action: "BOOKING_STATUS_CHANGED",
+    action: "BOOKING_STATUS_CHANGED", permission: "bookings",
     mutation: true,
     entityType: "booking",
   });

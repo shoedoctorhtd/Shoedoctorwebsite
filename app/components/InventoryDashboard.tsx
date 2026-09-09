@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { AdminModuleNav } from "./AdminAccessProvider";
 import type { InventoryMovement, Product, ProductOrder } from "@/lib/product-types";
 import { clearSessionRetryToken, getSessionRetryToken } from "./ProductRetryToken";
 import styles from "./ProductAdmin.module.css";
@@ -81,7 +81,7 @@ export default function InventoryDashboard({
   }
 
   async function refreshProducts() {
-    const response = await fetch("/api/admin/products", { cache: "no-store" });
+    const response = await fetch("/api/admin/inventory?catalogue=1", { cache: "no-store" });
     const result = await response.json() as { products?: Product[]; message?: string };
     if (!response.ok || !result.products) throw new Error(result.message ?? "Unable to refresh product inventory.");
     setProducts(result.products);
@@ -226,7 +226,7 @@ export default function InventoryDashboard({
   }
 
   return <main id="main-content" className={styles.shell}>
-    <nav className={styles.nav} aria-label="Product administration"><Link href="/admin">Dashboard</Link><Link href="/admin/products">Products</Link><Link href="/admin/product-orders">Product orders</Link></nav>
+    <AdminModuleNav activeHref="/admin/inventory" />
     <section className={styles.intro}><p className="section-kicker">Stock management</p><h1>INVENTORY</h1><p>Every addition, loss, sale, correction, cancellation restoration, and return is recorded permanently with before and after stock.</p></section>
     {notice ? <p className={styles.notice} role="status">{notice}</p> : null}
     {error ? <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p> : null}

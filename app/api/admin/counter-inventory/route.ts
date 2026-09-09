@@ -6,14 +6,14 @@ import { parseOfflineSale, parsePage } from "@/lib/product-validation";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const auth = await requireAdminApi(request, { action: "COUNTER_INVENTORY_VIEW" });
+  const auth = await requireAdminApi(request, { action: "COUNTER_INVENTORY_VIEW", permission: "counter_inventory" });
   if (auth.response) return auth.response;
   const query = new URL(request.url).searchParams;
   return Response.json(await getCounterInventory(query.get("search") ?? "", parsePage(query.get("page"))), { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdminApi(request, { action: "COUNTER_SALE_CREATED", mutation: true, entityType: "product_order" });
+  const auth = await requireAdminApi(request, { action: "COUNTER_SALE_CREATED", permissions: ["counter_inventory", "record_offline_sales"], mutation: true, entityType: "product_order" });
   if (auth.response) return auth.response;
   try {
     const body = await request.json() as Record<string, unknown>;

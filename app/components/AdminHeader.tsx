@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { useAdminAccess, AdminModuleNav, AdminLink as Link } from "./AdminAccessProvider";
+import { adminLandingPath } from "@/lib/admin-permission-policy";
 import type { AdminRole } from "@/lib/admin-types";
 
 type Props = {
@@ -17,6 +18,7 @@ export default function AdminHeader({
   backHref = "/admin",
   backLabel = "Dashboard",
 }: Props) {
+  const access = useAdminAccess();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,7 +38,7 @@ export default function AdminHeader({
   return (
     <>
       <header className="admin-header">
-        <Link className="admin-brand" href="/admin">
+        <Link className="admin-brand" href={adminLandingPath(access)}>
           <span>SD+</span>
           <div>
             <strong>Shoe Doctor</strong>
@@ -51,6 +53,7 @@ export default function AdminHeader({
           </button>
         </div>
       </header>
+      <AdminModuleNav />
       {error ? <p className="admin-notice admin-notice--error" role="alert">{error}</p> : null}
     </>
   );

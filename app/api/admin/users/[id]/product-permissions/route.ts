@@ -1,3 +1,4 @@
+import { deliverOwnerAlertEvent } from "@/lib/owner-alerts";
 import { requireAdminApi } from "@/lib/admin-auth";
 import { PRODUCT_ADMIN_PERMISSIONS, isProductAdminPermission, listProductAdminPermissions, replaceProductAdminPermissions } from "@/lib/product-permissions";
 
@@ -21,12 +22,15 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   if (auth.response) return auth.response;
   try {
     const id = (await params).id;
-    const body = await request.json() as { permissions?: unknown };
+    const body = await request.json() as { permissions?: unknown; updatedAt?: unknown };
     if (!Array.isArray(body.permissions) || body.permissions.some((permission) => !isProductAdminPermission(permission))) {
       return Response.json({ message: "Choose only valid product permissions." }, { status: 400 });
     }
-    const result = await replaceProductAdminPermissions(id, body.permissions, auth.user);
-    return Response.json({ permissions: result.permissions }, { headers: { "Cache-Control": "private, no-store" } });
+    const result = await replaceProductAdminPermissions(id, body.permissions, auth.user, body.updatedAt);
+    if (result.kind === "not_found") return Response.json({ message: "Administrator not found." }, { status: 404 });
+    if (result.kind === "conflict" || result.kind === "super_admin") return Response.json({ message: "Reopen Manage Access in Admin Users before saving." }, { status: 409 });
+    if (result.kind === "updated") { try { await deliverOwnerAlertEvent(result.ownerAlertEventId); } catch { console.error("Permission alert queued for retry."); } }
+    return Response.json({ permissions: result.permissions.filter(isProductAdminPermission), updatedAt: result.updatedAt }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     return Response.json({ message: error instanceof Error ? error.message : "Unable to update permissions." }, { status: 400 });
   }

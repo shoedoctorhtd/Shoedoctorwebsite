@@ -8,6 +8,8 @@ import {
 import { getDatabase } from "./data";
 import { deliverOwnerAlertEvent, deliverPendingOwnerAlerts } from "./owner-alerts";
 import type { AdminRole, AuthenticatedAdmin } from "./admin-types";
+import { listAdminPermissions } from "./admin-permissions";
+import { adminLandingPath, canAccessAdminPath, hasAdminPermission, type AdminPermission } from "./admin-permission-policy";
 import {
   ADMIN_SESSION_COOKIE,
   ADMIN_SESSION_DURATION_SECONDS,
@@ -79,6 +81,8 @@ type AdminApiOptions = {
   entityId?: string | null;
   bookingReference?: string | null;
   productPermission?: ProductAdminPermission;
+  permission?: AdminPermission;
+  permissions?: readonly AdminPermission[];
 };
 
 export async function getAdminUser(request?: Request): Promise<AuthenticatedAdmin | null> {
@@ -111,6 +115,10 @@ export async function getAdminUser(request?: Request): Promise<AuthenticatedAdmi
         Date.parse(row.expires_at) > Date.now()
       ) {
         const user = toAuthenticatedAdmin(row);
+        // Grants are read from D1 on every request, never trusted from a cookie.
+        // Migration compatibility preserves verified legacy grants; all other
+        // permission lookup failures deny access without locking out owners.
+        user.permissions = row.role === "super_admin" ? [] : await listAdminPermissions(row.id);
         // Best-effort activity heartbeat; auth does not depend on this update.
         void db
           .prepare("UPDATE admin_sessions SET last_used_at = ? WHERE id = ? AND revoked_at IS NULL")
@@ -139,14 +147,21 @@ export async function getAdminUser(request?: Request): Promise<AuthenticatedAdmi
 
 export async function requireAdminUser(returnTo = "/admin") {
   const user = await getAdminUser();
-  if (user) return user;
+  if (user) {
+    if (user.mustChangePassword && returnTo !== "/admin/change-password") redirect("/admin/change-password");
+    if (!canAccessAdminPath(user, returnTo)) {
+      if (returnTo === "/admin") redirect(adminLandingPath(user));
+      redirect("/admin/access-denied");
+    }
+    return user;
+  }
   redirect(`/admin/login?next=${encodeURIComponent(safeReturnPath(returnTo))}`);
 }
 
 export async function requireSuperAdminUser(returnTo = "/admin") {
   const user = await requireAdminUser(returnTo);
   if (user.role === "super_admin") return user;
-  redirect("/admin?forbidden=super-admin");
+  redirect("/admin/access-denied");
 }
 
 export async function requireAdminApi(
@@ -181,6 +196,14 @@ export async function requireAdminApi(
 
   if (options.productPermission && !(await hasProductAdminPermission(user, options.productPermission))) {
     await recordDeniedAttempt(user, options, "Product permission is not assigned to this administrator.");
+    return { response: Response.json({ message: "Forbidden" }, { status: 403 }) };
+  }
+
+  const required = [...(options.permissions ?? []), ...(options.permission ? [options.permission] : [])];
+  const accountAction = options.action === "ADMIN_PASSWORD_CHANGE" || options.action === "ADMIN_LOGOUT";
+  if (required.some((permission) => !hasAdminPermission(user, permission)) ||
+      (user.role !== "super_admin" && !accountAction && !required.length && !options.productPermission)) {
+    await recordDeniedAttempt(user, options, "Access permission is not assigned to this administrator.");
     return { response: Response.json({ message: "Forbidden" }, { status: 403 }) };
   }
 

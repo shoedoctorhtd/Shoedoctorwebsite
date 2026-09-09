@@ -10,7 +10,7 @@ import { parsePublicBooking } from "@/lib/validation";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const auth = await requireAdminApi(request, { action: "BOOKING_LIST" });
+  const auth = await requireAdminApi(request, { action: "BOOKING_LIST", permission: "bookings" });
   if (auth.response) return auth.response;
 
   const reference = new URL(request.url).searchParams.get("reference");
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
  * verified administrator session. */
 export async function POST(request: Request) {
   const auth = await requireAdminApi(request, {
-    action: "BOOKING_COUNTER_CREATED",
+    action: "BOOKING_COUNTER_CREATED", permission: "counter_booking",
     mutation: true,
     entityType: "booking",
   });

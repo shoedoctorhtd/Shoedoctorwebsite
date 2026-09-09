@@ -11,7 +11,7 @@ export async function POST(request: Request, context: RouteContext) {
   const auth = await requireAdminApi(request, {
     action: "BOOKING_NOTIFICATION_RETRY",
     mutation: true,
-    roles: ["super_admin"],
+    permissions: ["bookings", "notifications"],
     entityType: "booking_notification",
   });
   if (auth.response) return auth.response;

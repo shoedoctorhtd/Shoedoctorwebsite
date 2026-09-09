@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import Link from "next/link";
+import { AdminLink as Link } from "./AdminAccessProvider";
 import AdminHeader from "@/app/components/AdminHeader";
 import type { AdminRole } from "@/lib/admin-types";
 import type { Service } from "@/lib/data";

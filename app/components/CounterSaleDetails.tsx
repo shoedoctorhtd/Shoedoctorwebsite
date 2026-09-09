@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Link from "next/link";
+import { AdminModuleNav } from "./AdminAccessProvider";
 import { useRouter } from "next/navigation";
 import type { CounterSaleDetail } from "@/lib/counter-sales";
 import { clearSessionRetryToken, getSessionRetryToken } from "./ProductRetryToken";
@@ -35,7 +35,7 @@ export default function CounterSaleDetails({ detail, canReverse }: { detail: Cou
   }
 
   return <main id="main-content" className={`${styles.shell} ${counter.shell}`}>
-    <nav className={styles.nav}><Link href="/admin/counter-inventory">Counter Product Inventory</Link><Link href="/admin">Dashboard</Link></nav>
+    <AdminModuleNav activeHref="/admin/counter-inventory" />
     <header className={counter.header}><h1>{order.publicReference}</h1><p>{order.status === "cancelled" ? "Reversed" : "Recorded"} · {counterDate(order.createdAt)} NPT</p></header>
     {notice && <p className={styles.notice} role="status">{notice}</p>}
     <section className={styles.panel}><h2>Counter Sale</h2><p>Recorded by: <strong>{created?.administratorName ?? "Legacy / unknown"}</strong> {created?.administratorEmail}</p><div className={counter.tableWrap}><table className={counter.table}><thead><tr><th>Product / SKU</th><th>Quantity</th><th>Unit price at sale</th><th>Subtotal</th></tr></thead><tbody>{order.items.map((item) => <tr key={item.id}><td>{item.productName}<br /><small>{item.sku}</small></td><td>{item.quantity}</td><td>Rs {item.unitPriceNpr}</td><td>Rs {item.lineTotalNpr}</td></tr>)}</tbody></table></div><p className={counter.total}>Total sale <strong>Rs {order.total}</strong></p></section>

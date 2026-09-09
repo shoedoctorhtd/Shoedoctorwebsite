@@ -5,7 +5,7 @@ import { parseOrderCancellation } from "@/lib/product-validation";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const id = (await params).id;
-  const auth = await requireAdminApi(request, { action: "COUNTER_SALE_REVERSED", mutation: true,
+  const auth = await requireAdminApi(request, { action: "COUNTER_SALE_REVERSED", permission: "counter_inventory", mutation: true,
     entityType: "product_order", entityId: id, productPermission: "cancel_product_orders" });
   if (auth.response) return auth.response;
   try {

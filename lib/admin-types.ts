@@ -11,6 +11,7 @@ export type AdminActor = {
 };
 
 export type AuthenticatedAdmin = AdminActor & {
+  permissions?: import("./admin-permission-policy").AdminPermission[];
   active: true;
   mustChangePassword: boolean;
   legacy: boolean;

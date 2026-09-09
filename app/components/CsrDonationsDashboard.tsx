@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useMemo, useState, type FormEvent } from "react";
-import Link from "next/link";
+import { useAdminAccess, AdminModuleNav, AdminLink as Link } from "./AdminAccessProvider";
 import {
   DONATION_STATUSES,
   DONATION_STATUS_LABELS,
@@ -755,6 +755,7 @@ function RequestDetailEditor({
   onRetry: (emailEventId: string) => Promise<void>;
   onSave: (input: DonationRequestEditorInput) => Promise<void>;
 }) {
+  const { can } = useAdminAccess();
   const [selectedStatus, setSelectedStatus] = useState<DonationRequestStatus>(request.status);
   const [isSaving, setIsSaving] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
@@ -874,7 +875,7 @@ function RequestDetailEditor({
         {error && <p className="csr-form-error" role="alert">{error}</p>}
         <div className="modal-actions">
           <button className="admin-secondary" type="button" onClick={onClose}>Close</button>
-          {request.lastEmailEvent?.deliveryStatus === "failed" && (
+          {can("notifications") && request.lastEmailEvent?.deliveryStatus === "failed" && (
             <button className="admin-secondary" type="button" onClick={retryEmail} disabled={isRetrying || isSaving}>
               {isRetrying ? "Retrying email…" : "Retry email"}
             </button>
@@ -1415,6 +1416,7 @@ export default function CsrDonationsDashboard({
           </button>
         </div>
       </header>
+      <AdminModuleNav activeHref="/admin/csr-donations" />
 
       <section className="csr-admin-intro">
         <div>

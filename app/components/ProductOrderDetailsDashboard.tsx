@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import Link from "next/link";
+import { AdminModuleNav } from "./AdminAccessProvider";
 import { useRouter } from "next/navigation";
 import type { ProductOrder, ProductPaymentReceipt } from "@/lib/product-types";
 import styles from "./ProductAdmin.module.css";
@@ -52,7 +52,7 @@ export default function ProductOrderDetailsDashboard({ initialOrder, receipts, a
 
   const isCancellable = order.status !== "completed" && order.status !== "cancelled";
   return <main id="main-content" className={styles.shell}>
-    <nav className={styles.nav} aria-label="Product administration"><Link href="/admin">Dashboard</Link><Link href="/admin/product-orders">All product orders</Link><Link href="/admin/inventory">Inventory</Link></nav>
+    <AdminModuleNav activeHref="/admin/product-orders" />
     <section className={styles.intro}><p className="section-kicker">Product order</p><h1>{order.publicReference}</h1><p>{order.channel === "online" ? "Online customer order" : "Offline shop sale"} · Created {formatDate(order.createdAt)}</p></section>
     {notice ? <p className={styles.notice} role="status">{notice}</p> : null}{error ? <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p> : null}
     <div className={styles.detailGrid}>

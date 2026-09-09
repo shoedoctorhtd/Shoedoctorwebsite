@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
-import Link from "next/link";
+import { AdminModuleNav, AdminLink as Link } from "./AdminAccessProvider";
 import type { ProductImageStorageSummary } from "@/lib/product-data";
 import {
   PRODUCT_BADGES,
@@ -518,11 +518,7 @@ export default function ProductAdminDashboard({
 
   return (
     <main id="main-content" className={styles.shell}>
-      <nav className={styles.nav} aria-label="Product administration">
-        <Link href="/admin">Dashboard</Link>
-        <Link href="/admin/product-orders">Product orders</Link>
-        <Link href="/admin/inventory">Inventory</Link>
-      </nav>
+      <AdminModuleNav activeHref="/admin/products" />
 
       <section className={styles.intro}>
         <p className="section-kicker">Shop management</p>

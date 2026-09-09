@@ -9,7 +9,7 @@ export async function POST(request: Request, context: RouteContext) {
   const auth = await requireAdminApi(request, {
     action: "OWNER_ALERT_RETRY",
     mutation: true,
-    roles: ["super_admin"],
+    permissions: ["audit_logs", "notifications"],
     entityType: "owner_alert",
   });
   if (auth.response) return auth.response;

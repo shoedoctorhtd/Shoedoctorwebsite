@@ -65,7 +65,7 @@ test("public and admin payment routes retain bearer-token and permission boundar
   const publicRoute = await readFile(new URL("../app/api/orders/[reference]/payment/route.ts", import.meta.url), "utf8");
   const approvalRoute = await readFile(new URL("../app/api/admin/product-orders/[id]/payment/approve/route.ts", import.meta.url), "utf8");
   const paymentService = await readFile(new URL("../lib/product-payments.ts", import.meta.url), "utf8");
-  const permissions = await readFile(new URL("../lib/product-permissions.ts", import.meta.url), "utf8");
+  const permissions = await readFile(new URL("../lib/admin-permission-policy.ts", import.meta.url), "utf8");
   assert.match(publicRoute, /x-payment-access-token/);
   assert.match(publicRoute, /hiddenNotFound/);
   assert.match(approvalRoute, /productPermission: "verify_product_payments"/);

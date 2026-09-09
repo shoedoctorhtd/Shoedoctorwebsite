@@ -12,6 +12,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     entityType: "product_order",
     entityId: id,
     productPermission: "cancel_product_orders",
+    permission: "view_product_orders",
   });
   if (auth.response) return auth.response;
   try {

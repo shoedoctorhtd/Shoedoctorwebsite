@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { useAdminAccess, AdminModuleNav, AdminLink as Link } from "./AdminAccessProvider";
 import { getBookingItems } from "@/lib/booking-items.js";
 import {
   BOOKING_REFERENCE_TIME_ZONE,
@@ -28,39 +28,6 @@ const statusOptions: Array<{ value: BookingStatus; label: string }> = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
-function CsrDonationsIcon() {
-  return (
-    <svg
-      className="admin-csr-nav-link__icon"
-      viewBox="0 0 32 32"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M16 17.4 8.6 10.6a5.3 5.3 0 0 1 7.4-7.6L16 3l.1-.1a5.3 5.3 0 0 1 7.3 7.7L16 17.4Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-      <path
-        d="m4.5 20 4.2-3.5 4.4 3.2 2.2-1.8a2.7 2.7 0 0 1 3.5 0l4.4 3.6"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-      <path
-        d="m7.2 23.5 2.4 2.1a2.5 2.5 0 0 0 3.4 0l1.2-1 1.2 1a2.5 2.5 0 0 0 3.4 0l2.3-2"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-    </svg>
-  );
-}
-
 const emptyService: ServiceInput = {
   name: "",
   category: "Cleaning",
@@ -81,6 +48,7 @@ type AdminDashboardProps = {
   initialBookings: Booking[];
   ownerName: string;
   ownerRole: "super_admin" | "admin";
+  initialTab: "services" | "bookings";
 };
 
 function toInput(service: Service): ServiceInput {
@@ -214,11 +182,13 @@ export default function AdminDashboard({
   initialBookings,
   ownerName,
   ownerRole,
+  initialTab,
 }: AdminDashboardProps) {
   const isSuperAdmin = ownerRole === "super_admin";
-  const [tab, setTab] = useState<"services" | "bookings">(
-    isSuperAdmin ? "services" : "bookings",
-  );
+  const { can } = useAdminAccess();
+  const canServices = can("services");
+  const canBookings = can("bookings");
+  const tab = initialTab;
   const [services, setServices] = useState(initialServices);
   const [bookings, setBookings] = useState(initialBookings);
   const [bookingFilter, setBookingFilter] = useState<"all" | BookingStatus>(
@@ -680,64 +650,18 @@ export default function AdminDashboard({
           <h1>RUN THE MENU.<br />TRACK THE PAIRS.</h1>
         </div>
         <div className="admin-stats">
-          <article>
+          {canServices && <article>
             <strong>{activeServices}</strong>
             <span>Visible services</span>
-          </article>
-          <article className={newBookings ? "attention" : ""}>
+          </article>}
+          {canBookings && <article className={newBookings ? "attention" : ""}>
             <strong>{newBookings}</strong>
             <span>New bookings</span>
-          </article>
+          </article>}
         </div>
       </section>
 
-      <div className="admin-tabs" role="tablist">
-        {isSuperAdmin && (
-          <button
-            className={tab === "services" ? "active" : ""}
-            onClick={() => setTab("services")}
-            role="tab"
-            aria-selected={tab === "services"}
-          >
-            Services & pricing
-          </button>
-        )}
-        <button
-          className={tab === "bookings" ? "active" : ""}
-          onClick={() => setTab("bookings")}
-          role="tab"
-          aria-selected={tab === "bookings"}
-        >
-          Bookings {newBookings > 0 && <span>{newBookings}</span>}
-        </button>
-        <Link className="admin-view-site-link" href="/admin/bookings/new">
-          + Counter booking
-        </Link>
-        <Link className="admin-view-site-link" href="/admin/counter-inventory" title="Record products sold directly from the shop counter.">Counter Product Inventory</Link>
-        <Link className="admin-view-site-link" href="/admin/products">Products</Link>
-        <Link className="admin-view-site-link" href="/admin/product-orders">Product orders</Link>
-        <Link className="admin-view-site-link" href="/admin/inventory">Inventory</Link>
-        {isSuperAdmin && (
-          <>
-            <Link className="admin-csr-nav-link" href="/admin/csr-donations" aria-label="Open CSR and Donations">
-              <CsrDonationsIcon />
-              <span>CSR &amp; Donations</span>
-            </Link>
-            <Link className="admin-view-site-link" href="/admin/users">Admin users</Link>
-            <Link className="admin-view-site-link" href="/admin/product-access">Product access</Link>
-            <Link className="admin-view-site-link" href="/admin/activity">Admin activity</Link>
-            <Link className="admin-view-site-link" href="/admin/deleted-bookings">Deleted bookings</Link>
-          </>
-        )}
-        <Link
-          className="admin-view-site-link"
-          href="/"
-          target="_blank"
-          rel="noreferrer"
-        >
-          View website ↗
-        </Link>
-      </div>
+      <AdminModuleNav activeHref={`/admin/${tab}`} />
 
       {notice && (
         <div className="admin-notice" role="status">
@@ -748,7 +672,7 @@ export default function AdminDashboard({
         </div>
       )}
 
-      {isSuperAdmin && tab === "services" ? (
+      {canServices && tab === "services" ? (
         <section className="admin-panel">
           <div className="admin-panel-heading">
             <div>
@@ -805,7 +729,7 @@ export default function AdminDashboard({
             ))}
           </div>
         </section>
-      ) : (
+      ) : canBookings ? (
         <section className="admin-panel">
           <div className="admin-panel-heading booking-heading">
             <div>
@@ -1090,7 +1014,7 @@ export default function AdminDashboard({
                           <span>Sent {formatDate(notification.sentAt)}</span>
                         )}
                       </div>
-                      {isSuperAdmin && notification?.status === "failed" && (
+                      {can("notifications") && notification?.status === "failed" && (
                         <button
                           className="admin-secondary booking-notification__retry"
                           type="button"
@@ -1136,7 +1060,7 @@ export default function AdminDashboard({
             )}
           </div>
         </section>
-      )}
+      ) : <section className="admin-panel"><h2>Your assigned modules</h2><p>Choose an available section above to get started.</p></section>}
 
       {editor && (
         <div className="admin-modal-backdrop" role="presentation">
