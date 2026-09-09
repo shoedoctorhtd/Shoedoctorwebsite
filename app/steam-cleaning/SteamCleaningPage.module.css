@@ -1,0 +1,111 @@
+/* Keep spacing changes local to the Steam page's existing components. */
+.page > :global(.sd-page-hero) {
+  min-height: 0;
+  padding-top: clamp(40px, 5vw, 72px);
+  padding-bottom: clamp(28px, 4vw, 48px);
+}
+
+.page :global(.sd-page-hero h1) {
+  margin-top: 24px;
+}
+
+.page :global(.sd-page-hero-bottom) {
+  margin-top: 28px;
+  row-gap: 20px;
+}
+
+.page > :global(.sd-section),
+.page > :global(.sd-steam-advantage) {
+  padding-top: clamp(28px, 4vw, 48px);
+  padding-bottom: clamp(28px, 4vw, 48px);
+}
+
+.page > :global(.sd-steam-advantage) {
+  margin-top: 0;
+}
+
+.page :global(.sd-steam-advantage__steps) {
+  margin-top: clamp(28px, 4vw, 44px);
+  row-gap: 36px;
+}
+
+/* The benefit section already provides space above this divider. */
+.page > .details:global(.sd-section) {
+  padding-top: 0;
+}
+
+.page .details > :global(.sd-steam-service) {
+  margin-top: 0;
+  padding-top: clamp(24px, 3vw, 36px);
+}
+
+.page :global(.sd-steam-badge) {
+  margin-bottom: 14px;
+}
+
+.page :global(.sd-steam-service-header) {
+  row-gap: 20px;
+}
+
+.page :global(.sd-steam-service-subheading) {
+  margin-top: 14px;
+}
+
+.page :global(.sd-steam-service-main) {
+  margin-top: clamp(28px, 4vw, 44px);
+  row-gap: 24px;
+}
+
+.page :global(.sd-steam-steps) {
+  margin-top: 20px;
+}
+
+.page :global(.sd-steam-steps li) {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.page :global(.sd-steam-service-bottom) {
+  margin-top: clamp(28px, 4vw, 44px);
+  padding-top: clamp(24px, 3vw, 32px);
+  row-gap: 24px;
+}
+
+.page :global(.sd-steam-service-actions) {
+  margin-top: clamp(24px, 3vw, 32px);
+  padding-top: clamp(20px, 3vw, 28px);
+}
+
+.page :global(.sd-faq) {
+  row-gap: 24px;
+}
+
+.page :global(.sd-faq h2) {
+  margin-top: 16px;
+  margin-bottom: 0;
+}
+
+.page :global(.sd-faq-list summary) {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+.page :global(.sd-faq-list details > p) {
+  margin-bottom: 16px;
+}
+
+.page :global(.sd-page-hero-bottom > p),
+.page :global(.sd-steam-service-intro),
+.page :global(.sd-steam-advantage__header > p:not(.sd-kicker)),
+.page :global(.sd-steam-advantage__copy p),
+.page :global(.sd-steam-steps p),
+.page :global(.sd-steam-information p),
+.page :global(.sd-faq-list details > p) {
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .page :global(.sd-steam-advantage__step:not(:last-of-type)) {
+    padding-bottom: 28px;
+  }
+}

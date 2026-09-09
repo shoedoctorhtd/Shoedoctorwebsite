@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import styles from "./SteamCleaningPage.module.css";
 import { listPublicServices } from "@/lib/data";
 import { formatNprPriceLabel } from "@/lib/money";
 import SteamBrushAdvantage from "../components/SteamBrushAdvantage";
@@ -37,7 +38,7 @@ export default async function SteamCleaningPage() {
   );
 
   return (
-    <main id="main-content" className="public-site inner-site">
+    <main id="main-content" className={`public-site inner-site ${styles.page}`}>
       <SiteMotion />
       <SiteHeader />
 
@@ -77,7 +78,7 @@ export default async function SteamCleaningPage() {
 
       <SteamBrushAdvantage />
 
-      <section className="sd-section">
+      <section className={`sd-section ${styles.details}`}>
         <SteamBrushCleaningSection />
       </section>
 

@@ -7,7 +7,7 @@ export const steamCleaningContent = {
     "Shoe Doctor introduces a professional steam-assisted shoe-cleaning experience. Our controlled steam brush helps loosen stubborn surface grime and reach textured areas, stitching lines, sole grooves and difficult corners with less aggressive scrubbing.",
   homeSupporting:
     "Steam is used as part of our professional cleaning process—not as a one-method solution. Every pair is inspected first, and our technicians decide whether steam treatment is suitable for its material, adhesive and construction.",
-  serviceBadge: "NEW AT SHOE DOCTOR",
+  serviceBadge: "NEW IN NEPAL",
   serviceName: "Steam-Assisted Deep Clean",
   serviceTitle: "STEAM CLEANING",
   serviceIntro:
