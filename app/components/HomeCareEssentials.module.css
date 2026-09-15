@@ -9,6 +9,7 @@
 .inner {
   margin: 0 auto;
   max-width: 1600px;
+  min-width: 0;
 }
 
 .heading {
@@ -59,10 +60,102 @@
   max-width: 34ch;
 }
 
-.grid {
+.carousel {
+  --carousel-gap: clamp(10px, 1.25vw, 18px);
   display: grid;
-  gap: clamp(10px, 1.25vw, 18px);
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+}
+
+.viewport {
+  display: grid;
+  gap: var(--carousel-gap);
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 3 * var(--carousel-gap)) / 4);
+  grid-column: 1 / -1;
+  grid-row: 1;
+  margin-block: -4px -10px;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-block: 4px 10px;
+  scrollbar-width: none;
+  scroll-snap-type: x mandatory;
+  touch-action: pan-x pan-y pinch-zoom;
+}
+
+.viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.slide {
+  min-width: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.slide[hidden],
+.controls[hidden] {
+  display: none;
+}
+
+.controls {
+  align-items: center;
+  align-self: center;
+  display: flex;
+  gap: 8px;
+  grid-column: 2;
+  grid-row: 2;
+  margin-top: clamp(16px, 2vw, 22px);
+}
+
+.controls button {
+  align-items: center;
+  background: var(--white);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 750;
+  gap: 8px;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.controls .playControl {
+  padding-inline: 14px;
+}
+
+.controls button:hover:enabled {
+  border-color: var(--berry);
+  color: var(--berry);
+}
+
+.controls button:disabled {
+  cursor: default;
+}
+
+.controls svg {
+  fill: none;
+  height: 20px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  width: 20px;
+}
+
+.srOnly {
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
 }
 
 .card {
@@ -71,6 +164,7 @@
   border-radius: 16px;
   display: flex;
   flex-direction: column;
+  height: 100%;
   min-width: 0;
   overflow: hidden;
   transition:
@@ -89,19 +183,19 @@
   overflow: hidden;
 }
 
-.card:nth-child(2) .imageLink {
+.card[data-tone="1"] .imageLink {
   background:
     radial-gradient(circle at 50% 28%, rgba(255, 255, 255, 0.84), transparent 48%),
     var(--blush);
 }
 
-.card:nth-child(3) .imageLink {
+.card[data-tone="2"] .imageLink {
   background:
     radial-gradient(circle at 50% 28%, rgba(255, 255, 255, 0.84), transparent 48%),
     #f1f8db;
 }
 
-.card:nth-child(4) .imageLink {
+.card[data-tone="3"] .imageLink {
   background:
     radial-gradient(circle at 50% 28%, rgba(255, 255, 255, 0.84), transparent 48%),
     #ffe5dc;
@@ -191,6 +285,8 @@
 
 .actions {
   display: flex;
+  grid-column: 1;
+  grid-row: 2;
   margin-top: clamp(16px, 2vw, 22px);
 }
 
@@ -200,7 +296,9 @@
 
 .imageLink:focus-visible,
 .cardFooter a:focus-visible,
-.allProducts:focus-visible {
+.allProducts:focus-visible,
+.controls button:focus-visible,
+.viewport:focus-visible {
   outline: 3px solid var(--ink);
   outline-offset: 3px;
 }
@@ -214,8 +312,8 @@
 }
 
 @media (max-width: 980px) {
-  .grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .viewport {
+    grid-auto-columns: calc((100% - var(--carousel-gap)) / 2);
   }
 }
 
@@ -239,9 +337,17 @@
     max-width: 38ch;
   }
 
-  .grid {
-    gap: 10px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .carousel {
+    --carousel-gap: 10px;
+  }
+
+  .viewport {
+    grid-auto-columns: 85%;
+  }
+
+  .actions {
+    grid-column: 1 / -1;
+    grid-row: 3;
   }
 
   .cardBody {
@@ -275,11 +381,19 @@
 }
 
 @media (max-width: 360px) {
-  .grid {
-    gap: 8px;
+  .carousel {
+    --carousel-gap: 8px;
   }
 
   .cardBody {
     padding: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .imageLink img,
+  .cardFooter a {
+    transition: none;
   }
 }

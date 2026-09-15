@@ -1,6 +1,6 @@
 import type { Product } from "./product-types";
 
-export const HOMEPAGE_PRODUCT_LIMIT = 4;
+export const HOMEPAGE_PRODUCT_LIMIT = 12;
 
 type HomepageProductCandidate = Pick<
   Product,

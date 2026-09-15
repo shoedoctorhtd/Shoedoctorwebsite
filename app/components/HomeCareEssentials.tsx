@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ArrowUpRight } from "./SiteChrome";
+import HomeCareCarousel from "./HomeCareCarousel";
 import { formatNprOrPending } from "@/lib/money";
 import { HOMEPAGE_PRODUCT_LIMIT } from "@/lib/product-home";
 import type { ProductCard } from "@/lib/product-types";
@@ -30,10 +31,10 @@ export default function HomeCareEssentials({ products }: { products: ProductCard
           <p className={styles.intro}>Selected products for thoughtful cleaning, protection and everyday care.</p>
         </div>
 
-        <div className={styles.grid}>
-          {visibleProducts.map((product) => {
+        <HomeCareCarousel
+          cards={visibleProducts.map((product, index) => {
             return (
-              <article className={styles.card} key={product.slug}>
+              <article className={styles.card} data-tone={index % 4} key={product.slug}>
                 <Link aria-label={`View ${product.name}`} className={styles.imageLink} href={`/products/${encodeURIComponent(product.slug)}`}>
                   {product.primaryImage ? (
                     <img alt={product.primaryImage.altText ?? product.name} decoding="async" loading="lazy" src={product.primaryImage.url} />
@@ -49,11 +50,8 @@ export default function HomeCareEssentials({ products }: { products: ProductCard
               </article>
             );
           })}
-        </div>
-
-        <div className={styles.actions}>
-          <Link className={`${styles.allProducts} sd-primary-button`} href="/products">View All Products <ArrowUpRight /></Link>
-        </div>
+          action={<Link className={`${styles.allProducts} sd-primary-button`} href="/products">View All Products <ArrowUpRight /></Link>}
+        />
       </div>
     </section>
   );

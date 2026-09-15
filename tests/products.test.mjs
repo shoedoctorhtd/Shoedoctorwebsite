@@ -176,9 +176,15 @@ test("homepage care selection is capped, in-stock, slug-safe, and deterministic"
     { id: "plain-out", slug: "plain-out", name: "Plain Out", badge: null, featured: false, stockQuantity: 0, updatedAt: "2026-08-30T00:00:00.000Z" },
     { id: "invalid", slug: "Not a valid slug", name: "Invalid", badge: "doctors_pick", featured: true, stockQuantity: 9, updatedAt: "2026-08-31T00:00:00.000Z" },
   ]);
-  assert.equal(HOMEPAGE_PRODUCT_LIMIT, 4);
+  assert.equal(HOMEPAGE_PRODUCT_LIMIT, 12);
   assert.deepEqual(selected.map((product) => product.id), ["doctor-in", "featured-in", "plain-in"]);
   assert.deepEqual(selectHomepageProducts([selected[0]]).map((product) => product.id), ["doctor-in"]);
+  const catalogue = Array.from({ length: 18 }, (_, index) => ({
+    ...selected[0], id: `product-${index}`, slug: `product-${index}`, name: `Product ${index}`,
+  }));
+  assert.equal(selectHomepageProducts(catalogue).length, 12);
+  assert.equal(selectHomepageProducts(catalogue, 100).length, 12);
+  assert.equal(selectHomepageProducts(catalogue, 2).length, 2);
 });
 
 test("Buy Now selects only its safe direct item and leaves cart selection intact", () => {
@@ -692,9 +698,6 @@ test("homepage care essentials and permanent product deletion keep their public 
   assert.doesNotMatch(homeSection, /sd-section/);
   assert.match(homeStyles, /var\(--blue\)/);
   assert.match(homeStyles, /padding: clamp\(42px, 5vw, 68px\)/);
-  assert.match(homeStyles, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
-  assert.match(homeStyles, /@media \(max-width: 620px\)[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.doesNotMatch(homeStyles, /scroll-snap-type/);
   assert.match(productData, /HOMEPAGE_PRODUCT_CANDIDATE_LIMIT = 12/);
   assert.match(productData, /WHERE p\.status = 'published'/);
   assert.match(productData, /AND p\.stock_quantity > 0/);
