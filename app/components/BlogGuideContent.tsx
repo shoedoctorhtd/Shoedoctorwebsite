@@ -1,9 +1,33 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
 import ProductRecommendation from "./ProductRecommendation";
 import type { ProductCard } from "@/lib/product-types";
+import DoctorNote from "./DoctorNote";
+import { ArrowUpRight } from "./SiteChrome";
+import styles from "../blog/Journal.module.css";
+import { Fragment } from "react";
+
+function GuideProduct({ product, explanation, editorial }: {
+  product: ProductCard | null;
+  explanation: string;
+  editorial: boolean;
+}) {
+  if (!editorial) return <ProductRecommendation product={product} explanation={explanation} />;
+  if (!product?.slug || product.badge !== "doctors_pick" || product.stockQuantity === 0) return null;
+  return (
+    <aside className={styles.pick} aria-label="Doctor's pick">
+      <p>Doctor&apos;s pick</p>
+      <a href={`/products/${encodeURIComponent(product.slug)}`}>{product.name} <ArrowUpRight /></a>
+    </aside>
+  );
+}
 
 // The existing journal and the article routes render this same content.
-export default function BlogGuideContent({ slug, product }: { slug: string; product: ProductCard | null }) {
+export default function BlogGuideContent({ slug, product, editorial = false }: {
+  slug: string;
+  product: ProductCard | null;
+  editorial?: boolean;
+}) {
+  const CareNote = editorial ? DoctorNote : Fragment;
   switch (slug) {
     case "everyday-shoe-cleaning": return (<>
 <div className="sd-article-body">
@@ -25,7 +49,7 @@ export default function BlogGuideContent({ slug, product }: { slug: string; prod
               <li>Let every pair dry naturally in shade.</li>
             </ul>
             <p>Small cleanups keep big stains away.</p>
-            <ProductRecommendation
+            <GuideProduct editorial={editorial}
               explanation="For fresh marks and everyday upkeep between professional visits."
               product={product}
             />
@@ -46,7 +70,7 @@ export default function BlogGuideContent({ slug, product }: { slug: string; prod
               A little preparation can save your favourite pair from
               unnecessary cleaning and damage.
             </p>
-            <ProductRecommendation
+            <GuideProduct editorial={editorial}
               explanation="For the published storage or protection option currently selected by Shoe Doctor."
               product={product}
             />
@@ -57,16 +81,16 @@ export default function BlogGuideContent({ slug, product }: { slug: string; prod
               aggressive scrubbing can leave marks, flatten its texture and
               affect its colour.
             </p>
-            <p>
+            <CareNote><p>
               For small, dry stains, gently use a suede eraser instead of
               washing the entire shoe. If the stain is deep, oily or spreading,
               stop experimenting and let a <a href="/services">professional examine it</a>.
-            </p>
+            </p></CareNote>
             <p>
               The right treatment protects the material. The wrong one may make
               the damage permanent.
             </p>
-            <ProductRecommendation
+            <GuideProduct editorial={editorial}
               explanation="Only use an item when its own published guidance confirms it is appropriate for your pair."
               product={product}
             />
@@ -80,28 +104,20 @@ export default function BlogGuideContent({ slug, product }: { slug: string; prod
               regular cleaning.
             </p>
             <p>Follow these steps:</p>
-            <ul>
-              <li>01. Remove the shoelaces and insoles, if removable.</li>
-              <li>02. Use a dry brush to remove loose dust and mud.</li>
-              <li>03. Test the cleaning foam on a small, less-visible area.</li>
-              <li>
-                04. Apply a small amount of foam to the brush instead of
-                pouring cleaner directly onto the shoe.
-              </li>
-              <li>05. Use the softer brush on the upper material.</li>
-              <li>
-                06. Use the second brush for the midsole and other stronger
-                surfaces.
-              </li>
-              <li>
-                07. Wipe away loosened dirt and excess foam with a clean
-                microfiber towel.
-              </li>
-              <li>
-                08. Leave the sneakers to dry naturally in a shaded,
-                ventilated area.
-              </li>
-            </ul>
+            <ol className={editorial ? styles.steps : undefined} role="list">
+              <li><span>Remove the shoelaces and insoles, if removable.</span></li>
+              <li><span>Use a dry brush to remove loose dust and mud.</span></li>
+              <li><span>Test the cleaning foam on a small, less-visible area.</span></li>
+              <li><span>Apply a small amount of foam to the brush instead of
+                pouring cleaner directly onto the shoe.</span></li>
+              <li><span>Use the softer brush on the upper material.</span></li>
+              <li><span>Use the second brush for the midsole and other stronger
+                surfaces.</span></li>
+              <li><span>Wipe away loosened dirt and excess foam with a clean
+                microfiber towel.</span></li>
+              <li><span>Leave the sneakers to dry naturally in a shaded,
+                ventilated area.</span></li>
+            </ol>
             <p>
               A complete <a href="/products">sneaker-cleaning kit</a> makes this process easier because
               each tool has a purpose. The brushes loosen dirt, the foam cleans
@@ -112,7 +128,7 @@ export default function BlogGuideContent({ slug, product }: { slug: string; prod
               <strong>Important:</strong> Avoid using the same brush on the
               dirty outsole and the upper part of the sneaker.
             </p>
-            <ProductRecommendation
+            <GuideProduct editorial={editorial}
               explanation="A currently published kit can support this at-home routine when its product guidance matches your footwear."
               product={product}
             />

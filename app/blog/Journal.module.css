@@ -1,0 +1,311 @@
+.journal {
+  --journal-line: rgba(7, 26, 58, 0.18);
+  background: var(--paper);
+}
+
+.journal .hero {
+  background: var(--paper);
+  min-height: 0;
+  padding: clamp(38px, 5vw, 72px) clamp(18px, 5vw, 74px) 0;
+}
+
+.journal .hero::after { content: none; }
+
+.heroMain,
+.story,
+.articles,
+.checklistInner,
+.ctaInner {
+  margin-inline: auto;
+  max-width: 1292px;
+}
+
+.heroMain {
+  align-items: center;
+  display: grid;
+  gap: clamp(28px, 4vw, 64px);
+  grid-template-columns: minmax(0, 0.94fr) minmax(0, 1.06fr);
+}
+
+.journal .hero h1 {
+  font-size: clamp(2.5rem, 4.5vw, 4.6rem);
+  letter-spacing: -0.075em;
+  line-height: 0.9;
+  margin: 26px 0 32px;
+}
+
+.promise {
+  border-top: 1px solid var(--journal-line);
+  max-width: 45ch;
+  padding-top: 18px;
+}
+
+.journal .label,
+.journal .hero :global(.sd-kicker) {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.5;
+  margin: 0 0 12px;
+  text-transform: uppercase;
+}
+
+.promise > p:last-child,
+.story > p {
+  font-size: 16px;
+  line-height: 1.75;
+  margin: 0;
+}
+
+.heroImage,
+.articleImage {
+  background: #eee5dc;
+  overflow: hidden;
+}
+
+.heroImage { aspect-ratio: 4 / 3; }
+.articleImage { aspect-ratio: 4 / 3; }
+
+.heroImage img,
+.articleImage img {
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.heroImage img { object-position: 59% center; }
+
+.story {
+  align-items: start;
+  border-bottom: 1px solid var(--journal-line);
+  display: grid;
+  gap: 32px;
+  grid-template-columns: 1fr 1fr 1fr;
+  padding: clamp(36px, 5vw, 64px) 0;
+}
+
+.story h2 {
+  font-size: clamp(2rem, 3vw, 3rem);
+  font-weight: 950;
+  letter-spacing: -0.065em;
+  line-height: 0.95;
+  margin: 0;
+}
+
+.story h2 span {
+  color: transparent;
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 500;
+  -webkit-text-stroke: 1.2px var(--berry);
+}
+
+.journal .index {
+  padding: 0 clamp(18px, 5vw, 74px);
+}
+
+.article {
+  align-items: start;
+  border-bottom: 1px solid var(--journal-line);
+  display: grid;
+  gap: clamp(28px, 5vw, 76px);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: clamp(40px, 5vw, 72px) 0;
+}
+
+.article:last-child { border-bottom: 0; }
+
+.media { min-width: 0; }
+.copy { min-width: 0; }
+
+.article:nth-child(even) .media { grid-column: 2; grid-row: 1; }
+.article:nth-child(even) .copy { grid-column: 1; grid-row: 1; }
+
+.meta {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px;
+  gap: 12px;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.number { color: var(--berry); font-size: 24px; }
+.readTime { margin-left: auto; opacity: 0.65; text-transform: none; }
+
+.article h2 {
+  font-size: clamp(2.6rem, 4vw, 4.25rem);
+  font-weight: 950;
+  letter-spacing: -0.065em;
+  line-height: 0.95;
+  margin: 22px 0 26px;
+  overflow-wrap: break-word;
+}
+
+.article h2 a { text-decoration: none; }
+.article h2 a:hover { color: var(--berry); }
+
+.journal .body {
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.body :global(.sd-article-body) { margin: 0; }
+.journal .body p { font-size: inherit; line-height: inherit; margin: 0 0 18px; }
+.journal .body ul { margin: 22px 0; padding: 0; }
+.journal .body li { font-size: 15px; font-weight: 500; line-height: 1.6; padding: 12px 0; }
+.body a:not(.pick a) { text-decoration: underline; text-underline-offset: 4px; }
+
+.journal .steps {
+  counter-reset: care-step;
+  list-style: none;
+  margin: 12px 0 24px;
+  padding: 0;
+}
+
+.journal .steps li {
+  border-bottom: 1px solid var(--journal-line);
+  counter-increment: care-step;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 28px minmax(0, 1fr);
+  padding: 15px 0;
+}
+
+.steps li::before {
+  color: var(--berry);
+  content: counter(care-step, decimal-leading-zero);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 13px;
+  font-weight: 700;
+  padding-top: 2px;
+}
+
+.pick {
+  border-top: 1px solid var(--journal-line);
+  margin-top: 26px;
+  padding-top: 18px;
+}
+
+.journal .pick p {
+  color: var(--berry);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+
+.pick a,
+.readLink {
+  align-items: center;
+  display: inline-flex;
+  gap: 12px;
+  line-height: 1.5;
+  min-height: 44px;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 5px;
+}
+
+.pick a { font-weight: 700; }
+.pick svg,
+.readLink svg { flex: 0 0 auto; height: 17px; width: 17px; }
+.readLink { font-size: 14px; margin-top: 12px; }
+.pick a:hover,
+.readLink:hover { color: var(--berry); text-decoration-color: currentColor; }
+
+.journal .checklist {
+  background: #f1ede8;
+  color: var(--ink);
+  display: block;
+  padding: clamp(40px, 5vw, 72px) clamp(18px, 5vw, 74px);
+}
+
+.checklistInner { display: grid; gap: 40px; grid-template-columns: 1fr 1fr; }
+.journal .checklist h2 { font-size: clamp(2.8rem, 4.5vw, 5rem); margin: 24px 0 0; }
+.journal .checklist ol,
+.journal .checklist li { border-color: var(--journal-line); }
+.journal .checklist li { font-weight: 500; line-height: 1.5; padding: 16px 0; }
+.journal .checklist li span { color: var(--berry); font-size: 12px; padding-top: 3px; }
+
+.journal .cta {
+  display: block;
+  padding: clamp(44px, 6vw, 86px) clamp(18px, 5vw, 74px);
+}
+
+.ctaInner { align-items: end; display: grid; gap: 32px; grid-template-columns: 1.2fr 0.8fr; }
+.journal .cta h2 { font-size: clamp(2.8rem, 4.9vw, 5.3rem); line-height: 0.94; }
+.ctaCopy > p { font-size: 16px; line-height: 1.7; margin: 0 0 20px; max-width: 46ch; }
+.actions { align-items: flex-start; display: flex; flex-direction: column; gap: 8px; }
+.actions .readLink { margin-top: 0; }
+
+.journal a:focus-visible { outline: 2px solid var(--berry); outline-offset: 5px; }
+
+/* Reuse SiteMotion's single observer; content stays visible without JavaScript. */
+@media (prefers-reduced-motion: no-preference) {
+  :global(.motion-ready) .journal [data-reveal] {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 550ms ease, transform 550ms ease;
+  }
+
+  :global(.motion-ready) .journal [data-reveal]:global(.is-revealed) {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  :global(.motion-ready) .journal h2[data-reveal] { transition-delay: 45ms; }
+
+  :global(.motion-ready) .journal .media[data-reveal] img {
+    transform: scale(1.02);
+    transition: transform 600ms ease;
+  }
+
+  :global(.motion-ready) .journal .media[data-reveal]:global(.is-revealed) img { transform: scale(1); }
+  .pick a, .readLink { transition: color 180ms ease, text-decoration-color 180ms ease; }
+  .pick svg, .readLink svg { transition: transform 180ms ease; }
+  .pick a:hover svg, .readLink:hover svg { transform: translate(2px, -2px); }
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  :global(.motion-ready) .journal .media[data-reveal]:global(.is-revealed):hover img { transform: scale(1.025); }
+}
+
+@media (max-width: 760px) {
+  .heroMain, .story, .article, .checklistInner, .ctaInner { grid-template-columns: minmax(0, 1fr); }
+  .journal .hero { padding-top: 34px; }
+  .journal .hero h1 { font-size: clamp(2.1rem, 11vw, 4.8rem); margin: 20px 0 24px; }
+  .heroImage { aspect-ratio: 16 / 10; }
+  .heroMain { gap: 26px; }
+  .story { gap: 20px; padding-block: 32px; }
+  .story h2 { font-size: 2.5rem; }
+  .article { gap: 24px; padding-block: 36px; }
+  .article:nth-child(even) .media, .article:nth-child(even) .copy { grid-column: auto; grid-row: auto; }
+  .article h2 { font-size: clamp(2.5rem, 9vw, 3.5rem); margin: 16px 0 22px; }
+  .meta { gap: 10px; }
+  .checklistInner { gap: 28px; }
+  .journal .checklist h2 { margin-top: 18px; }
+  .journal .cta h2 { font-size: clamp(2.4rem, 8.8vw, 4rem); }
+}
+
+@media (min-width: 761px) {
+  .article:last-child .media { position: sticky; top: 124px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journal [data-reveal],
+  .journal [data-reveal] img,
+  .journal .actions a,
+  .journal .actions svg {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}

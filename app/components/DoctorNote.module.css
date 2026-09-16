@@ -1,0 +1,35 @@
+.note {
+  background: #fff0f2;
+  border: 1px solid rgba(123, 23, 56, 0.18);
+  color: var(--ink);
+  margin: 24px 0;
+  padding: 20px 22px;
+}
+
+.label {
+  align-items: center;
+  color: var(--berry);
+  display: flex;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.label span {
+  font-family: Arial, sans-serif;
+  font-size: 23px;
+  line-height: 1;
+}
+
+.advice {
+  font-size: 16px;
+  line-height: 1.7;
+  margin-top: 10px;
+}
+
+.advice > :first-child { margin-top: 0; }
+.advice > :last-child { margin-bottom: 0; }
+.note .advice > p:only-child { margin: 0; }
