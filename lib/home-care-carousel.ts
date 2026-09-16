@@ -5,7 +5,7 @@ export type CareCarouselState = {
   position: number;
 };
 
-const AUTOPLAY_DELAY = 3000;
+const AUTOPLAY_DELAY = 1500;
 const SCROLL_IDLE_DELAY = 180;
 
 /** Native scrolling owns gestures and links; only the resting loop position is rebased. */
@@ -204,11 +204,6 @@ export function mountCareCarousel(
   return {
     previous() { stopAutoplay(); move(-1); },
     next() { stopAutoplay(); move(1); },
-    toggleAutoplay() {
-      if (motion.matches || !canScroll) return;
-      autoplayRequested = !autoplayRequested;
-      syncAutoplay();
-    },
     destroy() {
       window.clearInterval(autoplayTimer);
       window.clearTimeout(idleTimer);

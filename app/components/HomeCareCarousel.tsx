@@ -24,19 +24,6 @@ export default function HomeCareCarousel({ cards, action }: { cards: ReactNode[]
   return (
     <div aria-label="Care essentials products" aria-roledescription="carousel" className={styles.carousel} ref={root} role="group">
       <div className={styles.controls} hidden={!state.canScroll}>
-        <button
-          aria-controls="care-essentials-products"
-          aria-label={state.reducedMotion ? "Autoplay disabled by reduced motion preference" : state.autoplayEnabled ? "Pause product autoplay" : "Play product autoplay"}
-          className={styles.playControl}
-          disabled={state.reducedMotion}
-          onClick={() => controller.current?.toggleAutoplay()}
-          type="button"
-        >
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path d={state.autoplayEnabled ? "M8 5v14M16 5v14" : "m8 5 11 7-11 7Z"} />
-          </svg>
-          {state.reducedMotion ? "Autoplay off" : state.autoplayEnabled ? "Pause" : "Play"}
-        </button>
         <button aria-controls="care-essentials-products" aria-label="Previous product" onClick={() => controller.current?.previous()} type="button">
           <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6" /></svg>
         </button>

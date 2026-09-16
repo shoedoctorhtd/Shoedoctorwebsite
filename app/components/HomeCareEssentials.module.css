@@ -81,6 +81,7 @@
   overscroll-behavior-x: contain;
   padding-block: 4px 10px;
   scrollbar-width: none;
+  scroll-behavior: smooth;
   scroll-snap-type: x mandatory;
   touch-action: pan-x pan-y pinch-zoom;
 }
@@ -124,10 +125,6 @@
   justify-content: center;
   min-height: 44px;
   min-width: 44px;
-}
-
-.controls .playControl {
-  padding-inline: 14px;
 }
 
 .controls button:hover:enabled {
@@ -391,6 +388,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .viewport {
+    scroll-behavior: auto;
+  }
+
   .card,
   .imageLink img,
   .cardFooter a {

@@ -41,6 +41,7 @@ test("server-rendered cards preserve product URLs, prices, heading, CTA and empt
   assert.match(html, /Shoe Doctor care essentials/);
   assert.match(html, /id="care-essentials-heading"/);
   assert.match(html, /id="care-essentials-products"/);
+  assert.doesNotMatch(html, /Pause product autoplay|Play product autoplay|Autoplay off/);
   assert.match(html, /href="\/products"[^>]*>View All Products/);
   assert.equal((html.match(/<article\b/g) ?? []).length, 18);
   for (let index = 0; index < 6; index++) {
@@ -161,17 +162,17 @@ function fixture(t, { count = 6, width = 1000, cardWidth = 238, gap = 16, reduce
   };
 }
 
-test("autoplay advances exactly one card every three seconds only when visible", (t) => {
+test("autoplay advances exactly one card every 1.5 seconds only when visible", (t) => {
   const h = fixture(t);
   const initial = h.viewport.scrollLeft;
   h.tick(9000);
   assert.equal(h.viewport.scrollLeft, initial);
   h.onscreen(true);
-  h.tick(2999);
+  h.tick(1499);
   assert.equal(h.viewport.scrollLeft, initial);
   h.tick(1);
   assert.deepEqual(h.moves.at(-1), { left: initial + 254, behavior: "smooth" });
-  h.tick(3000);
+  h.tick(1500);
   assert.equal(h.viewport.scrollLeft, initial + 508);
   h.onscreen(false);
   h.tick(9000);
@@ -244,11 +245,11 @@ test("hover, focus, and a hidden document suspend autoplay without changing the 
   assert.equal(h.viewport.scrollLeft, initial);
   h.doc.hidden = false;
   h.event(h.doc, "visibilitychange");
-  h.tick(3000);
+  h.tick(1500);
   assert.equal(h.viewport.scrollLeft, initial + 254);
 });
 
-test("manual navigation stays stopped through hover, visibility and resize until explicitly played", (t) => {
+test("manual navigation stays stopped through hover, visibility and resize after interaction", (t) => {
   const h = fixture(t);
   h.onscreen(true);
   h.carousel.next();
@@ -262,12 +263,6 @@ test("manual navigation stays stopped through hover, visibility and resize until
   const manualPosition = h.viewport.scrollLeft;
   h.tick(9000);
   assert.equal(h.viewport.scrollLeft, manualPosition);
-  h.carousel.toggleAutoplay();
-  h.tick(3000);
-  assert.equal(h.viewport.scrollLeft, manualPosition + 254);
-  h.carousel.toggleAutoplay();
-  h.tick(9000);
-  assert.equal(h.viewport.scrollLeft, manualPosition + 254);
 });
 
 test("touch, wheel, and product activation stop autoplay without cancelling native scrolling or links", (t) => {
@@ -279,7 +274,6 @@ test("touch, wheel, and product activation stop autoplay without cancelling nati
     assert.equal(h.state.autoplayEnabled, false);
     h.event(h.doc, "pointercancel");
     h.tick(180);
-    h.carousel.toggleAutoplay();
   }
   h.event(h.viewport, "pointerdown", { pointerType: "touch" });
   h.viewport.scrollLeft += 307.5;
@@ -296,7 +290,6 @@ test("reduced motion disables autoplay and uses instant manual navigation, inclu
   const h = fixture(t, { reducedMotion: true });
   h.onscreen(true);
   const initial = h.viewport.scrollLeft;
-  h.carousel.toggleAutoplay();
   h.tick(9000);
   assert.equal(h.state.autoplayEnabled, false);
   assert.equal(h.viewport.scrollLeft, initial);
@@ -306,7 +299,6 @@ test("reduced motion disables autoplay and uses instant manual navigation, inclu
   h.motion.matches = false;
   h.event(h.motion, "change");
   assert.equal(h.state.autoplayEnabled, false); // Manual stop survives preference changes.
-  h.carousel.toggleAutoplay();
   h.motion.matches = true;
   h.event(h.motion, "change");
   const stopped = h.viewport.scrollLeft;
