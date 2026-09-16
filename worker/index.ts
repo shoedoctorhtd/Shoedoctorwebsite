@@ -2,6 +2,7 @@
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import { deliverPendingOwnerAlerts } from "../lib/owner-alerts";
+import { preferredHostRedirect } from "../lib/seo";
 
 interface Env {
   ASSETS: Fetcher;
@@ -38,6 +39,8 @@ interface ExecutionContext {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+    const redirectUrl = preferredHostRedirect(request.url);
+    if (redirectUrl) return Response.redirect(redirectUrl, 308);
 
     if (url.pathname === "/_vinext/image") {
       if (!env.IMAGES) {
@@ -69,6 +72,11 @@ const worker = {
       ctx.waitUntil(deliverPendingOwnerAlerts(25).catch((error) => {
         console.error("Unable to drain admin activity alerts.", error);
       }));
+    }
+    if (/^\/(?:admin|cart|checkout|order-confirmation|orders)(?:\/|$)/.test(url.pathname)) {
+      const privateResponse = new Response(response.body, response);
+      privateResponse.headers.set("X-Robots-Tag", "noindex, nofollow");
+      return privateResponse;
     }
     return response;
   },

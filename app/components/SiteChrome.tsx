@@ -160,7 +160,7 @@ export function Brand({ footer = false }: { footer?: boolean }) {
       <span className="sd-logo-crop" aria-hidden="true">
         <img
           src="/shoe-stethoscope-mark.webp"
-          alt=""
+          alt="Shoe Doctor"
           width={180}
           height={180}
           loading={footer ? "lazy" : "eager"}

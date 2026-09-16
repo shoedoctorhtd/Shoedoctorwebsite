@@ -1,5 +1,7 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
+import StructuredData from "./components/StructuredData";
+import { homeStructuredData } from "@/lib/seo";
 import BookingForm from "./components/BookingForm";
 import HomeCareEssentials from "./components/HomeCareEssentials";
 import bookingStyles from "./components/BookingExperience.module.css";
@@ -17,14 +19,11 @@ import { STEAM_ASSISTED_DEEP_CLEAN_ID } from "@/lib/steam-cleaning";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: {
-    absolute: "Shoe Doctor Nepal | Steam Brush Shoe Cleaning, Repair & Restoration",
-  },
-  description:
-    "Professional shoe cleaning in Hetauda by Shoe Doctor Nepal. Discover steam shoe cleaning in Nepal and steam-assisted sneaker cleaning alongside expert repair and restoration.",
-  alternates: { canonical: "/" },
-};
+export const metadata = publicPageMetadata({
+  path: "/",
+  title: "Shoe Doctor Hetauda | Shoe Cleaning & Repair in Nepal",
+  description: "Professional shoe cleaning, deep and steam cleaning, repair and restoration in Hetauda, Nepal. Shoe Doctor offers pickup and return delivery where available.",
+});
 
 const steps = [
   ["Choose care", "Pick the cleaning, repair or restoration your pair needs."],
@@ -98,6 +97,7 @@ export default async function Home({
 
   return (
     <main id="main-content" className="public-site">
+      <StructuredData data={homeStructuredData} />
       <SiteMotion showLoader />
       <SiteHeader />
 
@@ -114,8 +114,8 @@ export default async function Home({
             </span>
           </h1>
           <p className="sd-hero-intro">
-            Professional cleaning, repair and restoration for the shoes that
-            carry your story.
+            Professional shoe cleaning, repair and restoration in Hetauda, Nepal,
+            for the shoes that carry your story.
           </p>
           <div className="sd-hero-actions">
             <a className="sd-primary-button" href="/#book">

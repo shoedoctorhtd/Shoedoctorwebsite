@@ -1,13 +1,12 @@
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import SiteMotion from "../components/SiteMotion";
 import { SiteFooter, SiteHeader } from "../components/SiteChrome";
 
-export const metadata: Metadata = {
-  title: { absolute: "Shipping & Delivery | Shoe Doctor" },
-  description:
-    "How Shoe Doctor confirms product collection, delivery, QR payment and Cash on Delivery details.",
-  alternates: { canonical: "/shipping-delivery" },
-};
+export const metadata = publicPageMetadata({
+  path: "/shipping-delivery",
+  title: "Shipping & Delivery | Shoe Doctor",
+  description: "How Shoe Doctor confirms product collection, delivery, QR payment and Cash on Delivery details.",
+});
 
 export default function ShippingDeliveryPage() {
   return (

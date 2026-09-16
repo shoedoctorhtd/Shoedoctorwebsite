@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import BeforeAfterComparison from "@/app/components/BeforeAfterComparison";
@@ -18,11 +19,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const story = await getPublicRestorationStoryBySlug(slug).catch(() => null);
   return story
-    ? {
-      title: story.title,
+    ? publicPageMetadata({
+      title: `${story.title} | Shoe Doctor`,
       description: story.description,
-      alternates: { canonical: `/shoe-donation/restorations/${encodeURIComponent(story.slug)}` },
-    }
+      path: `/shoe-donation/restorations/${encodeURIComponent(story.slug)}`,
+      images: story.afterImageUrl ? [{ url: story.afterImageUrl, alt: story.title }] : [],
+    })
     : { title: "Restoration Story", robots: { index: false, follow: false } };
 }
 

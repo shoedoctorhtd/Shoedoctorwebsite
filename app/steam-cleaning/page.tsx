@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import styles from "./SteamCleaningPage.module.css";
 import { listPublicServices } from "@/lib/data";
 import { formatNprPriceLabel } from "@/lib/money";
@@ -19,14 +19,11 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: {
-    absolute: "Steam Cleaning: Precision Steam + Brush | Shoe Doctor Nepal",
-  },
-  description:
-    "Discover controlled steam gun and brush cleaning for everyday grime, soles and seams. Compare Steam and Deep Cleaning, material suitability and care at Shoe Doctor.",
-  alternates: { canonical: "/steam-cleaning" },
-};
+export const metadata = publicPageMetadata({
+  path: "/steam-cleaning",
+  title: "Steam Shoe Cleaning in Hetauda, Nepal | Shoe Doctor",
+  description: "Discover steam and brush shoe cleaning at Shoe Doctor in Hetauda, Nepal. Compare deep cleaning, check material suitability and book professional sneaker care.",
+});
 
 export default async function SteamCleaningPage() {
   const services = await listPublicServices();

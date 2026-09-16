@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import SiteMotion from "@/app/components/SiteMotion";
@@ -41,11 +42,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const description = update.kind === "drive"
     ? update.item.shortDescription
     : update.item.story.slice(0, 160);
-  return {
-    title: update.item.title,
+  return publicPageMetadata({
+    title: `${update.item.title} | Shoe Doctor`,
     description,
-    alternates: { canonical: `/shoe-donation/updates/${encodeURIComponent(update.item.slug)}` },
-  };
+    path: `/shoe-donation/updates/${encodeURIComponent(update.item.slug)}`,
+    images: update.item.coverImageUrl ? [{ url: update.item.coverImageUrl, alt: update.item.title }] : [],
+  });
 }
 
 export default async function DonationUpdateDetailPage({ params }: PageProps) {

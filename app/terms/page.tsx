@@ -1,13 +1,12 @@
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import SiteMotion from "../components/SiteMotion";
 import { SiteFooter, SiteHeader } from "../components/SiteChrome";
 
-export const metadata: Metadata = {
-  title: { absolute: "Terms | Shoe Doctor" },
-  description:
-    "Terms for using Shoe Doctor's website, product ordering, shoe-care bookings and customer communications.",
-  alternates: { canonical: "/terms" },
-};
+export const metadata = publicPageMetadata({
+  path: "/terms",
+  title: "Terms | Shoe Doctor",
+  description: "Terms for using Shoe Doctor's website, product ordering, shoe-care bookings and customer communications.",
+});
 
 export default function TermsPage() {
   return (

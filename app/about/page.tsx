@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import Image from "next/image";
 import BeforeAfterComparison from "../components/BeforeAfterComparison";
 import SiteMotion from "../components/SiteMotion";
@@ -11,12 +11,11 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: { absolute: "About Shoe Doctor | Shoe Care in Hetauda" },
-  description:
-    "Meet the Shoe Doctor story and our approach to careful shoe cleaning, repair and restoration in Hetauda, Nepal.",
-  alternates: { canonical: "/about" },
-};
+export const metadata = publicPageMetadata({
+  path: "/about",
+  title: "About Shoe Doctor | Shoe Care in Hetauda, Nepal",
+  description: "Meet Shoe Doctor in Hetauda, Nepal. Learn how our team approaches professional shoe cleaning, careful repairs and restoration with a diagnosis-first approach.",
+});
 
 type AboutIconName =
   | "observe"

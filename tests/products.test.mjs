@@ -760,8 +760,8 @@ test("public and admin routes enforce the catalogue, image-access, SEO, header, 
     readFile(new URL("../lib/product-data.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/product-images.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/sitemap.ts", import.meta.url), "utf8"),
-    readFile(new URL("../app/components/ProductStructuredData.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/blog/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/seo.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/blog-data.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/components/ProductRecommendation.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(catalogue, /listPublicProducts/);
@@ -778,8 +778,8 @@ test("public and admin routes enforce the catalogue, image-access, SEO, header, 
   assert.match(productData, /\/api\/admin\/products\/\$\{encodeURIComponent\(productId\)\}\/images/);
   assert.match(productApi, /images: product\.images\.map/);
   assert.match(productApi, /getPublicProductBySlug\(slug\)\.catch\(\(\) => null\)/);
-  assert.match(sitemap, /listPublicProducts/);
-  assert.match(sitemap, /filter\(\(product\) => Boolean\(product\.slug\)\)/);
+  assert.match(sitemap, /listPublicProductSitemapEntries/);
+  assert.match(sitemap, /filter\(\(product\) => Boolean\(product\.slug\?\.trim\(\)\)\)/);
   assert.match(productStructuredData, /"@type": "Product"/);
   assert.match(productStructuredData, /"@type": "BreadcrumbList"/);
   assert.doesNotMatch(productStructuredData, /aggregateRating|review/iu);

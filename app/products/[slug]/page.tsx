@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteFooter, SiteHeader } from "../../components/SiteChrome";
@@ -19,17 +20,15 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const product = await getPublicProductBySlug((await params).slug).catch(() => null);
-  if (!product || !product.slug) return { title: "Product", robots: { index: false, follow: false } };
-  const title = product.details.seoTitle ?? `${product.name} in Nepal | Shoe Doctor`;
-  const description = product.details.seoDescription ?? product.shortDescription ?? product.fullDescription ?? "Shoe Doctor care essential.";
+  if (!product || !product.slug || product.priceNpr === null) return { title: "Product", robots: { index: false, follow: false } };
+  const title = product.details.seoTitle || `${product.name} in Nepal | Shoe Doctor`;
+  const description = product.details.seoDescription || product.shortDescription || product.fullDescription || `Explore ${product.name} at Shoe Doctor in Hetauda, Nepal.`;
   const imageUrls = product.images.map((image) => ({ url: image.url, alt: image.altText ?? product.name }));
-  return {
-    title: { absolute: title },
-    description,
-    alternates: { canonical: `/products/${encodeURIComponent(product.slug)}` },
-    openGraph: { title, description, url: `/products/${encodeURIComponent(product.slug)}`, images: imageUrls },
-    twitter: { card: "summary_large_image", title, description, images: imageUrls.map((image) => image.url) },
-  };
+  return publicPageMetadata({
+    title, description,
+    path: `/products/${encodeURIComponent(product.slug)}`,
+    images: imageUrls,
+  });
 }
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {

@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import { listPublicServices } from "@/lib/data";
 import ServiceMenu from "../components/ServiceMenu";
 import SiteMotion from "../components/SiteMotion";
@@ -12,14 +12,11 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: {
-    absolute: "Shoe Cleaning, Repair & Restoration Services | Shoe Doctor Nepal",
-  },
-  description:
-    "Explore Shoe Doctor Nepal's professional shoe cleaning in Hetauda, repair and restoration services. Steam-assisted deep cleaning is available after material inspection.",
-  alternates: { canonical: "/services" },
-};
+export const metadata = publicPageMetadata({
+  path: "/services",
+  title: "Shoe Cleaning & Repair Services in Hetauda | Shoe Doctor",
+  description: "Explore shoe cleaning, sneaker care, repairs and restoration in Hetauda, Nepal. Compare Shoe Doctor treatments and book care matched to your footwear.",
+});
 
 const faqs = [
   {

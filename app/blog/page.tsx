@@ -1,31 +1,23 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import SiteMotion from "../components/SiteMotion";
 import {
   ArrowUpRight,
   SiteFooter,
   SiteHeader,
 } from "../components/SiteChrome";
-import ProductRecommendation from "../components/ProductRecommendation";
+import BlogGuideContent from "../components/BlogGuideContent";
+import { getPublishedBlogPost, recommendedBlogProduct } from "@/lib/blog-data";
 import { listPublicProducts } from "@/lib/product-data";
-import type { ProductCard, ProductCategory } from "@/lib/product-types";
+import type { ProductCard } from "@/lib/product-types";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: { absolute: "Shoe Care Guides | Shoe Doctor" },
-  description:
-    "Practical shoe-care guidance from Shoe Doctor on cleaning, storage, suede care and knowing when to book professional treatment.",
-  alternates: { canonical: "/blog" },
-};
-
-function firstDoctorsPickInCategory(products: ProductCard[], category: ProductCategory) {
-  return products.find((product) => (
-    product.category === category
-    && product.badge === "doctors_pick"
-    && product.stockQuantity !== 0
-  )) ?? null;
-}
+export const metadata = publicPageMetadata({
+  path: "/blog",
+  title: "Shoe Care Guides & Sneaker Cleaning Tips | Shoe Doctor",
+  description: "Read practical shoe-care guides from Shoe Doctor in Hetauda, Nepal, covering sneaker cleaning, suede care, storage and when to seek professional treatment.",
+});
 
 export default async function BlogPage() {
   let products: ProductCard[] = [];
@@ -34,11 +26,10 @@ export default async function BlogPage() {
   } catch {
     // Blog education remains available if the optional catalogue query cannot load.
   }
-  const quickCleanRecommendation = firstDoctorsPickInCategory(products, "quick_clean");
-  const storageRecommendation = firstDoctorsPickInCategory(products, "storage")
-    ?? firstDoctorsPickInCategory(products, "protection");
-  const suedeRecommendation = firstDoctorsPickInCategory(products, "suede_nubuck");
-  const kitRecommendation = firstDoctorsPickInCategory(products, "cleaning_kits");
+  const quickCleanRecommendation = recommendedBlogProduct(getPublishedBlogPost("everyday-shoe-cleaning"), products);
+  const storageRecommendation = recommendedBlogProduct(getPublishedBlogPost("shoe-travel-and-storage"), products);
+  const suedeRecommendation = recommendedBlogProduct(getPublishedBlogPost("suede-shoe-care"), products);
+  const kitRecommendation = recommendedBlogProduct(getPublishedBlogPost("at-home-sneaker-cleaning"), products);
   return (
     <main id="main-content" className="public-site inner-site">
       <SiteMotion />
@@ -81,150 +72,57 @@ export default async function BlogPage() {
       </section>
 
       <section className="sd-blog-index sd-section">
+        {getPublishedBlogPost("everyday-shoe-cleaning") ? (
         <article className="sd-feature-article" data-reveal>
           <div className="sd-article-meta">
             <span>01 &middot; Everyday care</span>
             <em>3 minute read</em>
           </div>
-          <h2>DON&apos;T LET DIRT<br />SETTLE IN.</h2>
-          <div className="sd-article-body">
-            <p>
-              Dust looks harmless, but repeated wear pushes it deeper into
-              fabric, stitching and colour. Brush away loose dirt regularly
-              and use a shoe wipe when a fresh mark appears.
-            </p>
-            <p>
-              When your pair needs more than a quick wipe, reach for a proper
-              sneaker-cleaning kit. Cleaning foam, two brushes and a microfiber
-              towel give you the right tools for the upper, sole and finishing
-              wipe&mdash;without soaking the shoe.
-            </p>
-            <ul>
-              <li>Clean fresh marks immediately.</li>
-              <li>Use separate brushes for uppers and soles.</li>
-              <li>Test products on a hidden area first.</li>
-              <li>Let every pair dry naturally in shade.</li>
-            </ul>
-            <p>Small cleanups keep big stains away.</p>
-            <ProductRecommendation
-              explanation="For fresh marks and everyday upkeep between professional visits."
-              product={quickCleanRecommendation}
-            />
-          </div>
+          <h2><a href="/blog/everyday-shoe-cleaning">DON&apos;T LET DIRT<br />SETTLE IN.</a></h2>
+          <BlogGuideContent slug="everyday-shoe-cleaning" product={quickCleanRecommendation} />
         </article>
+        ) : null}
 
         <div className="sd-blog-cards">
-          <article className="sd-blog-card navy" data-reveal>
+          {getPublishedBlogPost("shoe-travel-and-storage") ? (
+        <article className="sd-blog-card navy" data-reveal>
             <div className="sd-article-meta">
               <span>02 &middot; Travel and storage</span>
               <em>3 minute read</em>
             </div>
-            <h2>WHEREVER YOU GO,<br />PROTECT THE PAIR.</h2>
-            <p>
-              Rain does not send a warning. Neither do muddy roads, dusty
-              luggage or crowded shoe racks.
-            </p>
-            <p>
-              Keep foldable shoe covers nearby during rainy days and outdoor
-              travel. When the journey ends, place clean and completely dry
-              sneakers inside a shoe bag to protect their shape and separate
-              them from clothes.
-            </p>
-            <p>
-              A little preparation can save your favourite pair from
-              unnecessary cleaning and damage.
-            </p>
-            <ProductRecommendation
-              explanation="For the published storage or protection option currently selected by Shoe Doctor."
-              product={storageRecommendation}
-            />
-          </article>
+            <h2><a href="/blog/shoe-travel-and-storage">WHEREVER YOU GO,<br />PROTECT THE PAIR.</a></h2>
+          <BlogGuideContent slug="shoe-travel-and-storage" product={storageRecommendation} />
+        </article>
+        ) : null}
 
-          <article className="sd-blog-card coral" data-reveal>
+          {getPublishedBlogPost("suede-shoe-care") ? (
+        <article className="sd-blog-card coral" data-reveal>
             <div className="sd-article-meta">
               <span>03 &middot; Doctor&apos;s note</span>
               <em>2 minute read</em>
             </div>
-            <h2>SUEDE HAS<br />DIFFERENT RULES.</h2>
-            <p>
-              Suede should not be treated like an ordinary sneaker. Water and
-              aggressive scrubbing can leave marks, flatten its texture and
-              affect its colour.
-            </p>
-            <p>
-              For small, dry stains, gently use a suede eraser instead of
-              washing the entire shoe. If the stain is deep, oily or spreading,
-              stop experimenting and let a professional examine it.
-            </p>
-            <p>
-              The right treatment protects the material. The wrong one may make
-              the damage permanent.
-            </p>
-            <ProductRecommendation
-              explanation="Only use an item when its own published guidance confirms it is appropriate for your pair."
-              product={suedeRecommendation}
-            />
-          </article>
+            <h2><a href="/blog/suede-shoe-care">SUEDE HAS<br />DIFFERENT RULES.</a></h2>
+          <BlogGuideContent slug="suede-shoe-care" product={suedeRecommendation} />
+        </article>
+        ) : null}
         </div>
 
+        {getPublishedBlogPost("at-home-sneaker-cleaning") ? (
         <article className="sd-feature-article" data-reveal>
           <div className="sd-article-meta">
             <span>04 &middot; At-home routine</span>
             <em>5 minute read</em>
           </div>
-          <h2>
+          <h2><a href="/blog/at-home-sneaker-cleaning">
             BUILD A SIMPLE
             <br />
             AT-HOME SNEAKER-
             <br />
             CLEANING ROUTINE.
-          </h2>
-          <div className="sd-article-body">
-            <p>
-              You do not need a shelf full of random cleaning products. A
-              practical sneaker-cleaning kit containing cleaning foam, two
-              suitable brushes and a microfiber towel is enough for most
-              regular cleaning.
-            </p>
-            <p>Follow these steps:</p>
-            <ul>
-              <li>01. Remove the shoelaces and insoles, if removable.</li>
-              <li>02. Use a dry brush to remove loose dust and mud.</li>
-              <li>03. Test the cleaning foam on a small, less-visible area.</li>
-              <li>
-                04. Apply a small amount of foam to the brush instead of
-                pouring cleaner directly onto the shoe.
-              </li>
-              <li>05. Use the softer brush on the upper material.</li>
-              <li>
-                06. Use the second brush for the midsole and other stronger
-                surfaces.
-              </li>
-              <li>
-                07. Wipe away loosened dirt and excess foam with a clean
-                microfiber towel.
-              </li>
-              <li>
-                08. Leave the sneakers to dry naturally in a shaded,
-                ventilated area.
-              </li>
-            </ul>
-            <p>
-              A complete sneaker-cleaning kit makes this process easier because
-              each tool has a purpose. The brushes loosen dirt, the foam cleans
-              without requiring the shoe to be soaked, and the microfiber towel
-              lifts away moisture without scratching the surface.
-            </p>
-            <p>
-              <strong>Important:</strong> Avoid using the same brush on the
-              dirty outsole and the upper part of the sneaker.
-            </p>
-            <ProductRecommendation
-              explanation="A currently published kit can support this at-home routine when its product guidance matches your footwear."
-              product={kitRecommendation}
-            />
-          </div>
+          </a></h2>
+          <BlogGuideContent slug="at-home-sneaker-cleaning" product={kitRecommendation} />
         </article>
+        ) : null}
       </section>
 
       <section className="sd-care-checklist" data-reveal>

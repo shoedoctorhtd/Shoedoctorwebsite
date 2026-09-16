@@ -120,6 +120,18 @@ export async function listPublicProducts(): Promise<ProductCard[]> {
   return products.map((product) => toProductCard({ ...product, images: images.get(product.id) ?? [] }));
 }
 
+/** Sitemap metadata only; no image BLOBs or admin/draft records are loaded. */
+export async function listPublicProductSitemapEntries(): Promise<{ slug: string; updatedAt: string }[]> {
+  const db = await getDatabase();
+  const rows = await db.prepare(`
+    SELECT slug, updated_at AS updatedAt FROM products
+    WHERE status = 'published' AND slug IS NOT NULL AND length(trim(slug)) > 0
+      AND price_npr IS NOT NULL AND price_npr >= 0
+    ORDER BY slug
+  `).all();
+  return rows.results;
+}
+
 /**
  * Homepage-only catalogue slice. This intentionally reads a capped candidate
  * set instead of loading the full shop catalogue on the home route.

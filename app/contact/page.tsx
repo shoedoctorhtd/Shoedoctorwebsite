@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import SiteMotion from "../components/SiteMotion";
 import {
   ArrowUpRight,
@@ -9,12 +9,11 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: { absolute: "Contact Shoe Doctor | Hetauda" },
-  description:
-    "Contact Shoe Doctor in Hetauda for shoe cleaning, repair, restoration, booking support and product-order help.",
-  alternates: { canonical: "/contact" },
-};
+export const metadata = publicPageMetadata({
+  path: "/contact",
+  title: "Contact Shoe Doctor in Hetauda, Nepal | Book Shoe Care",
+  description: "Contact Shoe Doctor in Hetauda-4, Makwanpur, Nepal for shoe cleaning, repair and restoration. Call or WhatsApp for bookings, pickup details and product help.",
+});
 
 export default function ContactPage() {
   return (
@@ -56,8 +55,8 @@ export default function ContactPage() {
         </article>
         <article>
           <span>Visit</span>
-          <strong>Hetauda-4, Makwanpur, Nepal</strong>
-          <p>The exact studio handover details are confirmed with your booking.</p>
+          <strong>Opposite the main gate of Huprachaur, Hetauda-4, Makwanpur, Nepal</strong>
+          <p>Sunday–Friday: 8 am–7 pm. Saturday: 2 pm–7 pm.</p>
         </article>
         <article>
           <span>Instagram & TikTok</span>

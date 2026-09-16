@@ -1,8 +1,12 @@
 import type { MetadataRoute } from "next";
 import { getPublicDonationPageData } from "@/lib/csr-data";
-import { listPublicProducts } from "@/lib/product-data";
+import { listPublicProductSitemapEntries } from "@/lib/product-data";
+import { listPublishedBlogPosts } from "@/lib/blog-data";
+import { SITE_URL, canonicalUrl, reliableModifiedDate } from "@/lib/seo";
 
-const siteUrl = "https://www.shoedoctor.com.np";
+export const dynamic = "force-dynamic";
+
+const siteUrl = SITE_URL;
 
 const publicPaths = [
   "/",
@@ -25,18 +29,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   try {
-    const products = await listPublicProducts();
+    const products = await listPublicProductSitemapEntries();
     entries.push(
       ...products
-        .filter((product) => Boolean(product.slug))
+        .filter((product) => Boolean(product.slug?.trim()))
         .map((product) => ({
           url: new URL(`/products/${encodeURIComponent(product.slug!)}`, siteUrl).toString(),
+          lastModified: reliableModifiedDate(product.updatedAt),
         })),
     );
   } catch {
     // Static routes remain discoverable while an unavailable D1 binding
     // prevents the published-product list from loading.
   }
+
+  entries.push(...listPublishedBlogPosts().map((post) => ({
+    url: canonicalUrl(`/blog/${encodeURIComponent(post.slug)}`),
+    lastModified: reliableModifiedDate(post.updatedAt),
+  })));
 
   try {
     const donationData = await getPublicDonationPageData();
@@ -45,16 +55,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .filter((drive) => drive.isPublished && drive.slug)
         .map((drive) => ({
           url: new URL(`/shoe-donation/updates/${encodeURIComponent(drive.slug)}`, siteUrl).toString(),
+          lastModified: reliableModifiedDate(drive.updatedAt),
         })),
       ...donationData.restorationStories
         .filter((story) => story.isPublished && story.slug)
         .map((story) => ({
           url: new URL(`/shoe-donation/restorations/${encodeURIComponent(story.slug)}`, siteUrl).toString(),
+          lastModified: reliableModifiedDate(story.updatedAt),
         })),
       ...donationData.communityUpdates
         .filter((update) => update.isPublished && update.slug)
         .map((update) => ({
           url: new URL(`/shoe-donation/updates/${encodeURIComponent(update.slug)}`, siteUrl).toString(),
+          lastModified: reliableModifiedDate(update.updatedAt),
         })),
     );
   } catch {

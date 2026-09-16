@@ -1,13 +1,12 @@
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import SiteMotion from "../components/SiteMotion";
 import { SiteFooter, SiteHeader } from "../components/SiteChrome";
 
-export const metadata: Metadata = {
-  title: { absolute: "Returns & Refunds | Shoe Doctor" },
-  description:
-    "How to contact Shoe Doctor about a damaged, wrong or missing product order without relying on an unlisted return promise.",
-  alternates: { canonical: "/returns-refunds" },
-};
+export const metadata = publicPageMetadata({
+  path: "/returns-refunds",
+  title: "Returns & Refunds | Shoe Doctor",
+  description: "How to contact Shoe Doctor about a damaged, wrong or missing product order without relying on an unlisted return promise.",
+});
 
 export default function ReturnsRefundsPage() {
   return (

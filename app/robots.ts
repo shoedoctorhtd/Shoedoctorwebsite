@@ -1,15 +1,17 @@
 import type { MetadataRoute } from "next";
 
-const siteUrl = "https://www.shoedoctor.com.np";
+import { SITE_URL } from "@/lib/seo";
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/admin", "/api", "/cart", "/checkout", "/order-confirmation", "/orders"],
+      // Public product images are served from /api/products/images/*.
+      // Do not block the whole /api tree: crawlers need those images.
+      disallow: ["/admin", "/api/admin/", "/api/customer/", "/api/orders/", "/cart", "/checkout", "/order-confirmation", "/orders"],
     },
-    sitemap: `${siteUrl}/sitemap.xml`,
-    host: siteUrl,
+    sitemap: `${SITE_URL}/sitemap.xml`,
+    host: SITE_URL,
   };
 }

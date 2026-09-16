@@ -1,25 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-
-const siteUrl = "https://www.shoedoctor.com.np";
-
-const localBusinessSchema = {
-  "@context": "https://schema.org",
-  "@type": "LocalBusiness",
-  name: "Shoe Doctor Pvt. Ltd.",
-  url: siteUrl,
-  logo: `${siteUrl}/shoe-doctor-logo.png`,
-  image: `${siteUrl}/shoe-doctor-logo.png`,
-  telephone: "+9779761716743",
-  email: "shoedoctorhtd@gmail.com",
-  address: {
-    "@type": "PostalAddress",
-    addressLocality: "Hetauda-4",
-    addressRegion: "Makwanpur",
-    addressCountry: "NP",
-  },
-};
+import { SITE_URL, DEFAULT_SOCIAL_IMAGE } from "@/lib/seo";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,20 +14,22 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "Shoe Doctor | Clean. Repair. Restore.",
+    default: "Shoe Doctor Hetauda | Shoe Cleaning & Repair in Nepal",
     template: "%s | Shoe Doctor",
   },
   description:
-    "Professional shoe cleaning, repair and restoration for every kind of footwear.",
+    "Professional shoe cleaning, repair and restoration in Hetauda, Nepal.",
   openGraph: {
     siteName: "Shoe Doctor",
     locale: "en_NP",
     type: "website",
+    images: [{ url: DEFAULT_SOCIAL_IMAGE, alt: "Shoe Doctor" }],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
+    images: [DEFAULT_SOCIAL_IMAGE],
   },
   other: {
     "codex-preview": "development",
@@ -73,12 +57,6 @@ export default function RootLayout({
         <a className="sd-skip-link" href="#main-content">
           Skip to main content
         </a>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(localBusinessSchema).replace(/</gu, "\\u003c"),
-          }}
-        />
         {children}
       </body>
     </html>

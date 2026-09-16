@@ -1,15 +1,12 @@
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import SiteMotion from "../components/SiteMotion";
 import { SiteFooter, SiteHeader } from "../components/SiteChrome";
 
-export const metadata: Metadata = {
-  title: {
-    absolute: "Privacy Policy | Shoe Doctor",
-  },
-  description:
-    "How Shoe Doctor collects, uses and protects customer and Google-authorised data.",
-  alternates: { canonical: "/privacy-policy" },
-};
+export const metadata = publicPageMetadata({
+  path: "/privacy-policy",
+  title: "Privacy Policy | Shoe Doctor",
+  description: "How Shoe Doctor collects, uses and protects customer and Google-authorised data.",
+});
 
 export default function PrivacyPolicyPage() {
   return (

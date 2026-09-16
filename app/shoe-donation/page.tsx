@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import DonationForm from "../components/DonationForm";
 import DonationImpactStats from "../components/DonationImpactStats";
 import DonationProgramUpdates from "../components/DonationProgramUpdates";
@@ -10,12 +10,11 @@ import {
   SiteHeader,
 } from "../components/SiteChrome";
 
-export const metadata: Metadata = {
-  title: { absolute: "Shoe Donation Program | Shoe Doctor Hetauda" },
-  description:
-    "Donate wearable shoes through Shoe Doctor. We clean, restore and help pass footwear forward in Hetauda, Nepal.",
-  alternates: { canonical: "/shoe-donation" },
-};
+export const metadata = publicPageMetadata({
+  path: "/shoe-donation",
+  title: "Shoe Donation in Hetauda, Nepal | Shoe Doctor",
+  description: "Donate wearable shoes through Shoe Doctor in Hetauda, Nepal. Learn how donated pairs are cleaned, repaired and passed on, and follow our community updates.",
+});
 
 export const dynamic = "force-dynamic";
 

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import { SiteFooter, SiteHeader } from "../components/SiteChrome";
 import ProductCatalogue from "../components/ProductCatalogue";
 import { CartHeaderLink, ProductCartProvider } from "../components/ProductCart";
@@ -10,11 +10,11 @@ import type { ProductCard } from "@/lib/product-types";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: { absolute: "Shoe Care Products in Nepal | Shoe Doctor" },
-  description: "Professional shoe-care products selected by Shoe Doctor for everyday maintenance, protection and restoration.",
-  alternates: { canonical: "/products" },
-};
+export const metadata = publicPageMetadata({
+  path: "/products",
+  title: "Shoe Care Products in Nepal | Shoe Doctor Hetauda",
+  description: "Shop shoe-care products selected by Shoe Doctor in Hetauda, Nepal. Find cleaning kits, suede care, storage and protection with current prices and availability.",
+});
 
 export default async function ProductsPage() {
   let products: ProductCard[] = [];
